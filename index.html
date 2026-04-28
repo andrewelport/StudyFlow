@@ -8,97 +8,76 @@
 <link rel=stylesheet href=style.css>
 </head>
 <body>
-﻿﻿<!-- AUTH OVERLAY -->
-<div id="auth-overlay" style="display:flex;position:fixed;inset:0;z-index:9999;font-family:'Heebo',sans-serif;direction:rtl">
-  <!-- Background -->
-  <div style="position:absolute;inset:0;background:linear-gradient(135deg,#0a0f1e 0%,#0f1a35 50%,#0a0f1e 100%)"></div>
-  <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 20%,rgba(79,110,247,0.12) 0%,transparent 60%),radial-gradient(ellipse at 70% 80%,rgba(99,102,241,0.08) 0%,transparent 60%)"></div>
+<!-- AUTH OVERLAY -->
+<div id="auth-overlay">
+  <div class="auth-card">
 
-  <!-- Card -->
-  <div style="position:relative;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:1.5rem">
-    <div style="background:rgba(15,23,42,0.95);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.08);border-radius:24px;padding:2.5rem 2rem;width:100%;max-width:420px;box-shadow:0 25px 80px rgba(0,0,0,0.6)">
-
-      <!-- Logo -->
-      <div style="text-align:center;margin-bottom:2rem">
-        <div style="font-size:2.5rem;margin-bottom:0.5rem">🎓</div>
-        <div style="font-size:1.5rem;font-weight:900;color:#f8fafc;letter-spacing:-0.5px">StudyFlow</div>
-        <div style="font-size:0.82rem;color:#64748b;margin-top:0.25rem">ה-Waze של הלימודים</div>
-      </div>
-
-      <!-- Tabs -->
-      <div style="display:flex;background:rgba(255,255,255,0.04);border-radius:12px;padding:4px;margin-bottom:1.75rem;border:1px solid rgba(255,255,255,0.06)">
-        <button id="tab-signin" onclick="authSwitchTab('signin')" style="flex:1;padding:0.6rem;border:none;border-radius:9px;font-family:'Heebo',sans-serif;font-size:0.88rem;font-weight:700;cursor:pointer;transition:all 0.2s;background:#4f6ef7;color:white">כניסה</button>
-        <button id="tab-signup" onclick="authSwitchTab('signup')" style="flex:1;padding:0.6rem;border:none;border-radius:9px;font-family:'Heebo',sans-serif;font-size:0.88rem;font-weight:700;cursor:pointer;transition:all 0.2s;background:transparent;color:#64748b">הרשמה</button>
-      </div>
-
-      <!-- Google Button -->
-      <button onclick="signInWithGoogle()" style="width:100%;padding:0.85rem 1rem;background:#fff;color:#1a1a2e;border:none;border-radius:12px;font-family:'Heebo',sans-serif;font-size:0.92rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:0.65rem;margin-bottom:1.25rem;transition:all 0.2s;box-shadow:0 2px 8px rgba(0,0,0,0.25)" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 16px rgba(0,0,0,0.35)'" onmouseout="this.style.transform='';this.style.boxShadow='0 2px 8px rgba(0,0,0,0.25)'">
-        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
-        המשך עם Google
-      </button>
-
-      <!-- Divider -->
-      <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1.25rem">
-        <div style="flex:1;height:1px;background:rgba(255,255,255,0.08)"></div>
-        <span style="font-size:0.72rem;color:#475569;font-weight:600">או</span>
-        <div style="flex:1;height:1px;background:rgba(255,255,255,0.08)"></div>
-      </div>
-
-      <!-- Email Input -->
-      <div style="margin-bottom:0.75rem">
-        <label style="display:block;font-size:0.75rem;font-weight:700;color:#94a3b8;margin-bottom:0.4rem">אימייל</label>
-        <input id="auth-email" type="email" placeholder="your@email.com" autocomplete="email"
-          style="width:100%;padding:0.8rem 1rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#f8fafc;font-family:'Heebo',sans-serif;font-size:0.9rem;box-sizing:border-box;direction:ltr;text-align:left;outline:none;transition:border 0.2s"
-          onfocus="this.style.borderColor='rgba(79,110,247,0.6)';this.style.background='rgba(79,110,247,0.06)'"
-          onblur="this.style.borderColor='rgba(255,255,255,0.1)';this.style.background='rgba(255,255,255,0.05)'" />
-      </div>
-
-      <!-- Password Input -->
-      <div style="margin-bottom:0.5rem">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem">
-          <label style="font-size:0.75rem;font-weight:700;color:#94a3b8">סיסמה</label>
-          <button id="forgot-btn" onclick="authForgotPassword()" style="background:none;border:none;font-size:0.72rem;color:#4f6ef7;cursor:pointer;font-family:'Heebo',sans-serif;font-weight:600;padding:0">שכחתי סיסמה</button>
-        </div>
-        <div style="position:relative">
-          <input id="auth-pass" type="password" placeholder="לפחות 6 תווים" autocomplete="current-password"
-            style="width:100%;padding:0.8rem 2.8rem 0.8rem 1rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#f8fafc;font-family:'Heebo',sans-serif;font-size:0.9rem;box-sizing:border-box;direction:ltr;text-align:left;outline:none;transition:border 0.2s"
-            onfocus="this.style.borderColor='rgba(79,110,247,0.6)';this.style.background='rgba(79,110,247,0.06)'"
-            onblur="this.style.borderColor='rgba(255,255,255,0.1)';this.style.background='rgba(255,255,255,0.05)'"
-            onkeydown="if(event.key==='Enter')authSubmit()" />
-          <button onclick="authTogglePass('auth-pass','eye1')" style="position:absolute;left:0.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#475569;padding:0.2rem;line-height:1" title="הצג/הסתר סיסמה">
-            <svg id="eye1" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-          </button>
-        </div>
-      </div>
-
-      <!-- Confirm Password (signup only) -->
-      <div id="confirm-pass-wrap" style="display:none;margin-bottom:0.5rem">
-        <label style="display:block;font-size:0.75rem;font-weight:700;color:#94a3b8;margin-bottom:0.4rem">אימות סיסמה</label>
-        <div style="position:relative">
-          <input id="auth-pass2" type="password" placeholder="חזור על הסיסמה"
-            style="width:100%;padding:0.8rem 2.8rem 0.8rem 1rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#f8fafc;font-family:'Heebo',sans-serif;font-size:0.9rem;box-sizing:border-box;direction:ltr;text-align:left;outline:none;transition:border 0.2s"
-            onfocus="this.style.borderColor='rgba(79,110,247,0.6)';this.style.background='rgba(79,110,247,0.06)'"
-            onblur="this.style.borderColor='rgba(255,255,255,0.1)';this.style.background='rgba(255,255,255,0.05)'"
-            onkeydown="if(event.key==='Enter')authSubmit()" />
-          <button onclick="authTogglePass('auth-pass2','eye2')" style="position:absolute;left:0.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#475569;padding:0.2rem;line-height:1">
-            <svg id="eye2" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-          </button>
-        </div>
-      </div>
-
-      <!-- Submit Button -->
-      <button id="auth-submit-btn" onclick="authSubmit()" style="width:100%;padding:0.9rem;background:linear-gradient(135deg,#4f6ef7,#6366f1);color:white;border:none;border-radius:12px;font-family:'Heebo',sans-serif;font-size:0.95rem;font-weight:800;cursor:pointer;margin-top:1.1rem;transition:all 0.2s;box-shadow:0 4px 16px rgba(79,110,247,0.35)" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 24px rgba(79,110,247,0.5)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 16px rgba(79,110,247,0.35)'">כניסה</button>
-
-      <!-- Message -->
-      <div id="auth-msg" style="min-height:1.5rem;margin-top:0.85rem;font-size:0.8rem;text-align:center;color:#94a3b8;line-height:1.4"></div>
-
-      <!-- Footer -->
-      <div style="text-align:center;margin-top:1.25rem;padding-top:1.25rem;border-top:1px solid rgba(255,255,255,0.06)">
-        <span style="font-size:0.75rem;color:#475569">הנתונים שלך מוצפנים ומאובטחים •</span>
-        <span style="font-size:0.75rem;color:#475569"> Supabase Auth</span>
-      </div>
-
+    <!-- Logo -->
+    <div class="auth-logo">
+      <span class="auth-logo-icon">🎓</span>
+      <div class="auth-logo-name">StudyFlow</div>
+      <div class="auth-logo-sub">ה-Waze של הלימודים</div>
     </div>
+
+    <!-- Tabs -->
+    <div class="auth-tabs">
+      <button id="tab-signin" class="auth-tab active" onclick="authSwitchTab('signin')">כניסה</button>
+      <button id="tab-signup" class="auth-tab" onclick="authSwitchTab('signup')">הרשמה</button>
+    </div>
+
+    <!-- Google -->
+    <button class="auth-google-btn" onclick="signInWithGoogle()">
+      <svg width="18" height="18" viewBox="0 0 48 48" style="flex-shrink:0"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+      המשך עם Google
+    </button>
+
+    <!-- Divider -->
+    <div class="auth-divider">
+      <div class="auth-divider-line"></div>
+      <span class="auth-divider-text">או</span>
+      <div class="auth-divider-line"></div>
+    </div>
+
+    <!-- Email -->
+    <div class="auth-field">
+      <label class="auth-label" for="auth-email">אימייל</label>
+      <input id="auth-email" class="auth-input" type="email" placeholder="your@email.com" autocomplete="email" />
+    </div>
+
+    <!-- Password -->
+    <div class="auth-field">
+      <div class="auth-field-header">
+        <label class="auth-label" for="auth-pass">סיסמה</label>
+        <button id="forgot-btn" class="auth-forgot-btn" onclick="authForgotPassword()" type="button">שכחתי סיסמה</button>
+      </div>
+      <div class="auth-input-wrap">
+        <input id="auth-pass" class="auth-input has-eye" type="password" placeholder="לפחות 6 תווים" autocomplete="current-password" onkeydown="if(event.key==='Enter')authSubmit()" />
+        <button class="auth-eye-btn" onclick="authTogglePass('auth-pass','eye1')" type="button" tabindex="-1" aria-label="הצג/הסתר סיסמה">
+          <svg id="eye1" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Confirm Password (signup) -->
+    <div id="confirm-pass-wrap" class="auth-field" style="display:none">
+      <label class="auth-label" for="auth-pass2">אימות סיסמה</label>
+      <div class="auth-input-wrap">
+        <input id="auth-pass2" class="auth-input has-eye" type="password" placeholder="חזור על הסיסמה" autocomplete="new-password" onkeydown="if(event.key==='Enter')authSubmit()" />
+        <button class="auth-eye-btn" onclick="authTogglePass('auth-pass2','eye2')" type="button" tabindex="-1" aria-label="הצג/הסתר אימות סיסמה">
+          <svg id="eye2" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Submit -->
+    <button id="auth-submit-btn" class="auth-submit-btn" onclick="authSubmit()" type="button">כניסה</button>
+
+    <!-- Message -->
+    <div id="auth-msg"></div>
+
+    <!-- Footer -->
+    <div class="auth-footer">הנתונים שלך מוצפנים ומאובטחים&nbsp;•&nbsp;Supabase Auth</div>
+
   </div>
 </div>
 
