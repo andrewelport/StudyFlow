@@ -123,9 +123,12 @@ async function signOut() {
 }
 
 db.auth.onAuthStateChange((event, session) => {
-  if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
+  if (session) {
     currentUser = session.user;
-    document.getElementById('auth-overlay').style.display = 'none';
+    document.getElementById("auth-overlay").style.display = "none";
+  } else {
+    currentUser = null;
+    document.getElementById("auth-overlay").style.display = "flex";
   }
 });
 
