@@ -164,9 +164,22 @@
 </div>
 
 <div id="app-screen">
+
+  <!-- Mobile top bar -->
+  <div class="mobile-header">
+    <button class="hamburger-btn" id="hamburger-btn" onclick="toggleSidebar()" aria-label="תפריט">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="mobile-logo">Study<span style="color:var(--green)">Flow</span> 🎓</div>
+    <button class="mobile-settings-btn" onclick="openSettings()" aria-label="הגדרות">⚙️</button>
+  </div>
+
+  <!-- Sidebar backdrop -->
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
   <div class="app-layout">
-    
-    <nav class="sidebar">
+
+    <nav class="sidebar" id="sidebar">
       <div class="sidebar-logo">Study<span>Flow</span></div>
       <div class="sidebar-sub">ה-Waze של הלימודים 🎓</div>
       <button class="nav-item active" onclick="showPage('today',this)"><span class="nav-icon">📅</span> <span>היום</span></button>
@@ -179,9 +192,8 @@
 
       <div class="sidebar-bottom">
         <hr style="border:none; border-top:1px solid var(--border); margin:0.5rem 0;">
-        <button class="nav-item" onclick="toggleTheme()"><span class="nav-icon">🌓</span> <span>מצב לילה</span></button>
-        <button class="nav-item" onclick="resetSettings()"><span class="nav-icon">⚙️</span> <span>איפוס נתונים</span></button>
-        <div class="user-chip">
+<button class="nav-item" onclick="openSettings();closeSidebar()"><span class="nav-icon">⚙️</span> <span>הגדרות</span></button>
+        <div class="user-chip" onclick="openSettings();closeSidebar()" style="cursor:pointer">
           <div class="user-avatar" id="sb-avatar">?</div>
           <div><div class="user-name" id="sb-name">—</div><div class="user-plan">✓ LLAMA 3 70B</div></div>
         </div>
@@ -526,6 +538,64 @@
         <input type="text" id="tutor-input" style="flex:1; background:var(--surface2); border:1px solid var(--border); padding:0.7rem 1rem; border-radius:10px;" placeholder="כתוב משהו..." onkeydown="if(event.key==='Enter')sendTutor()" />
         <button class="btn-chat-send" style="background:linear-gradient(135deg, var(--accent), var(--purple));" onclick="sendTutor()">שלח</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SETTINGS MODAL ── -->
+<div class="modal-overlay hidden" id="settings-modal">
+  <div class="modal-box" style="max-width:420px">
+    <div class="modal-title">⚙️ הגדרות</div>
+
+    <div class="settings-section">
+      <div class="settings-section-label">פרטים אישיים</div>
+      <div class="form-row"><label class="field-label">שם</label><input type="text" id="settings-name" placeholder="השם שלך" /></div>
+      <div class="form-row"><label class="field-label">מוסד לימודים</label><input type="text" id="settings-inst" placeholder="אוניברסיטה / מכללה" /></div>
+    </div>
+
+    <hr class="settings-divider">
+
+    <div class="settings-section">
+      <div class="settings-section-label">שעות לימוד</div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label class="field-label">⏰ שעת קימה</label>
+          <select id="settings-wake">
+            <option value="06:00">06:00</option><option value="06:30">06:30</option>
+            <option value="07:00">07:00</option><option value="07:30">07:30</option>
+            <option value="08:00">08:00</option><option value="08:30">08:30</option>
+            <option value="09:00">09:00</option><option value="09:30">09:30</option>
+            <option value="10:00">10:00</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label class="field-label">🌙 שעת סיום</label>
+          <select id="settings-sleep">
+            <option value="20:00">20:00</option><option value="21:00">21:00</option>
+            <option value="22:00">22:00</option><option value="23:00">23:00</option><option value="23:59">00:00</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <hr class="settings-divider">
+
+    <div class="settings-section">
+      <div class="settings-section-label">מראה ואפשרויות</div>
+      <button class="nav-item" onclick="toggleTheme()" style="width:100%;justify-content:flex-start;padding:0.7rem 0.9rem;border-radius:10px;margin-bottom:0.5rem"><span class="nav-icon">🌓</span> <span id="theme-btn-label">מצב לילה / יום</span></button>
+    </div>
+
+    <hr class="settings-divider">
+
+    <div class="settings-section">
+      <div class="settings-section-label">חשבון</div>
+      <button class="nav-item" onclick="signOut()" style="width:100%;justify-content:flex-start;padding:0.7rem 0.9rem;border-radius:10px;color:var(--red);margin-bottom:0.5rem"><span class="nav-icon">🚪</span> <span>יציאה מהחשבון</span></button>
+      <button class="nav-item" onclick="confirmReset()" style="width:100%;justify-content:flex-start;padding:0.7rem 0.9rem;border-radius:10px;color:var(--muted)"><span class="nav-icon">🗑️</span> <span>מחיקת כל הנתונים</span></button>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-confirm" onclick="saveSettings()">💾 שמור שינויים</button>
+      <button class="btn-cancel" onclick="closeModal('settings-modal')">ביטול</button>
     </div>
   </div>
 </div>

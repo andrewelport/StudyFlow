@@ -217,18 +217,57 @@ function openHolidayChat(date, holiday, tasks) {
 חוקים: (1) הצג 3 אפשרויות. (2) דחייה → actions.update עם תאריכים חדשים. (3) ביטול → actions.delete. (4) פורמט: {"reply":"...","actions":{"update":[{"id":"ID","date":"YYYY-MM-DD","time":"HH:MM"}],"delete":["ID"]}}`}];
 }
 
+// ── SUPABASE CLOUD SYNC ──
+// Requires: CREATE TABLE user_data (user_id text primary key, data jsonb, updated_at timestamptz default now());
+// + RLS policy: for all using (auth.uid()::text = user_id);
+
+async function syncToCloud() {
+  if (!currentUser) return;
+  try {
+    await db.from('user_data').upsert(
+      { user_id: currentUser.id, data: S, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id' }
+    );
+  } catch(e) { console.warn('Cloud sync failed:', e.message); }
+}
+
+async function loadFromCloud() {
+  if (!currentUser) return false;
+  try {
+    const { data, error } = await db.from('user_data').select('data').eq('user_id', currentUser.id).single();
+    if (error || !data?.data) return false;
+    const apiKey = S.apiKey; // preserve local API key
+    S = { ...S, ...data.data };
+    if (apiKey && !S.apiKey) S.apiKey = apiKey;
+    return true;
+  } catch(e) { return false; }
+}
+
+let _syncTimer = null;
+
 // ── INIT & ONBOARDING ──
-window.onload=async ()=>{
+window.onload = async () => {
   await checkAuth();
-  
-  const saved=localStorage.getItem('sf_v11_groq');
-  if(saved){try{S={...S,...JSON.parse(saved)};}catch(e){}}
+
+  const saved = localStorage.getItem('sf_v11_groq');
+  if (saved) { try { S = { ...S, ...JSON.parse(saved) }; } catch(e) {} }
+
+  const cloudLoaded = await loadFromCloud();
+  if (cloudLoaded) {
+    localStorage.setItem('sf_v11_groq', JSON.stringify(S));
+  }
+
   document.body.setAttribute('data-theme', S.theme || 'light');
-  if(S.apiKey&&S.userName){initApp();return;}
-  if(S.apiKey)document.getElementById('inp-key').value=S.apiKey;
-  if(S.userName)document.getElementById('inp-name').value=S.userName;
+  if (S.apiKey && S.userName) { initApp(); return; }
+  if (S.apiKey) document.getElementById('inp-key').value = S.apiKey;
+  if (S.userName) document.getElementById('inp-name').value = S.userName;
 };
-const save=()=>localStorage.setItem('sf_v11_groq',JSON.stringify(S));
+
+const save = () => {
+  localStorage.setItem('sf_v11_groq', JSON.stringify(S));
+  clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(syncToCloud, 2500);
+};
 
 function renderAll() {
   renderTodayTasks();
@@ -302,8 +341,83 @@ function renderNextTaskCountdown() {
   countdownInterval = setInterval(tick, 1000);
 }
 
-function toggleTheme() { S.theme = S.theme === 'dark' ? 'light' : 'dark'; document.body.setAttribute('data-theme', S.theme); save(); }
-function resetSettings(){ if(confirm('לאפס נתונים?')){localStorage.removeItem('sf_v11_groq');location.reload();} }
+function toggleTheme() {
+  S.theme = S.theme === 'dark' ? 'light' : 'dark';
+  document.body.setAttribute('data-theme', S.theme);
+  const lbl = document.getElementById('theme-btn-label');
+  if (lbl) lbl.textContent = S.theme === 'dark' ? '☀️ מצב יום' : '🌙 מצב לילה';
+  save();
+}
+
+function confirmReset() {
+  if (confirm('האם למחוק את כל הנתונים? לא ניתן לשחזר.')) {
+    localStorage.removeItem('sf_v11_groq');
+    if (currentUser) db.from('user_data').delete().eq('user_id', currentUser.id).then(() => location.reload());
+    else location.reload();
+  }
+}
+
+// keep backward-compat alias
+function resetSettings() { confirmReset(); }
+
+// ── SIDEBAR TOGGLE ──
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  const btn = document.getElementById('hamburger-btn');
+  const mc = document.querySelector('.main-content');
+  const open = sidebar.classList.toggle('open');
+  // On mobile show a dark overlay; on desktop shift content
+  if (window.innerWidth >= 769) {
+    mc.style.marginRight = open ? '265px' : '0';
+  } else {
+    overlay.classList.toggle('visible', open);
+  }
+  if (btn) btn.classList.toggle('open', open);
+}
+
+function closeSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  const btn = document.getElementById('hamburger-btn');
+  const mc = document.querySelector('.main-content');
+  sidebar.classList.remove('open');
+  overlay.classList.remove('visible');
+  mc.style.marginRight = '0';
+  if (btn) btn.classList.remove('open');
+}
+
+// ── SETTINGS MODAL ──
+function openSettings() {
+  document.getElementById('settings-name').value = S.userName || '';
+  document.getElementById('settings-inst').value = S.institution || '';
+  const wakeEl = document.getElementById('settings-wake');
+  const sleepEl = document.getElementById('settings-sleep');
+  if (wakeEl) wakeEl.value = S.wakeTime || '08:00';
+  if (sleepEl) sleepEl.value = S.sleepTime || '22:00';
+  const lbl = document.getElementById('theme-btn-label');
+  if (lbl) lbl.textContent = S.theme === 'dark' ? '☀️ מצב יום' : '🌙 מצב לילה';
+  document.getElementById('settings-modal').classList.remove('hidden');
+}
+
+function saveSettings() {
+  const name = document.getElementById('settings-name').value.trim();
+  const inst = document.getElementById('settings-inst').value.trim();
+  const wake = document.getElementById('settings-wake').value;
+  const sleep = document.getElementById('settings-sleep').value;
+  if (name) S.userName = name;
+  if (inst) S.institution = inst;
+  S.wakeTime = wake;
+  S.sleepTime = sleep;
+  save();
+  closeModal('settings-modal');
+  // Update sidebar name display
+  const sbName = document.getElementById('sb-name');
+  if (sbName) sbName.textContent = S.userName || '—';
+  const sbAvatar = document.getElementById('sb-avatar');
+  if (sbAvatar) sbAvatar.textContent = (S.userName || '?')[0].toUpperCase();
+  toast('✅ הגדרות נשמרו!');
+}
 
 function obNext(step){
   if(step===1){
@@ -412,12 +526,22 @@ function selectProfileOpt(el,qId){ el.closest('.ob-opts').querySelectorAll('.ob-
 function finishOnboarding(){ save(); initApp(); }
 
 function initApp(){
-  document.getElementById('setup-screen').style.display='none'; document.getElementById('app-screen').style.display='block';
-  document.getElementById('sb-name').textContent=S.userName; document.getElementById('sb-avatar').textContent=S.userName[0].toUpperCase();
+  document.getElementById('setup-screen').style.display='none';
+  document.getElementById('app-screen').style.display='block';
+  document.getElementById('sb-name').textContent = S.userName;
+  document.getElementById('sb-avatar').textContent = S.userName[0].toUpperCase();
   const now=new Date(); const days=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת']; const months=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
   document.getElementById('today-greeting').textContent=`שלום, ${S.userName} 👋`;
   document.getElementById('today-sub').textContent=`יום ${days[now.getDay()]}, ${now.getDate()} ב${months[now.getMonth()]} ${now.getFullYear()}`;
-  
+
+  // Auto-open sidebar on desktop (wide screens)
+  if (window.innerWidth >= 769) {
+    document.getElementById('sidebar').classList.add('open');
+    document.getElementById('hamburger-btn').classList.add('open');
+    // On desktop push content to the right of the sidebar
+    document.querySelector('.main-content').style.marginRight = '265px';
+  }
+
   checkPastDueTasks();
   renderAll();
 }
@@ -431,6 +555,7 @@ function showPage(name,btn){
   if(name==='exams')renderExams();
   if(name==='anchors')renderAnchorsList();
   if(name==='progress') renderProgress();
+  closeSidebar();
 }
 
 async function gemini(prompt){
