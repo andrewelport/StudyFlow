@@ -3,6 +3,137 @@ const SUPABASE_URL = 'https://cysywoaquuuteyxcxumz.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN5c3l3b2FxdXV1dGV5eGN4dW16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4NzUyMjUsImV4cCI6MjA5MjQ1MTIyNX0.fnZbaYT2782XQpn6Bku5VkK-Xxmc9BwoA9e3bwjIibM';
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let currentUser = null;
+let _authMode = 'signin';
+
+// ── AUTH UI HELPERS ──
+function authSwitchTab(mode) {
+  _authMode = mode;
+  const isSignup = mode === 'signup';
+  document.getElementById('tab-signin').style.background = isSignup ? 'transparent' : '#4f6ef7';
+  document.getElementById('tab-signin').style.color = isSignup ? '#64748b' : 'white';
+  document.getElementById('tab-signup').style.background = isSignup ? '#4f6ef7' : 'transparent';
+  document.getElementById('tab-signup').style.color = isSignup ? 'white' : '#64748b';
+  document.getElementById('confirm-pass-wrap').style.display = isSignup ? 'block' : 'none';
+  document.getElementById('forgot-btn').style.display = isSignup ? 'none' : 'block';
+  document.getElementById('auth-pass').autocomplete = isSignup ? 'new-password' : 'current-password';
+  document.getElementById('auth-submit-btn').textContent = isSignup ? 'יצירת חשבון' : 'כניסה';
+  document.getElementById('auth-msg').textContent = '';
+}
+
+function authTogglePass(inputId, eyeId) {
+  const inp = document.getElementById(inputId);
+  const eye = document.getElementById(eyeId);
+  const showing = inp.type === 'text';
+  inp.type = showing ? 'password' : 'text';
+  eye.innerHTML = showing
+    ? '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'
+    : '<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+}
+
+function authSetMsg(msg, isError) {
+  const el = document.getElementById('auth-msg');
+  el.textContent = msg;
+  el.style.color = isError ? '#f43f5e' : '#16c98d';
+}
+
+function authSetLoading(loading) {
+  const btn = document.getElementById('auth-submit-btn');
+  btn.disabled = loading;
+  btn.textContent = loading ? '...' : (_authMode === 'signup' ? 'יצירת חשבון' : 'כניסה');
+  btn.style.opacity = loading ? '0.7' : '1';
+}
+
+// ── AUTH ACTIONS ──
+async function checkAuth() {
+  const { data: { session } } = await db.auth.getSession();
+  if (session) {
+    currentUser = session.user;
+    document.getElementById('auth-overlay').style.display = 'none';
+    return true;
+  }
+  document.getElementById('auth-overlay').style.display = 'flex';
+  return false;
+}
+
+async function signInWithGoogle() {
+  authSetMsg('מעביר לגוגל...', false);
+  const { error } = await db.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.href }
+  });
+  if (error) authSetMsg('שגיאה: ' + error.message, true);
+}
+
+async function authSubmit() {
+  const email = document.getElementById('auth-email').value.trim();
+  const pass  = document.getElementById('auth-pass').value;
+  if (!email || !pass) { authSetMsg('נא למלא אימייל וסיסמה', true); return; }
+  if (pass.length < 6) { authSetMsg('הסיסמה חייבת להכיל לפחות 6 תווים', true); return; }
+
+  if (_authMode === 'signup') {
+    const pass2 = document.getElementById('auth-pass2').value;
+    if (pass !== pass2) { authSetMsg('הסיסמאות אינן תואמות', true); return; }
+    authSetLoading(true);
+    const { error } = await db.auth.signUp({ email, password: pass });
+    authSetLoading(false);
+    if (error) {
+      if (error.message.includes('already registered') || error.message.includes('already been registered')) {
+        authSetMsg('כתובת זו כבר רשומה — עבור ל"כניסה"', true);
+      } else {
+        authSetMsg('שגיאה: ' + error.message, true);
+      }
+      return;
+    }
+    authSetMsg('✅ נשלח אימייל אימות לכתובת ' + email + ' — אשר ואז חזור לכאן להתחבר', false);
+    return;
+  }
+
+  // Sign In
+  authSetLoading(true);
+  const { error } = await db.auth.signInWithPassword({ email, password: pass });
+  authSetLoading(false);
+  if (error) {
+    if (error.message.includes('Invalid login credentials') || error.message.includes('invalid_credentials')) {
+      authSetMsg('אימייל או סיסמה שגויים', true);
+    } else if (error.message.includes('Email not confirmed')) {
+      authSetMsg('יש לאשר את האימייל לפני הכניסה — בדוק את תיבת הדואר', true);
+    } else {
+      authSetMsg('שגיאה: ' + error.message, true);
+    }
+    return;
+  }
+  const { data: { session } } = await db.auth.getSession();
+  if (session) {
+    currentUser = session.user;
+    document.getElementById('auth-overlay').style.display = 'none';
+  }
+}
+
+async function authForgotPassword() {
+  const email = document.getElementById('auth-email').value.trim();
+  if (!email) { authSetMsg('הכנס אימייל ולחץ "שכחתי סיסמה"', true); return; }
+  const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo: window.location.href });
+  if (error) { authSetMsg('שגיאה: ' + error.message, true); return; }
+  authSetMsg('✅ נשלח מייל לאיפוס סיסמה ל-' + email, false);
+}
+
+async function signOut() {
+  await db.auth.signOut();
+  location.reload();
+}
+
+db.auth.onAuthStateChange((event, session) => {
+  if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
+    currentUser = session.user;
+    document.getElementById('auth-overlay').style.display = 'none';
+  }
+});
+
+﻿// ── SUPABASE INIT ──
+const SUPABASE_URL = 'https://cysywoaquuuteyxcxumz.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN5c3l3b2FxdXV1dGV5eGN4dW16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4NzUyMjUsImV4cCI6MjA5MjQ1MTIyNX0.fnZbaYT2782XQpn6Bku5VkK-Xxmc9BwoA9e3bwjIibM';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let currentUser = null;
 
 // ── AUTH ──
 async function checkAuth() {
