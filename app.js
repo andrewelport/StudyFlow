@@ -1,3 +1,66 @@
+﻿// ── SUPABASE INIT ──
+const SUPABASE_URL = 'https://cysywoaquuuteyxcxumz.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN5c3l3b2FxdXV1dGV5eGN4dW16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4NzUyMjUsImV4cCI6MjA5MjQ1MTIyNX0.fnZbaYT2782XQpn6Bku5VkK-Xxmc9BwoA9e3bwjIibM';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let currentUser = null;
+
+// ── AUTH ──
+async function checkAuth() {
+  const { data: { session } } = await db.auth.getSession();
+  if (session) {
+    currentUser = session.user;
+    document.getElementById('auth-overlay').style.display = 'none';
+    return true;
+  }
+  document.getElementById('auth-overlay').style.display = 'flex';
+  return false;
+}
+
+async function signInWithGoogle() {
+  const { error } = await db.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.href }
+  });
+  if (error) alert('שגיאה: ' + error.message);
+}
+
+async function signInWithEmail() {
+  const email = document.getElementById('auth-email').value.trim();
+  const pass  = document.getElementById('auth-pass').value;
+  if (!email || !pass) { alert('נא למלא אימייל וסיסמה'); return; }
+  const btn = document.getElementById('auth-email-btn');
+  btn.disabled = true; btn.textContent = '...מתחבר';
+  let { error } = await db.auth.signInWithPassword({ email, password: pass });
+  if (error && error.message.includes('Invalid login')) {
+    const { error: signUpErr } = await db.auth.signUp({ email, password: pass });
+    error = signUpErr;
+    if (!signUpErr) {
+      document.getElementById('auth-msg').textContent = 'נשלח אימייל אימות — בדוק את תיבת הדואר';
+      btn.disabled = false; btn.textContent = 'כניסה / הרשמה';
+      return;
+    }
+  }
+  if (error) {
+    document.getElementById('auth-msg').textContent = 'שגיאה: ' + error.message;
+    btn.disabled = false; btn.textContent = 'כניסה / הרשמה';
+    return;
+  }
+  const { data: { session } } = await db.auth.getSession();
+  if (session) { currentUser = session.user; document.getElementById('auth-overlay').style.display = 'none'; }
+}
+
+async function signOut() {
+  await db.auth.signOut();
+  location.reload();
+}
+
+db.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_IN' && session) {
+    currentUser = session.user;
+    document.getElementById('auth-overlay').style.display = 'none';
+  }
+});
+
 let S={apiKey:'',userName:'',institution:'',wakeTime:'08:00',sleepTime:'22:00',anchors:[],profile:{},tasks:[],exams:[],weekOffset:0,pendingPlan:[],points:0,streak:0,lastStudyDate:'',theme:'light'};
 let selectedOpt=null, missedTaskId=null;
 let currentChatMode = 'general';
@@ -83,7 +146,9 @@ function openHolidayChat(date, holiday, tasks) {
 }
 
 // ── INIT & ONBOARDING ──
-window.onload=()=>{
+window.onload=async ()=>{
+  await checkAuth();
+  
   const saved=localStorage.getItem('sf_v11_groq');
   if(saved){try{S={...S,...JSON.parse(saved)};}catch(e){}}
   document.body.setAttribute('data-theme', S.theme || 'light');

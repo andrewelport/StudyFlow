@@ -8,6 +8,27 @@
 <link rel=stylesheet href=style.css>
 </head>
 <body>
+﻿<!-- AUTH OVERLAY -->
+<div id="auth-overlay" style="display:none;position:fixed;inset:0;background:linear-gradient(135deg,#0f172a,#1e293b);z-index:9999;align-items:center;justify-content:center;font-family:'Heebo',sans-serif;direction:rtl">
+  <div style="background:#1e293b;border:1px solid #334155;border-radius:24px;padding:2.5rem;max-width:400px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5);text-align:center">
+    <div style="font-size:2rem;margin-bottom:0.5rem">🎓</div>
+    <div style="font-size:1.4rem;font-weight:900;color:#f8fafc;margin-bottom:0.25rem">StudyFlow</div>
+    <div style="font-size:0.85rem;color:#94a3b8;margin-bottom:2rem">כניסה לחשבון האישי שלך</div>
+    <button onclick="signInWithGoogle()" style="width:100%;padding:0.85rem;background:#fff;color:#1a2540;border:none;border-radius:12px;font-family:'Heebo',sans-serif;font-size:0.95rem;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:0.6rem;margin-bottom:1rem;transition:opacity 0.2s" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
+      <img src="https://www.google.com/favicon.ico" width="18" height="18" /> כניסה עם גוגל
+    </button>
+    <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem">
+      <div style="flex:1;height:1px;background:#334155"></div>
+      <span style="font-size:0.75rem;color:#94a3b8">או עם אימייל</span>
+      <div style="flex:1;height:1px;background:#334155"></div>
+    </div>
+    <input id="auth-email" type="email" placeholder="אימייל" style="width:100%;padding:0.75rem 1rem;background:#0f172a;border:1px solid #334155;border-radius:10px;color:#f8fafc;font-family:'Heebo',sans-serif;font-size:0.9rem;margin-bottom:0.6rem;box-sizing:border-box;direction:ltr;text-align:left" />
+    <input id="auth-pass" type="password" placeholder="סיסמה (לפחות 6 תווים)" style="width:100%;padding:0.75rem 1rem;background:#0f172a;border:1px solid #334155;border-radius:10px;color:#f8fafc;font-family:'Heebo',sans-serif;font-size:0.9rem;margin-bottom:1rem;box-sizing:border-box;direction:ltr;text-align:left" onkeydown="if(event.key==='Enter')signInWithEmail()" />
+    <button id="auth-email-btn" onclick="signInWithEmail()" style="width:100%;padding:0.85rem;background:linear-gradient(135deg,#4f6ef7,#6366f1);color:white;border:none;border-radius:12px;font-family:'Heebo',sans-serif;font-size:0.95rem;font-weight:800;cursor:pointer">כניסה / הרשמה</button>
+    <div id="auth-msg" style="margin-top:0.85rem;font-size:0.8rem;color:#94a3b8;min-height:1.2rem"></div>
+  </div>
+</div>
+
 
 <div id="setup-screen">
   <div class="setup-card">
@@ -519,6 +540,7 @@
 <div class="toast" id="toast"></div>
 
 
+<script src=https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2></script>
 <script src=app.js></script>
 </body>
 </html>
