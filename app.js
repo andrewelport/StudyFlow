@@ -133,7 +133,7 @@ db.auth.onAuthStateChange((event, session) => {
 });
 
 
-let S={userName:'',institution:'',wakeTime:'08:00',sleepTime:'22:00',anchors:[],profile:{},tasks:[],exams:[],weekOffset:0,pendingPlan:[],points:0,streak:0,lastStudyDate:'',theme:'light'};
+let S={apiKey:'',userName:'',institution:'',wakeTime:'08:00',sleepTime:'22:00',anchors:[],profile:{},tasks:[],exams:[],weekOffset:0,pendingPlan:[],points:0,streak:0,lastStudyDate:'',theme:'light'};
 let selectedOpt=null, missedTaskId=null;
 let currentChatMode = 'general';
 let recalcHistory = [];
@@ -185,23 +185,130 @@ function getCourseColor(course) {
   return courseColorMap[course];
 }
 
-// ── ISRAELI HOLIDAYS ──
-const HOLIDAYS_IL = {
-  '2025-09-22':'ראש השנה','2025-09-23':'ראש השנה (ב׳)',
-  '2025-10-01':'יום כיפור',
-  '2025-10-06':'סוכות','2025-10-07':'סוכות (ב׳)',
-  '2025-10-13':'הושענא רבה','2025-10-14':'שמיני עצרת','2025-10-15':'שמחת תורה',
-  '2025-12-25':'חנוכה (א׳)','2025-12-26':'חנוכה (ב׳)','2025-12-27':'חנוכה (ג׳)',
-  '2025-12-28':'חנוכה (ד׳)','2025-12-29':'חנוכה (ה׳)','2025-12-30':'חנוכה (ו׳)',
-  '2025-12-31':'חנוכה (ז׳)','2026-01-01':'חנוכה (ח׳)',
-  '2026-03-12':'פורים (תל אביב)','2026-03-13':'פורים',
-  '2026-04-01':'ערב פסח','2026-04-02':'פסח (א׳)','2026-04-03':'פסח (ב׳)',
-  '2026-04-08':'פסח (ז׳)','2026-04-09':'פסח (ח׳)',
-  '2026-04-16':'יום הזיכרון','2026-04-17':'יום העצמאות',
-  '2026-04-29':"ל''ג בעומר",
-  '2026-05-21':'ערב שבועות','2026-05-22':'שבועות (א׳)','2026-05-23':'שבועות (ב׳)',
+// ── MULTI-FAITH HOLIDAYS ──
+const HOLIDAY_COLORS = { jewish:'#2563eb', national:'#d97706', muslim:'#10b981', christian:'#dc2626' };
+
+// Each date maps to an array of { name, type }
+const HOLIDAYS = {
+  // National Israeli
+  '2025-01-27':[{name:'יום הזיכרון הבינלאומי לשואה',type:'national'}],
+  '2025-04-28':[{name:'יום הזיכרון לשואה ולגבורה',type:'national'}],
+  '2025-05-12':[{name:'יום הזיכרון לחללי מערכות ישראל',type:'national'}],
+  '2025-05-13':[{name:'יום העצמאות',type:'national'}],
+  '2026-04-16':[{name:'יום הזיכרון לחללי מערכות ישראל',type:'national'}],
+  '2026-04-17':[{name:'יום העצמאות',type:'national'}],
+  // Jewish
+  '2025-06-02':[{name:'ערב שבועות',type:'jewish'}],
+  '2025-06-03':[{name:'שבועות',type:'jewish'}],
+  '2025-08-12':[{name:'תשעה באב',type:'jewish'}],
+  '2025-09-22':[{name:'ראש השנה',type:'jewish'}],
+  '2025-09-23':[{name:"ראש השנה (ב׳)",type:'jewish'}],
+  '2025-10-01':[{name:'יום כיפור',type:'jewish'}],
+  '2025-10-06':[{name:'סוכות',type:'jewish'}],
+  '2025-10-07':[{name:"סוכות (ב׳)",type:'jewish'}],
+  '2025-10-13':[{name:'הושענא רבה',type:'jewish'}],
+  '2025-10-14':[{name:'שמיני עצרת',type:'jewish'}],
+  '2025-10-15':[{name:'שמחת תורה',type:'jewish'}],
+  '2025-12-25':[{name:"חנוכה (א׳)",type:'jewish'},{name:'חג המולד',type:'christian'}],
+  '2025-12-26':[{name:"חנוכה (ב׳)",type:'jewish'}],
+  '2025-12-27':[{name:"חנוכה (ג׳)",type:'jewish'}],
+  '2025-12-28':[{name:"חנוכה (ד׳)",type:'jewish'}],
+  '2025-12-29':[{name:"חנוכה (ה׳)",type:'jewish'}],
+  '2025-12-30':[{name:"חנוכה (ו׳)",type:'jewish'}],
+  '2025-12-31':[{name:"חנוכה (ז׳)",type:'jewish'}],
+  '2026-01-01':[{name:"חנוכה (ח׳)",type:'jewish'}],
+  '2026-03-12':[{name:'פורים (תל אביב)',type:'jewish'}],
+  '2026-03-13':[{name:'פורים',type:'jewish'}],
+  '2026-04-01':[{name:'ערב פסח',type:'jewish'}],
+  '2026-04-02':[{name:"פסח (א׳)",type:'jewish'}],
+  '2026-04-03':[{name:"פסח (ב׳)",type:'jewish'},{name:'שישי הטוב',type:'christian'}],
+  '2026-04-05':[{name:'פסחא (Easter)',type:'christian'}],
+  '2026-04-08':[{name:"פסח (ז׳)",type:'jewish'}],
+  '2026-04-09':[{name:"פסח (ח׳)",type:'jewish'}],
+  "2026-04-29":[{name:"ל''ג בעומר",type:'jewish'}],
+  '2026-05-21':[{name:'ערב שבועות',type:'jewish'}],
+  '2026-05-22':[{name:"שבועות (א׳)",type:'jewish'}],
+  '2026-05-23':[{name:"שבועות (ב׳)",type:'jewish'}],
+  // Christian
+  '2025-01-07':[{name:'חג המולד (אורתודוקסי)',type:'christian'}],
+  '2025-04-18':[{name:'שישי הטוב',type:'christian'}],
+  '2025-04-20':[{name:'פסחא (Easter)',type:'christian'}],
+  '2026-01-07':[{name:'חג המולד (אורתודוקסי)',type:'christian'}],
+  // Muslim
+  '2025-03-01':[{name:'ראמדאן (תחילה)',type:'muslim'}],
+  '2025-03-30':[{name:'עיד אל-פיטר',type:'muslim'}],
+  '2025-03-31':[{name:"עיד אל-פיטר (ב׳)",type:'muslim'}],
+  '2025-06-06':[{name:'עיד אל-אדחא',type:'muslim'}],
+  '2025-06-07':[{name:"עיד אל-אדחא (ב׳)",type:'muslim'}],
+  '2025-06-27':[{name:'ראס אל-סנה (שנה חדשה אסלאמית)',type:'muslim'}],
+  '2025-09-04':[{name:'מולד אל-נביא',type:'muslim'}],
+  '2026-02-18':[{name:'ראמדאן (תחילה)',type:'muslim'}],
+  '2026-03-19':[{name:'עיד אל-פיטר',type:'muslim'}],
+  '2026-03-20':[{name:"עיד אל-פיטר (ב׳)",type:'muslim'}],
+  '2026-05-27':[{name:'עיד אל-אדחא',type:'muslim'}],
+  '2026-05-28':[{name:"עיד אל-אדחא (ב׳)",type:'muslim'}],
+  // Missing - Yom HaShoah 5786
+  '2026-04-14':[{name:'יום הזיכרון לשואה ולגבורה',type:'national'}],
+  // Islamic 2026
+  '2026-06-16':[{name:'ראס אל-סנה (שנה חדשה אסלאמית)',type:'muslim'}],
+  // Jewish 2026 - Tisha B'Av
+  '2026-07-23':[{name:'תשעה באב',type:'jewish'}],
+  // Islamic 2026
+  '2026-08-25':[{name:'מולד אל-נביא',type:'muslim'}],
+  // Jewish 2026 - High Holidays
+  '2026-09-11':[{name:'ראש השנה',type:'jewish'}],
+  '2026-09-12':[{name:"ראש השנה (ב׳)",type:'jewish'}],
+  '2026-09-20':[{name:'יום כיפור',type:'jewish'}],
+  '2026-09-25':[{name:'סוכות',type:'jewish'}],
+  '2026-09-26':[{name:"סוכות (ב׳)",type:'jewish'}],
+  '2026-10-01':[{name:'הושענא רבה',type:'jewish'}],
+  '2026-10-02':[{name:'שמיני עצרת',type:'jewish'}],
+  '2026-10-03':[{name:'שמחת תורה',type:'jewish'}],
+  // Jewish 2026 - Hanukkah 5787
+  '2026-12-14':[{name:"חנוכה (א׳)",type:'jewish'}],
+  '2026-12-15':[{name:"חנוכה (ב׳)",type:'jewish'}],
+  '2026-12-16':[{name:"חנוכה (ג׳)",type:'jewish'}],
+  '2026-12-17':[{name:"חנוכה (ד׳)",type:'jewish'}],
+  '2026-12-18':[{name:"חנוכה (ה׳)",type:'jewish'}],
+  '2026-12-19':[{name:"חנוכה (ו׳)",type:'jewish'}],
+  '2026-12-20':[{name:"חנוכה (ז׳)",type:'jewish'}],
+  '2026-12-21':[{name:"חנוכה (ח׳)",type:'jewish'}],
+  '2026-12-25':[{name:'חג המולד',type:'christian'}],
+  // Christian 2027
+  '2027-01-07':[{name:'חג המולד (אורתודוקסי)',type:'christian'}],
+  // Islamic 2027 - Ramadan
+  '2027-02-08':[{name:'ראמדאן (תחילה)',type:'muslim'}],
+  // Islamic 2027 - Eid Al-Fitr
+  '2027-03-09':[{name:'עיד אל-פיטר',type:'muslim'}],
+  '2027-03-10':[{name:"עיד אל-פיטר (ב׳)",type:'muslim'}],
+  // Jewish 2027 - Purim 5787 (Hebrew leap year, Adar II)
+  '2027-03-21':[{name:'פורים',type:'jewish'}],
+  '2027-03-22':[{name:'שושן פורים',type:'jewish'}],
+  // Christian 2027
+  '2027-03-26':[{name:'שישי הטוב',type:'christian'}],
+  '2027-03-28':[{name:'פסחא (Easter)',type:'christian'}],
+  // Jewish 2027 - Pesach 5787
+  '2027-04-18':[{name:'ערב פסח',type:'jewish'}],
+  '2027-04-19':[{name:"פסח (א׳)",type:'jewish'}],
+  '2027-04-20':[{name:"פסח (ב׳)",type:'jewish'}],
+  '2027-04-25':[{name:"פסח (ז׳)",type:'jewish'}],
+  '2027-04-26':[{name:"פסח (ח׳)",type:'jewish'}],
+  // National 2027 (Yom HaShoah 5787 moved Thu — 27 Nisan falls Shabbat)
+  '2027-04-29':[{name:'יום הזיכרון לשואה ולגבורה',type:'national'}],
+  '2027-05-09':[{name:'יום הזיכרון לחללי מערכות ישראל',type:'national'}],
+  '2027-05-10':[{name:'יום העצמאות',type:'national'}],
+  // Islamic 2027 - Eid Al-Adha
+  '2027-05-16':[{name:'עיד אל-אדחא',type:'muslim'}],
+  '2027-05-17':[{name:"עיד אל-אדחא (ב׳)",type:'muslim'}],
+  // Jewish 2027
+  '2027-05-23':[{name:"ל''ג בעומר",type:'jewish'}],
+  '2027-06-08':[{name:'ערב שבועות',type:'jewish'}],
+  '2027-06-09':[{name:"שבועות (א׳)",type:'jewish'}],
+  '2027-06-10':[{name:"שבועות (ב׳)",type:'jewish'}],
 };
-function getHoliday(dateStr){ return HOLIDAYS_IL[dateStr] || null; }
+
+function getHoliday(dateStr){ const list=HOLIDAYS[dateStr]; return list&&list.length?list[0].name:null; }
+function getHolidayList(dateStr){ return HOLIDAYS[dateStr]||[]; }
 
 function openHolidayChat(date, holiday, tasks) {
   if (!date || !holiday) return;
@@ -361,17 +468,34 @@ function confirmReset() {
 function resetSettings() { confirmReset(); }
 
 // ── SIDEBAR TOGGLE ──
+function _setBodyLock(locked) {
+  if (locked) {
+    document.body.dataset.scrollY = window.scrollY;
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${window.scrollY}px`;
+    document.body.style.width = '100%';
+  } else {
+    const scrollY = parseInt(document.body.dataset.scrollY || '0');
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    window.scrollTo(0, scrollY);
+  }
+}
+
 function toggleSidebar() {
   const sidebar = document.getElementById('sidebar');
   const overlay = document.getElementById('sidebar-overlay');
   const btn = document.getElementById('hamburger-btn');
   const mc = document.querySelector('.main-content');
   const open = sidebar.classList.toggle('open');
-  // On mobile show a dark overlay; on desktop shift content
   if (window.innerWidth >= 769) {
     mc.style.marginRight = open ? '265px' : '0';
   } else {
     overlay.classList.toggle('visible', open);
+    _setBodyLock(open);
   }
   if (btn) btn.classList.toggle('open', open);
 }
@@ -385,9 +509,17 @@ function closeSidebar() {
   overlay.classList.remove('visible');
   mc.style.marginRight = '0';
   if (btn) btn.classList.remove('open');
+  if (window.innerWidth < 769) _setBodyLock(false);
 }
 
 // ── SETTINGS MODAL ──
+function toggleAccordion(id) {
+  const clicked = document.getElementById(id);
+  const isOpen = clicked.classList.contains('open');
+  document.querySelectorAll('#settings-modal .acc-section').forEach(s => s.classList.remove('open'));
+  if (!isOpen) clicked.classList.add('open');
+}
+
 function openSettings() {
   document.getElementById('settings-name').value = S.userName || '';
   document.getElementById('settings-inst').value = S.institution || '';
@@ -395,8 +527,17 @@ function openSettings() {
   const sleepEl = document.getElementById('settings-sleep');
   if (wakeEl) wakeEl.value = S.wakeTime || '08:00';
   if (sleepEl) sleepEl.value = S.sleepTime || '22:00';
+  const keyEl = document.getElementById('settings-api-key');
+  if (keyEl) keyEl.value = S.apiKey || '';
+  const keyStatus = document.getElementById('api-key-status');
+  if (keyStatus) keyStatus.textContent = S.apiKey ? `מפתח שמור: ${S.apiKey.slice(0,7)}...` : 'לא הוגדר';
   const lbl = document.getElementById('theme-btn-label');
   if (lbl) lbl.textContent = S.theme === 'dark' ? '☀️ מצב יום' : '🌙 מצב לילה';
+  // Open AI section if no key configured so user can find where to enter it
+  document.querySelectorAll('#settings-modal .acc-section').forEach(s => s.classList.remove('open'));
+  const firstAccId = (!S.apiKey) ? 'acc-ai' : 'acc-personal';
+  const first = document.getElementById(firstAccId);
+  if (first) first.classList.add('open');
   document.getElementById('settings-modal').classList.remove('hidden');
 }
 
@@ -405,18 +546,21 @@ function saveSettings() {
   const inst = document.getElementById('settings-inst').value.trim();
   const wake = document.getElementById('settings-wake').value;
   const sleep = document.getElementById('settings-sleep').value;
+  const apiKeyEl = document.getElementById('settings-api-key');
+  // Strip ALL whitespace (spaces, newlines, tabs) — common paste issue
+  const apiKey = apiKeyEl ? apiKeyEl.value.replace(/\s+/g, '') : '';
   if (name) S.userName = name;
   if (inst) S.institution = inst;
   S.wakeTime = wake;
   S.sleepTime = sleep;
+  S.apiKey = apiKey;
   save();
   closeModal('settings-modal');
-  // Update sidebar name display
   const sbName = document.getElementById('sb-name');
   if (sbName) sbName.textContent = S.userName || '—';
   const sbAvatar = document.getElementById('sb-avatar');
   if (sbAvatar) sbAvatar.textContent = (S.userName || '?')[0].toUpperCase();
-  toast('✅ הגדרות נשמרו!');
+  toast(apiKey ? `✅ הגדרות נשמרו · API Key: ${apiKey.slice(0,7)}...` : '✅ הגדרות נשמרו');
 }
 
 function obNext(step){
@@ -579,17 +723,43 @@ function showPage(name,btn){
   closeSidebar();
 }
 
-async function callAI({ messages, temperature = 0.7, json = false, maxTokens = 4096 }) {
-  const res = await fetch('/.netlify/functions/groq-proxy', {
+async function _callGroqDirect({ messages, temperature, json, maxTokens }) {
+  if (!S.apiKey) throw new Error('שירות ה-AI לא זמין — הוסף Groq API Key בהגדרות ⚙️');
+  const body = { model: 'llama-3.3-70b-versatile', messages, temperature, max_tokens: maxTokens };
+  if (json) body.response_format = { type: 'json_object' };
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages, temperature, json, maxTokens })
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${S.apiKey}` },
+    body: JSON.stringify(body)
   });
-  if (res.status === 429) throw new Error('חריגת מגבלת AI — נסה שוב בעוד דקה');
-  if (!res.ok) throw new Error(`שגיאת שרת (${res.status}) — נסה שוב`);
+  if (res.status === 401) throw new Error('Groq API Key לא תקין — בדוק בהגדרות ⚙️');
+  if (res.status === 429) throw new Error('חריגת מגבלת API — נסה שוב בעוד דקה');
+  if (!res.ok) throw new Error(`שגיאת שרת (${res.status})`);
   const d = await res.json();
   if (d.error) throw new Error(d.error.message || 'שגיאה ב-AI');
   return d.choices[0].message.content;
+}
+
+async function callAI({ messages, temperature = 0.7, json = false, maxTokens = 4096 }) {
+  try {
+    const res = await fetch('/.netlify/functions/groq-proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages, temperature, json, maxTokens })
+    });
+    // Rate limit is definitive — don't fall back
+    if (res.status === 429) throw new Error('חריגת מגבלת AI — נסה שוב בעוד דקה');
+    if (res.ok) {
+      const d = await res.json();
+      if (d.error) throw new Error(d.error.message || 'שגיאה ב-AI');
+      return d.choices[0].message.content;
+    }
+    // Any other non-ok status (404 not deployed, 500 no env key, etc.) → try personal key
+  } catch (e) {
+    if (e.message && e.message.includes('חריגת')) throw e;
+    // Network errors, CORS, etc. — fall through to direct
+  }
+  return await _callGroqDirect({ messages, temperature, json, maxTokens });
 }
 
 async function gemini(prompt) {
@@ -1079,7 +1249,7 @@ async function generateSemesterPlan() {
 
   const dn = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
   const anchorSummary = (S.anchors||[]).map(a=>`${a.name} (יום ${dn[a.day||0]}, ${a.start}–${a.end})`).join(', ') || 'אין';
-  const holidayList = Object.entries(HOLIDAYS_IL).filter(([d])=>d>=today&&d<=lastExam).map(([d,n])=>`${d}: ${n}`).join(', ') || 'אין';
+  const holidayList = Object.entries(HOLIDAYS).filter(([d])=>d>=today&&d<=lastExam).map(([d,v])=>`${d}: ${v.map(h=>h.name).join(' / ')}`).join(', ') || 'אין';
   const existingFuture = S.tasks.filter(t=>!t.done&&!t.missed&&t.date>=today).length;
 
   const btn = document.getElementById('semester-gen-btn');
@@ -1418,12 +1588,12 @@ function renderMonthCalendar() {
     const dateStr = `${calYear}-${mm}-${dd}`;
     const isToday = dateStr === today;
     const isPast = dateStr < today;
-    const holiday = getHoliday(dateStr);
+    const holidayItems = getHolidayList(dateStr);
     const dayTasks = S.tasks.filter(t => t.date === dateStr);
     const dayExams = S.exams.filter(e => e.date === dateStr);
     const numClass = isToday ? 'today-circle' : isPast ? 'past-num' : '';
     let inner = `<div class="month-cal-day-num${numClass ? ' ' + numClass : ''}">${d}</div>`;
-    if (holiday) inner += `<div class="month-cal-holiday">🎉 ${holiday}</div>`;
+    holidayItems.forEach(hol => { const c=HOLIDAY_COLORS[hol.type]||'#888'; inner+=`<div class="month-cal-holiday" style="color:${c}"><span class="hol-dot" style="background:${c}"></span>${hol.name}</div>`; });
     dayExams.forEach(ex => { inner += `<div class="month-cal-exam-chip" title="${ex.course}">📝 ${ex.course}</div>`; });
     const chips = dayTasks.slice(0, 2);
     const dots = dayTasks.slice(2);
@@ -2507,4 +2677,11 @@ async function sendTutor() {
         tutorHistory.push({role: 'assistant', content: ans});
         document.getElementById('tutor-loading').remove(); chat.innerHTML += `<div class="chat-msg ai"><div class="chat-bubble">${ans.replace(/\n/g,'<br>')}</div></div>`; chat.scrollTop = chat.scrollHeight;
     } catch(e) { document.getElementById('tutor-loading')?.remove(); chat.innerHTML += `<div class="chat-msg ai"><div class="chat-bubble" style="color:var(--red)">שגיאה</div></div>`; }
+}
+
+// ── SERVICE WORKER ──
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
 }

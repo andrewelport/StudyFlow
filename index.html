@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>StudyFlow 🎓 — ה-Waze של הלימודים</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
@@ -470,7 +470,10 @@
         <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;font-size:0.75rem;font-weight:700">
           <span style="display:flex;align-items:center;gap:0.3rem"><span style="width:10px;height:10px;border-radius:50%;background:var(--accent);display:inline-block"></span>היום</span>
           <span style="display:flex;align-items:center;gap:0.3rem"><span style="width:10px;height:10px;border-radius:3px;background:var(--purple-light);border:1px solid var(--purple);display:inline-block"></span>מבחן 📝</span>
-          <span style="display:flex;align-items:center;gap:0.3rem"><span style="width:10px;height:10px;border-radius:3px;background:var(--yellow-light);border:1px solid var(--yellow);display:inline-block"></span>חג 🎉</span>
+          <span style="display:flex;align-items:center;gap:0.3rem"><span style="width:8px;height:8px;border-radius:50%;background:#2563eb;display:inline-block"></span>חג יהודי</span>
+          <span style="display:flex;align-items:center;gap:0.3rem"><span style="width:8px;height:8px;border-radius:50%;background:#d97706;display:inline-block"></span>לאומי</span>
+          <span style="display:flex;align-items:center;gap:0.3rem"><span style="width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block"></span>מוסלמי</span>
+          <span style="display:flex;align-items:center;gap:0.3rem"><span style="width:8px;height:8px;border-radius:50%;background:#dc2626;display:inline-block"></span>נוצרי</span>
           <span style="display:flex;align-items:center;gap:0.3rem"><span style="width:10px;height:10px;border-radius:50%;background:var(--green);display:inline-block"></span>משימה</span>
         </div>
 
@@ -589,56 +592,90 @@
 <!-- ── SETTINGS MODAL ── -->
 <div class="modal-overlay hidden" id="settings-modal">
   <div class="modal-box" style="max-width:420px">
-    <div class="modal-title">⚙️ הגדרות</div>
+    <div class="modal-title">הגדרות</div>
 
-    <div class="settings-section">
-      <div class="settings-section-label">פרטים אישיים</div>
-      <div class="form-row"><label class="field-label">שם</label><input type="text" id="settings-name" placeholder="השם שלך" /></div>
-      <div class="form-row"><label class="field-label">מוסד לימודים</label><input type="text" id="settings-inst" placeholder="אוניברסיטה / מכללה" /></div>
+    <!-- פרטים אישיים -->
+    <div class="acc-section" id="acc-personal">
+      <div class="acc-header" onclick="toggleAccordion('acc-personal')">
+        <span>פרטים אישיים</span>
+        <span class="acc-arrow">&#9660;</span>
+      </div>
+      <div class="acc-body">
+        <div class="form-row"><label class="field-label">שם</label><input type="text" id="settings-name" placeholder="השם שלך" /></div>
+        <div class="form-row"><label class="field-label">מוסד לימודים</label><input type="text" id="settings-inst" placeholder="אוניברסיטה / מכללה" /></div>
+      </div>
     </div>
 
-    <hr class="settings-divider">
-
-    <div class="settings-section">
-      <div class="settings-section-label">שעות לימוד</div>
-      <div class="form-grid">
-        <div class="form-row">
-          <label class="field-label">⏰ שעת קימה</label>
-          <select id="settings-wake">
-            <option value="06:00">06:00</option><option value="06:30">06:30</option>
-            <option value="07:00">07:00</option><option value="07:30">07:30</option>
-            <option value="08:00">08:00</option><option value="08:30">08:30</option>
-            <option value="09:00">09:00</option><option value="09:30">09:30</option>
-            <option value="10:00">10:00</option>
-          </select>
-        </div>
-        <div class="form-row">
-          <label class="field-label">🌙 שעת סיום</label>
-          <select id="settings-sleep">
-            <option value="20:00">20:00</option><option value="21:00">21:00</option>
-            <option value="22:00">22:00</option><option value="23:00">23:00</option><option value="23:59">00:00</option>
-          </select>
+    <!-- שעות לימוד -->
+    <div class="acc-section" id="acc-hours">
+      <div class="acc-header" onclick="toggleAccordion('acc-hours')">
+        <span>שעות לימוד</span>
+        <span class="acc-arrow">&#9660;</span>
+      </div>
+      <div class="acc-body">
+        <div class="form-grid">
+          <div class="form-row">
+            <label class="field-label">שעת קימה</label>
+            <select id="settings-wake">
+              <option value="06:00">06:00</option><option value="06:30">06:30</option>
+              <option value="07:00">07:00</option><option value="07:30">07:30</option>
+              <option value="08:00">08:00</option><option value="08:30">08:30</option>
+              <option value="09:00">09:00</option><option value="09:30">09:30</option>
+              <option value="10:00">10:00</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label class="field-label">שעת סיום</label>
+            <select id="settings-sleep">
+              <option value="20:00">20:00</option><option value="21:00">21:00</option>
+              <option value="22:00">22:00</option><option value="23:00">23:00</option><option value="23:59">00:00</option>
+            </select>
+          </div>
         </div>
       </div>
     </div>
 
-    <hr class="settings-divider">
-
-    <div class="settings-section">
-      <div class="settings-section-label">מראה ואפשרויות</div>
-      <button class="nav-item" onclick="toggleTheme()" style="width:100%;justify-content:flex-start;padding:0.7rem 0.9rem;border-radius:10px;margin-bottom:0.5rem"><span class="nav-icon">🌓</span> <span id="theme-btn-label">מצב לילה / יום</span></button>
+    <!-- חיבור AI -->
+    <div class="acc-section" id="acc-ai">
+      <div class="acc-header" onclick="toggleAccordion('acc-ai')">
+        <span>חיבור AI</span>
+        <span class="acc-arrow">&#9660;</span>
+      </div>
+      <div class="acc-body">
+        <div class="form-row">
+          <label class="field-label">Groq API Key</label>
+          <input type="password" id="settings-api-key" placeholder="gsk_..." autocomplete="off" />
+          <div id="api-key-status" class="field-hint" style="margin-top:0.3rem;font-weight:600"></div>
+          <div class="field-hint">השג בחינם: console.groq.com/keys</div>
+        </div>
+      </div>
     </div>
 
-    <hr class="settings-divider">
+    <!-- מראה -->
+    <div class="acc-section" id="acc-appearance">
+      <div class="acc-header" onclick="toggleAccordion('acc-appearance')">
+        <span>מראה</span>
+        <span class="acc-arrow">&#9660;</span>
+      </div>
+      <div class="acc-body">
+        <button class="nav-item" onclick="toggleTheme()" style="width:100%;justify-content:flex-start;padding:0.7rem 0.9rem;border-radius:10px"><span class="nav-icon">🌓</span> <span id="theme-btn-label">מצב לילה / יום</span></button>
+      </div>
+    </div>
 
-    <div class="settings-section">
-      <div class="settings-section-label">חשבון</div>
-      <button class="nav-item" onclick="signOut()" style="width:100%;justify-content:flex-start;padding:0.7rem 0.9rem;border-radius:10px;color:var(--red);margin-bottom:0.5rem"><span class="nav-icon">🚪</span> <span>יציאה מהחשבון</span></button>
-      <button class="nav-item" onclick="confirmReset()" style="width:100%;justify-content:flex-start;padding:0.7rem 0.9rem;border-radius:10px;color:var(--muted)"><span class="nav-icon">🗑️</span> <span>מחיקת כל הנתונים</span></button>
+    <!-- חשבון -->
+    <div class="acc-section" id="acc-account">
+      <div class="acc-header" onclick="toggleAccordion('acc-account')">
+        <span>חשבון</span>
+        <span class="acc-arrow">&#9660;</span>
+      </div>
+      <div class="acc-body">
+        <button class="nav-item" onclick="signOut()" style="width:100%;justify-content:flex-start;padding:0.7rem 0.9rem;border-radius:10px;color:var(--red);margin-bottom:0.5rem"><span class="nav-icon">🚪</span> <span>יציאה מהחשבון</span></button>
+        <button class="nav-item" onclick="confirmReset()" style="width:100%;justify-content:flex-start;padding:0.7rem 0.9rem;border-radius:10px;color:var(--muted)"><span class="nav-icon">🗑️</span> <span>מחיקת כל הנתונים</span></button>
+      </div>
     </div>
 
     <div class="modal-footer">
-      <button class="btn-confirm" onclick="saveSettings()">💾 שמור שינויים</button>
+      <button class="btn-confirm" onclick="saveSettings()">שמור שינויים</button>
       <button class="btn-cancel" onclick="closeModal('settings-modal')">ביטול</button>
     </div>
   </div>

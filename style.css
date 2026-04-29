@@ -133,7 +133,7 @@ input[type="range"] { accent-color: var(--accent); padding: 0; margin: 0; width:
 
 table{width:100%;border-collapse:collapse;font-size:0.875rem}
 thead tr{background:var(--surface2)}
-th{padding:0.7rem 0.9rem;text-align:right;font-size:0.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;border-bottom:1px solid var(--border)}
+th{padding:0.7rem 0.9rem;text-align:right;font-size:0.75rem;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border)}
 td{padding:0.8rem 0.9rem;border-bottom:1px solid var(--border);vertical-align:middle}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:var(--surface2)}
@@ -492,18 +492,49 @@ input[type="date"],input[type="time"]{color:var(--text)}
 .sidebar-overlay.visible { display: block; }
 
 /* ═══════════════════════════════════
-   SETTINGS MODAL
+   SETTINGS ACCORDION
 ═══════════════════════════════════ */
-.settings-section { margin-bottom: 1.25rem; }
-.settings-section-label {
-  font-size: 0.72rem;
-  font-weight: 800;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  margin-bottom: 0.6rem;
+.acc-section {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 0.45rem;
+  overflow: hidden;
+  background: var(--surface);
 }
-.settings-divider { border: none; border-top: 1px solid var(--border); margin: 1rem 0; }
+.acc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.88rem;
+  background: var(--surface2);
+  user-select: none;
+  transition: background 0.2s;
+}
+.acc-header:hover { background: var(--border); }
+.acc-arrow {
+  font-size: 0.65rem;
+  color: var(--muted);
+  transition: transform 0.25s ease;
+  display: inline-block;
+}
+.acc-section.open .acc-arrow { transform: rotate(180deg); }
+.acc-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.32s ease, padding 0.32s ease;
+  padding: 0 1rem;
+}
+.acc-section.open .acc-body {
+  max-height: 500px;
+  padding: 0.85rem 1rem 1rem;
+}
+/* Legacy — kept for any remaining refs */
+.settings-section { margin: 0; }
+.settings-section-label { display: none; }
+.settings-divider { display: none; }
 
 /* ═══════════════════════════════════
    MOBILE RESPONSIVE (≤ 768px)
@@ -606,12 +637,23 @@ input[type="date"],input[type="time"]{color:var(--text)}
 }
 .month-cal-day-num.past-num { color: var(--muted); }
 .month-cal-holiday {
-  font-size: 0.56rem;
-  color: var(--yellow);
-  font-weight: 700;
+  font-size: 0.65rem;
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 2px;
+  line-height: 1.3;
+}
+.hol-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
 }
 .month-cal-exam-chip {
   background: var(--purple-light);
@@ -652,7 +694,7 @@ input[type="date"],input[type="time"]{color:var(--text)}
   font-weight: 700;
 }
 @media (max-width: 600px) {
-  .month-cal-cell { min-height: 52px; padding: 3px 2px; }
+  .month-cal-cell { min-height: 65px; padding: 3px 2px; }
   .month-cal-task-chip { display: none; }
   .month-cal-exam-chip { font-size: 0.5rem; padding: 1px 2px; }
   .month-cal-day-num { font-size: 0.7rem; }
