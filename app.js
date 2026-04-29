@@ -133,7 +133,7 @@ db.auth.onAuthStateChange((event, session) => {
 });
 
 
-let S={apiKey:'',userName:'',institution:'',wakeTime:'08:00',sleepTime:'22:00',anchors:[],profile:{},tasks:[],exams:[],weekOffset:0,pendingPlan:[],points:0,streak:0,lastStudyDate:'',theme:'light'};
+let S={userName:'',institution:'',wakeTime:'08:00',sleepTime:'22:00',anchors:[],profile:{},tasks:[],exams:[],weekOffset:0,pendingPlan:[],points:0,streak:0,lastStudyDate:'',theme:'light'};
 let selectedOpt=null, missedTaskId=null;
 let currentChatMode = 'general';
 let recalcHistory = [];
@@ -144,6 +144,8 @@ let pendingRecalcActions = null;
 let psychHistory = [];
 let assistantHistory = [];
 let countdownInterval = null;
+let calMonth = new Date().getMonth();
+let calYear = new Date().getFullYear();
 
 const PROFILE_QS=[
   {id:'focus_time',q:'באיזו שעה אתה הכי ממוקד?',opts:['🌅 בוקר (6-10)','☀️ צהריים (10-14)','🌇 אחה"צ (14-18)','🌙 ערב (18-23)']},
@@ -236,9 +238,7 @@ async function loadFromCloud() {
   try {
     const { data, error } = await db.from('user_data').select('data').eq('user_id', currentUser.id).single();
     if (error || !data?.data) return false;
-    const apiKey = S.apiKey; // preserve local API key
     S = { ...S, ...data.data };
-    if (apiKey && !S.apiKey) S.apiKey = apiKey;
     return true;
   } catch(e) { return false; }
 }
@@ -258,8 +258,7 @@ window.onload = async () => {
   }
 
   document.body.setAttribute('data-theme', S.theme || 'light');
-  if (S.apiKey && S.userName) { initApp(); return; }
-  if (S.apiKey) document.getElementById('inp-key').value = S.apiKey;
+  if (S.userName) { initApp(); return; }
   if (S.userName) document.getElementById('inp-name').value = S.userName;
 };
 
@@ -275,6 +274,7 @@ function renderAll() {
   if (document.getElementById('page-exams').classList.contains('active')) renderExams();
   if (document.getElementById('page-anchors').classList.contains('active')) renderAnchorsList();
   if (document.getElementById('page-progress').classList.contains('active')) renderProgress();
+  if (document.getElementById('page-calendar').classList.contains('active')) renderMonthCalendar();
   updateHeaderStats();
 }
 
@@ -421,9 +421,8 @@ function saveSettings() {
 
 function obNext(step){
   if(step===1){
-    S.apiKey=document.getElementById('inp-key').value.trim();
     S.userName=document.getElementById('inp-name').value.trim();
-    if(!S.apiKey||!S.userName){toast('נא למלא API Key ושם');return;}
+    if(!S.userName){toast('נא למלא את שמך');return;}
     S.institution=document.getElementById('inp-inst').value.trim();
     S.wakeTime=document.getElementById('inp-wake').value;
     S.sleepTime=document.getElementById('inp-sleep').value;
@@ -520,9 +519,30 @@ function collectAnchors(){
   return results;
 }
 function renderProfileQs(){
-  document.getElementById('profile-q-wrap').innerHTML=PROFILE_QS.map(q=>`<div style="margin-bottom:1.1rem"><div class="ob-q" style="font-size:0.95rem">${q.q}</div><div class="ob-opts">${q.opts.map(opt=>`<div class="ob-opt" onclick="selectProfileOpt(this,'${q.id}')">${opt}</div>`).join('')}</div></div>`).join('');
+  document.getElementById('profile-q-wrap').innerHTML = PROFILE_QS.map(q => `
+    <div style="margin-bottom:1.25rem">
+      <div class="ob-q" style="font-size:0.95rem">${q.q}</div>
+      <div class="ob-opts" id="opts-${q.id}">
+        ${q.opts.map(opt => `<div class="ob-opt" onclick="selectProfileOpt(this,'${q.id}')">${opt}</div>`).join('')}
+        <div class="ob-opt" onclick="selectProfileOpt(this,'${q.id}',true)" style="grid-column:1/-1;justify-content:flex-start;font-style:italic;color:var(--muted)">✏️ אחר — הכנס בעצמך...</div>
+      </div>
+      <input type="text" id="other-${q.id}" placeholder="כתוב כאן..." style="display:none;margin-top:0.4rem;font-size:0.85rem;padding:0.5rem 0.7rem;direction:rtl" oninput="profileAnswers['${q.id}']=this.value.trim()">
+    </div>
+  `).join('');
 }
-function selectProfileOpt(el,qId){ el.closest('.ob-opts').querySelectorAll('.ob-opt').forEach(o=>o.classList.remove('sel')); el.classList.add('sel'); profileAnswers[qId]=el.textContent.trim(); }
+function selectProfileOpt(el, qId, isOther) {
+  el.closest('.ob-opts').querySelectorAll('.ob-opt').forEach(o => o.classList.remove('sel'));
+  el.classList.add('sel');
+  const otherInput = document.getElementById('other-' + qId);
+  if (isOther) {
+    otherInput.style.display = '';
+    otherInput.focus();
+    profileAnswers[qId] = otherInput.value.trim() || '';
+  } else {
+    otherInput.style.display = 'none';
+    profileAnswers[qId] = el.textContent.trim();
+  }
+}
 function finishOnboarding(){ save(); initApp(); }
 
 function initApp(){
@@ -555,19 +575,25 @@ function showPage(name,btn){
   if(name==='exams')renderExams();
   if(name==='anchors')renderAnchorsList();
   if(name==='progress') renderProgress();
+  if(name==='calendar') renderMonthCalendar();
   closeSidebar();
 }
 
-async function gemini(prompt){
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${S.apiKey}` },
-    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{role: 'user', content: prompt}], temperature: 0.7 })
+async function callAI({ messages, temperature = 0.7, json = false, maxTokens = 4096 }) {
+  const res = await fetch('/.netlify/functions/groq-proxy', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages, temperature, json, maxTokens })
   });
-  if (res.status === 401) throw new Error('API Key לא תקין — בדוק ב-console.groq.com/keys');
-  if (res.status === 429) throw new Error('חריגת מגבלת API — נסה שוב בעוד דקה');
+  if (res.status === 429) throw new Error('חריגת מגבלת AI — נסה שוב בעוד דקה');
   if (!res.ok) throw new Error(`שגיאת שרת (${res.status}) — נסה שוב`);
   const d = await res.json();
+  if (d.error) throw new Error(d.error.message || 'שגיאה ב-AI');
   return d.choices[0].message.content;
+}
+
+async function gemini(prompt) {
+  return callAI({ messages: [{ role: 'user', content: prompt }] });
 }
 
 // ── XP LEVEL SYSTEM ──
@@ -786,13 +812,12 @@ ${slotsData.text}
 JSON בלבד: {"tasks":[{"date":"YYYY-MM-DD","time":"HH:MM","course":"${course}","name":"...","duration":"90 דק'","priority":"גבוה|בינוני"}]}`;
   
   try{
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${S.apiKey}` }, body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{role: 'user', content: prompt}], temperature: 0.2, response_format: { type: "json_object" } }) });
-    const data = await res.json(); 
-    let parsed = extractJSON(data.choices[0].message.content);
+    const _content1 = await callAI({ messages: [{role:'user', content:prompt}], temperature: 0.2, json: true });
+    let parsed = extractJSON(_content1);
     let validTasks = (parsed.tasks||[]).filter(t => {
       if (!t.date || !t.time) return false;
       const isTimeValid = ["08:00","09:50","11:40","14:00","15:50","17:40","19:30"].includes(t.time);
-      const isDateValid = new Date(t.date) <= new Date(date) && new Date(t.date) >= new Date(ld(new Date()));
+      const isDateValid = new Date(t.date) < new Date(date) && new Date(t.date) >= new Date(ld(new Date()));
       const noTaskCollision = !S.tasks.find(old => old.date === t.date && old.time === t.time && !old.done && !old.missed && old.course !== course);
       const taskDay = new Date(t.date + 'T12:00:00').getDay();
       const tst = parseInt(t.time.split(':')[0])*60 + parseInt(t.time.split(':')[1]);
@@ -808,7 +833,15 @@ JSON בלבד: {"tasks":[{"date":"YYYY-MM-DD","time":"HH:MM","course":"${course}
     if(S.pendingPlan.length === 0) { throw new Error('ה-AI לא מצא זמנים חוקיים.'); }
     renderPlanTable(S.pendingPlan); document.getElementById('plan-result-box').classList.remove('hidden');
     if(!S.exams.find(e => e.course === course && e.date === date)){ S.exams.push({id:uid(), course, date, type:'מבחן', conf:parseInt(priority), readyPct:0, createdDate: ld(new Date())}); save(); }
-  } catch(e){ toast('שגיאה בתכנון המסלול.'); console.error(e); }
+  } catch(e) {
+    const msg = e.message?.includes('JSON') ? 'שגיאה בעיבוד תשובת ה-AI — נסה שוב'
+      : e.message?.includes('API Key') ? e.message
+      : e.message?.includes('מגבלת API') ? e.message
+      : e.message?.includes('חוקיים') ? 'ה-AI לא מצא זמנים פנויים — נסה להוסיף שעות למידה בהגדרות'
+      : e.message || 'שגיאה בתכנון — נסה שוב';
+    toast(msg);
+    console.error(e);
+  }
   btn.disabled = false; btn.textContent = '✨ צור תוכנית מגוונת';
 }
 
@@ -1089,16 +1122,8 @@ JSON בלבד — עד 150 משימות:
 {"tasks":[{"date":"YYYY-MM-DD","time":"HH:MM","course":"שם הקורס","name":"שם מגוון","duration":"90 דק'","priority":"גבוה|בינוני"}]}`;
 
   try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json','Authorization':`Bearer ${S.apiKey}`},
-      body: JSON.stringify({model:'llama-3.3-70b-versatile', messages:[{role:'user',content:prompt}], temperature:0.2, response_format:{type:'json_object'}, max_tokens:8000})
-    });
-    if (res.status===401) throw new Error('API Key לא תקין');
-    if (res.status===429) throw new Error('חריגת מגבלת API');
-    if (!res.ok) throw new Error(`שגיאת שרת (${res.status})`);
-    const data = await res.json();
-    const parsed = extractJSON(data.choices[0].message.content);
+    const _content2 = await callAI({ messages:[{role:'user',content:prompt}], temperature:0.2, json:true, maxTokens:8000 });
+    const parsed = extractJSON(_content2);
 
     const validTimes = ["08:00","09:50","11:40","14:00","15:50","17:40","19:30"];
     const courseNames = new Set(courses.map(c=>c.course));
@@ -1360,6 +1385,63 @@ function renderTodayTasks(){
 }
 
 function renderAnchorsList(){ const wrap = document.getElementById('anchors-list-wrap'); if(!Array.isArray(S.anchors) || !S.anchors.length){ wrap.innerHTML = '<div class="empty-state">אין עוגנים מוגדרים</div>'; return; } const dn=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת']; wrap.innerHTML = S.anchors.map(a => `<div class="anchor-card"><div class="anchor-dot" style="background:${a.color||'#4f6ef7'}"></div><div style="flex:1"><div class="anchor-name-d">${a.name}</div><div class="anchor-time-d">יום ${dn[a.day||0]} · ${a.start||'00:00'} – ${a.end||'00:00'} ${a.travelMin > 0 ? `(נסיעה: ${a.travelMin} דק')` : ''}</div></div><button class="btn-sm" onclick="editAnchor('${a.id}')" title="ערוך עוגן" style="margin-left:0.35rem">✏️</button><button class="btn-sm red" onclick="removeAnchor('${a.id}')">🗑️</button></div>`).join(''); }
+
+// ── MONTHLY CALENDAR ──
+function changeCalMonth(dir) {
+  calMonth += dir;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  if (calMonth < 0) { calMonth = 11; calYear--; }
+  renderMonthCalendar();
+}
+
+function renderMonthCalendar() {
+  const wrap = document.getElementById('month-cal-wrap');
+  if (!wrap) return;
+  const monthNames = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+  const dayShort = ['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ש׳'];
+  const today = ld(new Date());
+  const firstDay = new Date(calYear, calMonth, 1);
+  const lastDay = new Date(calYear, calMonth + 1, 0);
+  const firstDayOfWeek = firstDay.getDay();
+  const daysInMonth = lastDay.getDate();
+  const labelEl = document.getElementById('cal-month-label');
+  if (labelEl) labelEl.textContent = `${monthNames[calMonth]} ${calYear}`;
+  let html = '';
+  // Day headers
+  dayShort.forEach(d => { html += `<div class="month-cal-header">${d}</div>`; });
+  // Empty cells before first day
+  for (let i = 0; i < firstDayOfWeek; i++) html += `<div class="month-cal-cell empty"></div>`;
+  // Day cells
+  for (let d = 1; d <= daysInMonth; d++) {
+    const mm = String(calMonth + 1).padStart(2, '0');
+    const dd = String(d).padStart(2, '0');
+    const dateStr = `${calYear}-${mm}-${dd}`;
+    const isToday = dateStr === today;
+    const isPast = dateStr < today;
+    const holiday = getHoliday(dateStr);
+    const dayTasks = S.tasks.filter(t => t.date === dateStr);
+    const dayExams = S.exams.filter(e => e.date === dateStr);
+    const numClass = isToday ? 'today-circle' : isPast ? 'past-num' : '';
+    let inner = `<div class="month-cal-day-num${numClass ? ' ' + numClass : ''}">${d}</div>`;
+    if (holiday) inner += `<div class="month-cal-holiday">🎉 ${holiday}</div>`;
+    dayExams.forEach(ex => { inner += `<div class="month-cal-exam-chip" title="${ex.course}">📝 ${ex.course}</div>`; });
+    const chips = dayTasks.slice(0, 2);
+    const dots = dayTasks.slice(2);
+    chips.forEach(t => {
+      const c = getCourseColor(t.course);
+      inner += `<div class="month-cal-task-chip" style="background:${c}22;color:${c};border-color:${c}" title="${t.name}">${t.done ? '✓ ' : ''}${t.name}</div>`;
+    });
+    if (dots.length) {
+      inner += `<div class="month-cal-dots-row">${dots.map(t => `<div class="month-cal-task-dot" style="background:${getCourseColor(t.course)}" title="${t.name}"></div>`).join('')}</div>`;
+      if (dots.length > 4) inner += `<div class="month-cal-more">+${dots.length - 4}</div>`;
+    }
+    let cellClass = 'month-cal-cell';
+    if (isToday) cellClass += ' is-today';
+    else if (isPast) cellClass += ' is-past';
+    html += `<div class="${cellClass}">${inner}</div>`;
+  }
+  wrap.innerHTML = html;
+}
 function showAddAnchorModal(){
   document.getElementById('anchor-modal').dataset.editId = '';
   document.getElementById('anchor-modal-title').textContent = '⚓ הוסף עוגן קבוע';
@@ -1470,33 +1552,190 @@ function toggleScheduleView() {
 
 function renderCalendarView() {
   const now = new Date();
+  const todayStr = ld(now);
   const sow = new Date(now); sow.setDate(now.getDate() - now.getDay() + S.weekOffset * 7);
-  const days = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+  const days = ['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ש׳'];
+  const daysFull = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
   const hours = ['08:00','09:50','11:40','14:00','15:50','17:40','19:30'];
+  // Slot end times for current-time calculation
+  const slotMins = [8*60, 9*60+50, 11*60+40, 14*60, 15*60+50, 17*60+40, 19*60+30, 21*60+20];
   const wrap = document.getElementById('calendar-view-wrap');
-  let headers = `<div class="cal-cell cal-header"></div>` + Array.from({length:7}, (_,i) => {
+  const nowMins = now.getHours()*60 + now.getMinutes();
+
+  // Sticky corner cell
+  let headers = `<div class="cal-hour" style="position:sticky;top:56px;z-index:21;background:var(--surface2);border-bottom:2px solid var(--border2);justify-content:center;padding-top:0"></div>`;
+
+  // Day headers — today gets blue circle date badge
+  headers += Array.from({length:7}, (_,i) => {
     const d = new Date(sow); d.setDate(sow.getDate() + i);
-    const isToday = ld(d) === ld(now);
-    return `<div class="cal-cell cal-header" style="${isToday?'color:var(--accent);font-weight:900;':''}">${days[i]}<br><small>${d.getDate()}/${d.getMonth()+1}</small></div>`;
+    const isToday = ld(d) === todayStr;
+    const numHtml = isToday
+      ? `<div style="width:30px;height:30px;border-radius:50%;background:var(--accent);color:white;display:inline-flex;align-items:center;justify-content:center;font-size:0.9rem;font-weight:900;margin-bottom:4px;box-shadow:0 2px 10px rgba(79,110,247,0.35)">${d.getDate()}</div>`
+      : `<div style="font-size:0.9rem;font-weight:700;color:var(--muted);margin-bottom:4px">${d.getDate()}</div>`;
+    return `<div class="cal-cell cal-header${isToday?' today-col':''}">${numHtml}<div style="font-size:0.7rem;letter-spacing:0.5px">${daysFull[i]}</div></div>`;
   }).join('');
-  let rows = hours.map(hour => {
+
+  // Hour rows
+  let rows = hours.map((hour, rowIdx) => {
+    const slotStart = slotMins[rowIdx];
+    const slotEnd = slotMins[rowIdx + 1];
+    const isAlt = rowIdx % 2 === 1;
+    // Is current time within this slot?
+    const inSlot = nowMins >= slotStart && nowMins < slotEnd;
+    const timePct = inSlot ? Math.round(((nowMins - slotStart) / (slotEnd - slotStart)) * 100) : -1;
+
+    const [hh] = hour.split(':').map(Number);
     const cols = Array.from({length:7}, (_,i) => {
-      const d = new Date(sow); d.setDate(sow.getDate() + i); const dateStr = ld(d);
-      const [hh] = hour.split(':').map(Number);
+      const d = new Date(sow); d.setDate(sow.getDate() + i);
+      const dateStr = ld(d);
+      const isToday = dateStr === todayStr;
       const dayAnchors = (S.anchors||[]).filter(a => {
         const [as] = (a.start||'00:00').split(':').map(Number);
         const [ae] = (a.end||'00:00').split(':').map(Number);
         return parseInt(a.day) === d.getDay() && as <= hh && ae > hh;
       });
       const dayTasks = S.tasks.filter(t => t.date === dateStr && t.time === hour);
-      let cell = `<div class="cal-cell">`;
-      dayAnchors.forEach(a => { cell += `<div class="cal-task-item" style="border-color:${a.color||'var(--accent)'};background:${a.color||'var(--accent)'}22;color:${a.color||'var(--accent)'}">⚓ ${a.name}</div>`; });
-      dayTasks.forEach(t => { const c = getCourseColor(t.course); cell += `<div class="cal-task-item" style="border-color:${c};background:${c}22;color:${c};${t.done?'opacity:0.5;text-decoration:line-through':''}" onclick="openManualTaskModal('${t.id}')">${t.name}</div>`; });
-      cell += `</div>`; return cell;
+      const isEmpty = !dayAnchors.length && !dayTasks.length;
+      let cell = `<div class="cal-cell${isToday?' today-col':''}${isAlt?' row-alt':''}" data-slot="${hour}"${isToday?' data-today="true"':''}>`;
+      // Current time indicator line
+      if (isToday && timePct >= 0) {
+        const timeLabel = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+        cell += `<div class="live-time-line" style="top:${timePct}%"><span class="live-time-label">${timeLabel}</span></div>`;
+      }
+      dayAnchors.forEach(a => {
+        const c = a.color || 'var(--accent)';
+        cell += `<div class="cal-task-item" style="border-color:${c};background:${c}1a;color:${c}"><div class="cal-task-name">⚓ ${a.name}</div></div>`;
+      });
+      dayTasks.forEach(t => {
+        const c = getCourseColor(t.course);
+        let bg = `${c}1e`, border = c, color = c, nameStyle = '';
+        if (t.done) { bg = `${c}0e`; nameStyle = 'text-decoration:line-through;opacity:0.65'; }
+        if (t.missed) { bg = 'var(--red-light)'; border = 'var(--red)'; color = 'var(--red)'; }
+        const icon = t.done ? '✓ ' : t.missed ? '✗ ' : '';
+        cell += `<div class="cal-task-item" style="border-color:${border};background:${bg};color:${color}" onclick="openManualTaskModal('${t.id}')">
+          <div class="cal-task-name" style="${nameStyle}">${icon}${t.name}</div>
+          ${t.course ? `<div class="cal-task-course">${t.course}</div>` : ''}
+        </div>`;
+      });
+      if (isEmpty) cell += `<div class="cal-empty-hint">+ הוסף</div>`;
+      cell += `</div>`;
+      return cell;
     }).join('');
-    return `<div class="cal-cell cal-hour">${hour}</div>${cols}`;
+
+    // Hour label — show hour prominently
+    const [hStr, mStr] = hour.split(':');
+    return `<div class="cal-cell cal-hour${isAlt?' row-alt':''}"><span style="font-size:0.78rem;color:var(--text);font-weight:900">${hStr}</span><span style="font-size:0.6rem">${mStr}</span></div>${cols}`;
   }).join('');
-  wrap.innerHTML = `<div style="overflow-x:auto"><div class="calendar-grid">${headers}${rows}</div></div>`;
+
+  wrap.innerHTML = `<div style="overflow-x:auto;border-radius:18px;"><div class="calendar-grid">${headers}${rows}</div></div>`;
+
+  // Refresh time line every minute
+  if (window._calTimeInterval) clearInterval(window._calTimeInterval);
+  window._calTimeInterval = setInterval(() => {
+    if (isGridView && document.getElementById('page-schedule').classList.contains('active')) {
+      renderCalendarView();
+    } else {
+      clearInterval(window._calTimeInterval);
+    }
+  }, 60000);
+}
+
+// ── ICS CALENDAR IMPORT ──
+function openCalendarImport() {
+  document.getElementById('ics-file-input').click();
+}
+
+function handleICSFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => importFromICS(ev.target.result);
+  reader.readAsText(file, 'UTF-8');
+}
+
+function parseICS(text) {
+  // Unfold continuation lines (RFC 5545 §3.1)
+  text = text.replace(/\r\n[ \t]/g, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const events = [];
+  const blocks = text.split('BEGIN:VEVENT');
+  for (let i = 1; i < blocks.length; i++) {
+    const block = blocks[i].split('END:VEVENT')[0];
+    const props = {};
+    block.split('\n').forEach(line => {
+      const col = line.indexOf(':');
+      if (col < 0) return;
+      const key = line.substring(0, col).split(';')[0].trim().toUpperCase();
+      const val = line.substring(col + 1).trim()
+        .replace(/\\n/g, ' ').replace(/\\,/g, ',').replace(/\\\\/g, '\\');
+      props[key] = val;
+    });
+    if (props.SUMMARY) events.push(props);
+  }
+  return events;
+}
+
+function parseDT(dtStr) {
+  if (!dtStr) return null;
+  dtStr = dtStr.replace('Z', '').replace(/[^0-9T]/g, '').trim();
+  const hasTz = dtStr.includes('T');
+  return {
+    year: parseInt(dtStr.substring(0, 4)),
+    month: parseInt(dtStr.substring(4, 6)),
+    day: parseInt(dtStr.substring(6, 8)),
+    hour: hasTz ? parseInt(dtStr.substring(9, 11)) : 0,
+    min:  hasTz ? parseInt(dtStr.substring(11, 13)) : 0,
+  };
+}
+
+function importFromICS(text) {
+  const events = parseICS(text);
+  const dayMap = { SU:0, MO:1, TU:2, WE:3, TH:4, FR:5, SA:6 };
+  let importedAnchors = 0, importedTasks = 0;
+  S.anchors = S.anchors || [];
+
+  events.forEach(ev => {
+    const dt = parseDT(ev.DTSTART);
+    const dtEnd = parseDT(ev.DTEND) || dt;
+    if (!dt || !ev.SUMMARY) return;
+
+    const fmt2 = n => String(n).padStart(2, '0');
+    const startTime = `${fmt2(dt.hour)}:${fmt2(dt.min)}`;
+    const endTime = `${fmt2(dtEnd.hour)}:${fmt2(dtEnd.min)}`;
+
+    const isRecurring = ev.RRULE && ev.RRULE.toUpperCase().includes('WEEKLY');
+
+    if (isRecurring) {
+      // Recurring weekly event → anchor
+      let days = [];
+      const bydayMatch = ev.RRULE.match(/BYDAY=([^;]+)/i);
+      if (bydayMatch) {
+        days = bydayMatch[1].split(',').map(d => dayMap[d.trim().toUpperCase()] ?? -1).filter(d => d >= 0);
+      }
+      if (!days.length) {
+        const startDate = new Date(dt.year, dt.month - 1, dt.day);
+        days = [startDate.getDay()];
+      }
+      days.forEach(dayNum => {
+        const dup = S.anchors.find(a => a.name === ev.SUMMARY && parseInt(a.day) === dayNum && a.start === startTime);
+        if (dup) return;
+        S.anchors.push({ id: uid(), name: ev.SUMMARY, day: dayNum, start: startTime, end: endTime, color: getCourseColor(ev.SUMMARY), travel: 0, recurring: true, days: [dayNum] });
+        importedAnchors++;
+      });
+    } else {
+      // One-time event → task
+      const isoDate = `${dt.year}-${fmt2(dt.month)}-${fmt2(dt.day)}`;
+      if (new Date(isoDate) < new Date(ld(new Date()))) return; // skip past
+      if (S.tasks.find(t => t.name === ev.SUMMARY && t.date === isoDate)) return; // skip dup
+      const durMins = (dtEnd.hour * 60 + dtEnd.min) - (dt.hour * 60 + dt.min);
+      S.tasks.push({ id: uid(), name: ev.SUMMARY, course: ev.SUMMARY, date: isoDate, time: startTime, duration: `${durMins > 0 ? durMins : 60} דק'`, priority: 'בינוני', done: false, missed: false });
+      importedTasks++;
+    }
+  });
+
+  save();
+  renderAll();
+  document.getElementById('ics-file-input').value = '';
+  toast(`✅ יובאו ${importedAnchors} שיעורים קבועים ו-${importedTasks} אירועים!`);
 }
 
 async function aiBriefing() {
@@ -2032,13 +2271,7 @@ async function sendPsych() {
     psychHistory.push({role:'user', content:msg});
     if(psychHistory.length > 20) psychHistory = [psychHistory[0], ...psychHistory.slice(-18)];
     try {
-        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${S.apiKey}`},
-            body: JSON.stringify({model:'llama-3.3-70b-versatile', messages:psychHistory, temperature:0.75})
-        });
-        if(res.status===401) throw new Error('API Key לא תקין');
-        if(!res.ok) throw new Error(`שגיאת שרת (${res.status})`);
-        const data = await res.json(); const ans = data.choices[0].message.content;
+        const ans = await callAI({ messages: psychHistory, temperature: 0.75 });
         psychHistory.push({role:'assistant', content:ans});
         document.getElementById('psych-loading')?.remove();
         chat.innerHTML += `<div class="chat-msg ai"><div class="chat-bubble">${ans.replace(/\n/g,'<br>')}</div></div>`;
@@ -2064,16 +2297,8 @@ async function sendRecalc() {
   const ruleReminder = `היום: ${todayStr}. מבחנים: ${examsTxt||'אין'}. אתה עונה ב-JSON בלבד! פורמט: {"reply":"הטקסט שלך","actions":{"add":[{"date":"YYYY-MM-DD","time":"HH:MM","course":"שם","name":"יצירתי","duration":"60 דק'","priority":"בינוני"}],"delete":["ID"],"update":[{"id":"ID","date":"YYYY-MM-DD","time":"HH:MM"}]}}`;
 
   try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${S.apiKey}` },
-      body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [...recalcHistory, {role:'system', content: ruleReminder}], temperature: 0.3, response_format: { type: "json_object" } })
-    });
-    if(res.status === 401) throw new Error('API Key לא תקין');
-    if(res.status === 429) throw new Error('חריגת מגבלת API — נסה שוב בעוד דקה');
-    if(!res.ok) throw new Error(`שגיאת שרת (${res.status})`);
-    const data = await res.json();
-
-    const parsed = extractJSON(data.choices[0].message.content);
+    const _content3 = await callAI({ messages: [...recalcHistory, {role:'system', content:ruleReminder}], temperature: 0.3, json: true });
+    const parsed = extractJSON(_content3);
     recalcHistory.push({role: 'assistant', content: parsed.reply || ''});
 
     let updated = false;
@@ -2203,15 +2428,8 @@ async function handleMagicInput() {
 
   try {
     const messages = [{role:'system', content: systemPrompt}, ...assistantHistory, {role:'user', content: val}];
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${S.apiKey}` },
-      body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages, temperature: 0.3, response_format: { type: "json_object" } })
-    });
-    if (res.status === 401) throw new Error('API Key לא תקין');
-    if (res.status === 429) throw new Error('חריגת מגבלת API — נסה שוב בעוד דקה');
-    if (!res.ok) throw new Error(`שגיאת שרת (${res.status})`);
-    const data = await res.json();
-    const parsed = extractJSON(data.choices[0].message.content);
+    const _content4 = await callAI({ messages, temperature: 0.3, json: true });
+    const parsed = extractJSON(_content4);
     loadingEl?.remove();
 
     assistantHistory.push({role:'user', content: val});
@@ -2285,8 +2503,8 @@ async function sendTutor() {
     const sysPrompt = `אתה מורה פרטי סוקרטי. קורס: "${currentTutorTask?.course||''}". נושא: "${currentTutorTask?.name}". חומר רקע: """${docText}""".
 חוקי ברזל: (1) לעולם אל תיתן תשובה סופית — שאל שאלות מנחות. (2) כוון לבנות הבנה עצמאית, לא לשנן. (3) לאחר כל תגובה, סיים עם: 💡 לפי שיטת החזרה המרווחת — חזור על נושא זה בעוד 24 שעות, 3 ימים ו-7 ימים לזכירה מרבית. (4) דבר ישיר ותכלסי בעברית.`;
     try {
-        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${S.apiKey}` }, body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{role: 'system', content: sysPrompt}, ...tutorHistory], temperature: 0.6 }) });
-        const data = await res.json(); const ans = data.choices[0].message.content; tutorHistory.push({role: 'assistant', content: ans});
+        const ans = await callAI({ messages: [{role:'system', content:sysPrompt}, ...tutorHistory], temperature: 0.6 });
+        tutorHistory.push({role: 'assistant', content: ans});
         document.getElementById('tutor-loading').remove(); chat.innerHTML += `<div class="chat-msg ai"><div class="chat-bubble">${ans.replace(/\n/g,'<br>')}</div></div>`; chat.scrollTop = chat.scrollHeight;
     } catch(e) { document.getElementById('tutor-loading')?.remove(); chat.innerHTML += `<div class="chat-msg ai"><div class="chat-bubble" style="color:var(--red)">שגיאה</div></div>`; }
 }
