@@ -20,7 +20,9 @@
 
     <!-- Logo -->
     <div class="auth-logo">
-      <span class="auth-logo-icon">🎓</span>
+      <div class="auth-logo-icon-wrap">
+        <svg viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+      </div>
       <div class="auth-logo-name">StudyFlow</div>
       <div class="auth-logo-sub">ה-Waze של הלימודים</div>
     </div>
@@ -167,12 +169,14 @@
 <div id="app-screen">
 
   <!-- Mobile top bar -->
-  <div class="mobile-header">
+  <div class="mobile-header" id="mobile-header">
     <button class="hamburger-btn" id="hamburger-btn" onclick="toggleSidebar()" aria-label="תפריט">
       <span></span><span></span><span></span>
     </button>
-    <div class="mobile-logo">Study<span style="color:var(--green)">Flow</span> 🎓</div>
-    <button class="mobile-settings-btn" onclick="openSettings()" aria-label="הגדרות">⚙️</button>
+    <div class="mobile-logo">StudyFlow</div>
+    <button class="mobile-settings-btn" onclick="openSettings()" aria-label="הגדרות">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+    </button>
   </div>
 
   <!-- Sidebar backdrop -->
@@ -183,14 +187,14 @@
     <nav class="sidebar" id="sidebar">
       <div class="sidebar-logo">Study<span>Flow</span></div>
       <div class="sidebar-sub">ה-Waze של הלימודים 🎓</div>
-      <button class="nav-item active" onclick="showPage('today',this)"><span class="nav-icon">📅</span> <span>היום</span></button>
-      <button class="nav-item" onclick="showPage('planner',this)"><span class="nav-icon">✨</span> <span>מתכנן AI חכם</span></button>
-      <button class="nav-item" onclick="showPage('schedule',this)"><span class="nav-icon">🗓️</span> <span>לו"ז שבועי</span></button>
-      <button class="nav-item" onclick="showPage('exams',this)"><span class="nav-icon">📝</span> <span>מעקב מבחנים</span></button>
-      <button class="nav-item" onclick="showPage('anchors',this)"><span class="nav-icon">⚓</span> <span>עוגנים קבועים</span></button>
-      <button class="nav-item" onclick="showPage('progress',this)"><span class="nav-icon">🌳</span> <span>התקדמות (משחק)</span></button>
-      <button class="nav-item" onclick="showPage('calendar',this)"><span class="nav-icon">📆</span> <span>לוח שנה</span></button>
-      <button class="nav-item" onclick="openPsychologist()"><span class="nav-icon">🧠</span> <span>תמיכה נפשית</span></button>
+      <button class="nav-item active" onclick="showPage('today',this)"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span> <span>היום</span></button>
+      <button class="nav-item" onclick="showPage('planner',this)"><span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg></span> <span>מתכנן AI</span></button>
+      <button class="nav-item" onclick="showPage('schedule',this)"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span> <span>לו"ז שבועי</span></button>
+      <button class="nav-item" onclick="showPage('exams',this)"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span> <span>מבחנים</span></button>
+      <button class="nav-item" onclick="showPage('anchors',this)"><span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="3"/><line x1="12" y1="8" x2="12" y2="20"/><path d="M5 20a7 7 0 0014 0"/></svg></span> <span>עוגנים קבועים</span></button>
+      <button class="nav-item" onclick="showPage('progress',this)"><span class="nav-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span> <span>התקדמות</span></button>
+      <button class="nav-item" onclick="showPage('calendar',this)"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="13" y2="18"/></svg></span> <span>לוח שנה</span></button>
+      <button class="nav-item" onclick="openPsychologist()"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M9 9a3 3 0 116 0c0 2-3 3-3 3"/><circle cx="12" cy="17" r="1"/><circle cx="12" cy="12" r="10"/></svg></span> <span>תמיכה נפשית</span></button>
 
       <div class="sidebar-bottom">
         <hr style="border:none; border-top:1px solid var(--border); margin:0.5rem 0;">
@@ -227,12 +231,15 @@
         </div>
 
         <div class="section-box" style="padding:0;overflow:hidden;border:1px solid var(--border2);">
-          <div style="background:linear-gradient(135deg,var(--accent),var(--purple));padding:0.9rem 1.25rem;display:flex;justify-content:space-between;align-items:center;">
-            <div>
-              <div style="font-weight:900;font-size:1rem;color:white;">🤖 Oracle — העוזר האישי</div>
-              <div style="font-size:0.7rem;color:rgba(255,255,255,0.78);">מכיר את כל הלו"ז שלך · שאל הכל</div>
+          <div class="oracle-header">
+            <div class="oracle-icon-badge">
+              <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 110 20 10 10 0 010-20z"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r="1" fill="white" stroke="none"/></svg>
             </div>
-            <button onclick="clearAssistantHistory()" style="background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.3);color:white;padding:0.3rem 0.75rem;border-radius:8px;font-size:0.72rem;cursor:pointer;font-family:var(--sans);font-weight:700;">נקה שיחה</button>
+            <div class="oracle-title-wrap">
+              <div class="oracle-title">Oracle — העוזר האישי</div>
+              <div class="oracle-sub">מכיר את כל הלו"ז שלך · שאל הכל</div>
+            </div>
+            <button class="oracle-clear-btn" onclick="clearAssistantHistory()">נקה</button>
           </div>
           <div id="assistant-chat-history" style="max-height:240px;overflow-y:auto;padding:0.75rem 1rem;display:flex;flex-direction:column;gap:0.5rem;background:var(--surface);min-height:52px;">
             <div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:0.5rem 0;">שאל אותי על הלו"ז, המבחנים, ההתקדמות, או איך להשתמש באפליקציה</div>
@@ -276,7 +283,7 @@
 
       <div class="page" id="page-planner">
         <div class="page-header">
-          <div class="page-title">✨ מתכנן AI חכם</div>
+          <div class="page-title">מתכנן AI</div>
           <div class="page-sub" id="planner-sub">בחר מצב: תכנון קורס בודד או תכנון סמסטר שלם עם כל הקורסים.</div>
         </div>
 
@@ -346,27 +353,28 @@
       </div>
 
       <div class="page" id="page-schedule">
-        <div class="page-header"><div class="page-title">🗓️ לו"ז מלא</div></div>
+        <div class="page-header"><div class="page-title">לו"ז שבועי</div></div>
         <div class="section-box">
           <div class="section-head">
             <div class="week-nav">
-              <button class="week-nav-btn" onclick="changeWeek(-1)">→ שבוע קודם</button>
+              <button class="week-nav-btn" onclick="changeWeek(-1)"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg> שבוע קודם</button>
               <span class="week-label" id="week-label">השבוע</span>
-              <button class="week-nav-btn" onclick="changeWeek(1)">שבוע הבא ←</button>
+              <button class="week-nav-btn" onclick="changeWeek(1)">שבוע הבא <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
             </div>
             <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
-              <button class="btn-sm" id="btn-toggle-view" onclick="toggleScheduleView()">📅 תצוגת יומן (Grid)</button>
-              <button class="btn-sm green" onclick="openManualTaskModal()">+ הוספה ידנית</button>
-              <button class="btn-sm red" onclick="openRecalc('schedule')">⚡ צ'אט מסלול</button>
+              <button class="btn-sm" id="btn-toggle-view" onclick="toggleScheduleView()">רשימה</button>
+              <button class="btn-sm green" onclick="openManualTaskModal()">+ הוספה</button>
+              <button class="btn-sm red" onclick="openRecalc('schedule')">⚡ AI</button>
             </div>
           </div>
-          <div id="schedule-wrap"><div class="empty-state">אין משימות</div></div>
+          <div id="day-timeline-view"></div>
+          <div id="schedule-wrap" class="hidden"><div class="empty-state">אין משימות</div></div>
           <div id="calendar-view-wrap" class="hidden"></div>
         </div>
       </div>
 
       <div class="page" id="page-exams">
-        <div class="page-header"><div class="page-title">📝 מעקב מבחנים</div></div>
+        <div class="page-header"><div class="page-title">מבחנים</div></div>
         <div class="section-box">
           <div class="section-title-sm" style="margin-bottom:1rem">➕ הוסף תאריך יעד</div>
           <div class="form-grid" style="margin-bottom:0.75rem">
@@ -379,7 +387,7 @@
       </div>
 
       <div class="page" id="page-anchors">
-        <div class="page-header"><div class="page-title">⚓ עוגנים קבועים (חסומים)</div></div>
+        <div class="page-header"><div class="page-title">עוגנים קבועים</div></div>
         <div class="section-box">
           <div class="section-head">
             <div class="section-title-sm">הזמנים שלך</div>
@@ -404,65 +412,86 @@
 
       <div class="page" id="page-progress">
         <div class="page-header">
-          <div class="page-title">🌳 התקדמות וצמיחה</div>
-          <div class="page-sub">כל משימה שאתה מסיים מטפחת את העץ שלך!</div>
-        </div>
-        
-        <div class="section-box" style="background:linear-gradient(135deg, #1a2a6c, #11998e, #38ef7d); color:white; border:none; box-shadow:0 10px 30px rgba(17,153,142,0.3);">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
-            <div style="font-size:1.25rem; font-weight:900;">🎯 יעד יומי</div>
-            <div style="font-size:1.6rem;">🌟</div>
-          </div>
-          <div id="quest-text" style="font-size:0.95rem; margin-bottom:0.75rem; font-weight:500; line-height:1.5;"></div>
-          <div id="quest-reward"></div>
+          <div class="page-title">התקדמות</div>
+          <div class="page-sub">כל משימה שאתה מסיים מצמיח את העץ שלך</div>
         </div>
 
-        <div class="section-box xp-hub" id="xp-hub-box">
-          <div class="xp-stars" id="xp-stars"></div>
-          <div style="position:relative;z-index:1">
-            <div style="display:flex;justify-content:center;align-items:center;flex-direction:column;padding:1rem 0 0.5rem">
-              <div class="xp-ring-wrap">
-                <svg class="xp-ring-svg" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg">
-                  <circle class="xp-ring-bg" cx="70" cy="70" r="58"/>
-                  <circle class="xp-ring-fill" id="xp-ring-fill" cx="70" cy="70" r="58"/>
-                </svg>
-                <div class="xp-ring-inner">
-                  <div id="xp-level-emoji" style="font-size:2.2rem;line-height:1">🌱</div>
-                  <div id="tree-pts" style="font-size:1.6rem;font-weight:900;color:white;line-height:1.1;margin-top:0.15rem">0</div>
-                  <div style="font-size:0.6rem;color:rgba(255,255,255,0.7);font-weight:700;letter-spacing:1px;text-transform:uppercase">XP</div>
-                </div>
+        <!-- Tree hero card -->
+        <div class="tree-stage-card">
+          <div class="tree-hero-layout">
+            <div class="tree-hero-wrap" id="tree-hero-wrap"></div>
+            <div class="tree-info-col">
+              <div class="tree-level-num" id="tree-level-num">רמה 1</div>
+              <div class="tree-level-name" id="tree-level-name-badge">מתחיל</div>
+              <div class="tree-pts-row">
+                <div class="tree-pts-big" id="tree-pts">0</div>
+                <div class="tree-pts-label">XP</div>
               </div>
-              <div id="tree-next" style="font-size:0.82rem;font-weight:800;margin-top:0.85rem;background:rgba(255,255,255,0.13);padding:0.35rem 1.1rem;border-radius:20px;border:1px solid rgba(255,255,255,0.22);color:rgba(255,255,255,0.95)"></div>
+              <div class="tree-xp-bar-wrap">
+                <div class="tree-xp-bar-fill" id="tree-xp-bar-fill" style="width:0%"></div>
+              </div>
+              <div class="tree-xp-to-next" id="tree-next">עוד 100 XP לשלב הבא</div>
             </div>
-            <div style="display:flex;gap:0.6rem;justify-content:center;margin-top:0.75rem;flex-wrap:wrap;padding:0 0.5rem">
-              <div class="xp-stat-pill" style="background:linear-gradient(135deg,#ff6b6b,#ffd93d)">
-                <span id="streak-badge" style="font-size:1.4rem;font-weight:900;line-height:1">0</span>
-                <span style="font-size:0.62rem;opacity:0.9;margin-top:0.1rem">🔥 ימי רצף</span>
-              </div>
-              <div class="xp-stat-pill" style="background:linear-gradient(135deg,#4f6ef7,#a78bfa)">
-                <span id="stat-total-done" style="font-size:1.4rem;font-weight:900;line-height:1">0</span>
-                <span style="font-size:0.62rem;opacity:0.9;margin-top:0.1rem">✅ משימות הושלמו</span>
-              </div>
-              <div class="xp-stat-pill" style="background:linear-gradient(135deg,#16c98d,#38ef7d)">
-                <span id="stat-pct" style="font-size:1.4rem;font-weight:900;line-height:1">0%</span>
-                <span style="font-size:0.62rem;opacity:0.9;margin-top:0.1rem">📈 אחוז ביצוע</span>
-              </div>
-            </div>
-            <div id="course-progress-bars" style="margin-top:1.25rem;padding:0 0.25rem"></div>
-            <span id="stat-total" style="display:none">0</span>
           </div>
         </div>
 
+        <!-- Stats row — no emojis -->
+        <div class="prog-stats-row">
+          <div class="prog-stat-card">
+            <div class="prog-stat-icon" style="background:rgba(251,191,36,0.12);color:#f59e0b">
+              <svg viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 11-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 002.5 2.5z"/></svg>
+            </div>
+            <div id="streak-badge" class="prog-stat-val">0</div>
+            <div class="prog-stat-lbl">ימי רצף</div>
+          </div>
+          <div class="prog-stat-card">
+            <div class="prog-stat-icon" style="background:rgba(99,102,241,0.1);color:var(--accent)">
+              <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div id="stat-total-done" class="prog-stat-val">0</div>
+            <div class="prog-stat-lbl">משימות הושלמו</div>
+          </div>
+          <div class="prog-stat-card">
+            <div class="prog-stat-icon" style="background:rgba(16,185,129,0.1);color:var(--green)">
+              <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </div>
+            <div id="stat-pct" class="prog-stat-val">0%</div>
+            <div class="prog-stat-lbl">אחוז ביצוע</div>
+          </div>
+          <span id="stat-total" style="display:none">0</span>
+        </div>
+
+        <!-- Daily quest -->
+        <div class="section-box" style="background:linear-gradient(135deg,var(--accent),var(--purple));border:none;color:white;padding:1.25rem 1.5rem">
+          <div style="font-size:0.62rem;font-weight:800;letter-spacing:2px;text-transform:uppercase;margin-bottom:0.5rem;opacity:0.75">יעד יומי</div>
+          <div id="quest-text" style="font-size:0.9rem;font-weight:600;line-height:1.5"></div>
+          <div id="quest-reward" style="margin-top:0.5rem"></div>
+        </div>
+
+        <!-- Activity heatmap -->
         <div class="section-box">
-          <div class="section-head"><div class="section-title-sm">📊 ניתוח שבועי</div></div>
-          <button class="btn-primary" onclick="openRecalc('weekly')" style="font-size:0.9rem;">🤖 התחל ישיבת סיכום שבועית</button>
+          <div class="section-head"><div class="section-title-sm">פעילות לימודית</div><span style="font-size:0.7rem;color:var(--muted);font-weight:600">15 שבועות אחרונים</span></div>
+          <div id="activity-heatmap" class="heatmap-outer"></div>
+          <div id="heatmap-legend" class="heatmap-legend"></div>
+        </div>
+
+        <!-- Course breakdown -->
+        <div class="section-box">
+          <div class="section-head"><div class="section-title-sm">התקדמות לפי קורס</div></div>
+          <div id="course-progress-bars"></div>
+        </div>
+
+        <!-- Weekly analysis -->
+        <div class="section-box">
+          <div class="section-head"><div class="section-title-sm">ניתוח שבועי</div></div>
+          <button class="btn-primary" onclick="openRecalc('weekly')" style="font-size:0.9rem;">התחל ישיבת סיכום שבועית</button>
         </div>
       </div>
 
       <!-- ── CALENDAR PAGE ── -->
       <div class="page" id="page-calendar">
         <div class="page-header">
-          <div class="page-title">📆 לוח שנה</div>
+          <div class="page-title">לוח שנה</div>
           <div class="page-sub">תצוגת חודש — מבחנים, משימות וחגים</div>
         </div>
 
@@ -493,6 +522,32 @@
     </div>
   </div>
 </div>
+
+<!-- BOTTOM NAV BAR -->
+<nav class="bottom-nav" id="bottom-nav">
+  <div class="bn-items">
+    <button class="bn-item active" id="bn-today" onclick="showPage('today',document.querySelectorAll('.nav-item')[0]);updateBottomNav('today')">
+      <div class="bn-icon"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+      <div class="bn-label">היום</div>
+    </button>
+    <button class="bn-item" id="bn-planner" onclick="showPage('planner',document.querySelectorAll('.nav-item')[1]);updateBottomNav('planner')">
+      <div class="bn-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg></div>
+      <div class="bn-label">מתכנן</div>
+    </button>
+    <button class="bn-item" id="bn-schedule" onclick="showPage('schedule',document.querySelectorAll('.nav-item')[2]);updateBottomNav('schedule')">
+      <div class="bn-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+      <div class="bn-label">לו"ז</div>
+    </button>
+    <button class="bn-item" id="bn-exams" onclick="showPage('exams',document.querySelectorAll('.nav-item')[3]);updateBottomNav('exams')">
+      <div class="bn-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+      <div class="bn-label">מבחנים</div>
+    </button>
+    <button class="bn-item" id="bn-progress" onclick="showPage('progress',document.querySelectorAll('.nav-item')[5]);updateBottomNav('progress')">
+      <div class="bn-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+      <div class="bn-label">התקדמות</div>
+    </button>
+  </div>
+</nav>
 
 <div class="modal-overlay hidden" id="missed-modal">
   <div class="modal-box">
@@ -554,10 +609,10 @@
     <div class="chat-header" id="chat-dynamic-header">
       <div style="display:flex; justify-content:space-between; align-items:center;">
         <div>
-          <div class="chat-header-title" id="chat-header-title">⚡ יועץ מומחה AI</div>
+          <div class="chat-header-title" id="chat-header-title">יועץ מומחה AI</div>
           <div class="chat-header-sub" id="chat-header-sub">אני כאן כדי לסדר ולשנות את הלו"ז.</div>
         </div>
-        <button class="btn-cancel" onclick="closeRecalc()" style="border-color:rgba(255,255,255,0.4); color:white; background:rgba(0,0,0,0.1);">✕ סגור</button>
+        <button class="btn-cancel" onclick="closeRecalc()">✕ סגור</button>
       </div>
     </div>
     <div class="chat-messages" id="recalc-chat"></div>

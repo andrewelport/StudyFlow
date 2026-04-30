@@ -140,6 +140,8 @@ let recalcHistory = [];
 let currentTutorTask = null;
 let tutorHistory = [];
 let isGridView = false;
+let schedViewDay = null;
+let schedViewMode = 'timeline';
 let pendingRecalcActions = null;
 let psychHistory = [];
 let assistantHistory = [];
@@ -708,6 +710,12 @@ function initApp(){
 
   checkPastDueTasks();
   renderAll();
+
+  // Scroll-aware mobile header
+  window.addEventListener('scroll', () => {
+    const hdr = document.getElementById('mobile-header');
+    if (hdr) hdr.classList.toggle('scrolled', window.scrollY > 10);
+  }, {passive: true});
 }
 
 function showPage(name,btn){
@@ -715,12 +723,20 @@ function showPage(name,btn){
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
   if(btn)btn.classList.add('active');
+  window.scrollTo({top:0,behavior:'instant'});
   if(name==='schedule')renderSchedule();
   if(name==='exams')renderExams();
   if(name==='anchors')renderAnchorsList();
   if(name==='progress') renderProgress();
   if(name==='calendar') renderMonthCalendar();
+  updateBottomNav(name);
   closeSidebar();
+}
+
+function updateBottomNav(name) {
+  const map = {today:'bn-today',planner:'bn-planner',schedule:'bn-schedule',exams:'bn-exams',progress:'bn-progress'};
+  document.querySelectorAll('.bn-item').forEach(b=>b.classList.remove('active'));
+  if(map[name]) document.getElementById(map[name])?.classList.add('active');
 }
 
 async function _callGroqDirect({ messages, temperature, json, maxTokens }) {
@@ -1116,7 +1132,7 @@ function addPlanToSchedule() {
   showPage('schedule', document.querySelectorAll('.nav-item')[2]);
 }
 
-function changeWeek(dir){ S.weekOffset += dir; renderSchedule(); if(isGridView) renderCalendarView(); }
+function changeWeek(dir){ S.weekOffset += dir; schedViewDay = null; renderSchedule(); }
 
 // ══════════════════════════════════════════════
 // SEMESTER PLANNER
@@ -1446,33 +1462,236 @@ function addSemesterPlanToSchedule() {
   }
   showPage('schedule', document.querySelectorAll('.nav-item')[2]);
 }
-function renderSchedule(){
-  const now = new Date(); const sow = new Date(now); sow.setDate(now.getDate() - now.getDay() + S.weekOffset*7); const eow = new Date(sow); eow.setDate(sow.getDate() + 6);
-  const dayNames = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת']; const months = ['ינו','פבר','מרץ','אפר','מאי','יוני','יולי','אוג','ספט','אוק','נוב','דצמ'];
-  const s = ld(sow), e = ld(eow); document.getElementById('week-label').textContent = `${sow.getDate()} ${months[sow.getMonth()]} — ${eow.getDate()} ${months[eow.getMonth()]}`;
-  const wt = S.tasks.filter(t => t.date >= s && t.date <= e); const we = S.exams.filter(ex => ex.date >= s && ex.date <= e);
-  const pc = {גבוה:'high', בינוני:'med', שוטף:'low'}; const byDate = {};
-  for(let i=0; i<7; i++) { const d = new Date(sow); d.setDate(sow.getDate() + i); byDate[ld(d)] = []; }
-  wt.forEach(t => { byDate[t.date].push(t); }); we.forEach(ex => { byDate[ex.date].unshift({...ex, _exam:true}); });
-  Object.keys(byDate).forEach(date => {
-    let d = new Date(date + 'T12:00:00'); let dayIdx = d.getDay();
-    let dayAnchors = (S.anchors||[]).filter(a => parseInt(a.day) === dayIdx);
-    dayAnchors.forEach(a => { byDate[date].push({_isAnchor:true, time:a.start, duration:`${a.start}-${a.end}`, name:`🔒 ${a.name}`}); });
-    byDate[date].sort((a,b) => (a.time||'00:00').localeCompare(b.time||'00:00'));
-  });
+function renderSchedule() {
+  const now = new Date();
+  const sow = new Date(now); sow.setDate(now.getDate() - now.getDay() + S.weekOffset * 7);
+  const eow = new Date(sow); eow.setDate(sow.getDate() + 6);
+  const monthNames = ['ינו','פבר','מרץ','אפר','מאי','יוני','יולי','אוג','ספט','אוק','נוב','דצמ'];
+  document.getElementById('week-label').textContent = `${sow.getDate()} ${monthNames[sow.getMonth()]} — ${eow.getDate()} ${monthNames[eow.getMonth()]}`;
 
+  document.getElementById('calendar-view-wrap').classList.add('hidden');
+
+  if (schedViewMode === 'grid') {
+    document.getElementById('day-timeline-view').classList.add('hidden');
+    document.getElementById('schedule-wrap').classList.add('hidden');
+    document.getElementById('calendar-view-wrap').classList.remove('hidden');
+    renderCalendarView(); return;
+  }
+  if (schedViewMode === 'list') {
+    document.getElementById('day-timeline-view').classList.add('hidden');
+    document.getElementById('schedule-wrap').classList.remove('hidden');
+    _renderScheduleList(sow, eow, monthNames); return;
+  }
+  // DEFAULT: timeline
+  document.getElementById('schedule-wrap').classList.add('hidden');
+  document.getElementById('day-timeline-view').classList.remove('hidden');
+  _renderScheduleTimeline(sow, eow);
+}
+
+function _renderScheduleList(sow, eow, months) {
+  const dayNames = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+  const s = ld(sow), e = ld(eow);
+  const byDate = {};
+  for (let i = 0; i < 7; i++) { const d = new Date(sow); d.setDate(sow.getDate() + i); byDate[ld(d)] = []; }
+  S.tasks.filter(t => t.date >= s && t.date <= e).forEach(t => { byDate[t.date]?.push(t); });
+  S.exams.filter(ex => ex.date >= s && ex.date <= e).forEach(ex => { if (byDate[ex.date]) byDate[ex.date].unshift({ ...ex, _exam: true }); });
+  Object.keys(byDate).forEach(date => {
+    const d = new Date(date + 'T12:00:00');
+    (S.anchors || []).filter(a => parseInt(a.day) === d.getDay()).forEach(a => {
+      byDate[date].push({ _isAnchor: true, time: a.start, name: a.name, color: a.color || '#94a3b8', _end: a.end, travelMin: a.travelMin || 0 });
+    });
+    byDate[date].sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00'));
+  });
   let html = ''; let hasAny = false;
   Object.keys(byDate).sort().forEach(date => {
-    if(byDate[date].length === 0) return; hasAny = true; const d = new Date(date + 'T12:00:00'); const isToday = ld(new Date()) === date;
-    html += `<div style="margin-bottom:2rem"><div style="font-size:0.92rem;font-weight:800;color:${isToday?'var(--accent)':'var(--text)'};margin-bottom:0.6rem">${isToday?'<span style="background:var(--accent);color:white;border-radius:6px;padding:0.1rem 0.5rem;font-size:0.68rem">היום</span>':''} יום ${dayNames[d.getDay()]}, ${d.getDate()} ב${months[d.getMonth()]}</div><div style="overflow-x:auto"><table><thead><tr><th>שעה</th><th>קורס/תחום</th><th>משימה</th><th>משך</th><th>עדיפות</th><th>סטטוס</th><th>פעולות</th></tr></thead><tbody>${byDate[date].map(t => {
-          if(t._exam) return `<tr style="background:var(--purple-light)"><td><b style="color:var(--purple)">מבחן!</b></td><td colspan="2"><b>${t.course}</b></td><td>—</td><td><span class="badge exam">מבחן</span></td><td><span class="badge exam">🎯</span></td><td></td></tr>`;
-          if(t._isAnchor) return `<tr style="background:var(--surface2);opacity:0.85"><td><span style="font-family:var(--mono);font-size:0.78rem;font-weight:bold">${t.time}</span></td><td colspan="2" style="font-weight:700;color:var(--muted)">${t.name}</td><td><span style="font-family:var(--mono);font-size:0.75rem">${t.duration}</span></td><td>-</td><td><span class="badge" style="background:var(--surface3);color:var(--muted)">עוגן</span></td><td></td></tr>`;
-          const sc = t.done ? 'done' : t.missed ? 'missed' : 'pending'; const sl = t.done ? '✓ בוצע' : t.missed ? '✗ לא בוצע' : '⏳ ממתין'; let cColor = getCourseColor(t.course); const isNear = (t.date === ld(new Date())); 
-          return `<tr class="${isNear ? 'learning-ready' : ''}" style="background:${cColor}12; ${t.done?'opacity:0.65':''}"><td><span style="font-family:var(--mono);font-size:0.75rem">${t.time||'—'}</span></td><td style="white-space:nowrap;"><span class="course-tag" style="background-color:${cColor};">${t.course||''}</span></td><td style="max-width:240px;font-weight:600">${t.name}</td><td><span style="font-family:var(--mono);font-size:0.72rem;color:var(--muted)">${t.duration||''}</span></td><td><span class="badge ${pc[t.priority]||'med'}">${t.priority||'—'}</span></td><td><span class="badge ${sc}">${sl}</span></td><td style="white-space:nowrap;display:flex;gap:0.25rem;padding:0.8rem 0.9rem;">${t.done ? `<button class="toggle-btn mark-undone" onclick="undoTask('${t.id}')">↩ בטל</button>` : t.missed ? `<button class="toggle-btn mark-done" onclick="doneTask('${t.id}')">✓ בוצע</button>` : `<button class="toggle-btn mark-done" onclick="doneTask('${t.id}')">✓</button><button class="toggle-btn mark-undone" onclick="missTask('${t.id}')">✗</button>`} <button class="mark-del" style="background:var(--surface2)" onclick="openManualTaskModal('${t.id}')">✏️</button> <button class="mark-del" onclick="deleteTask('${t.id}')">🗑</button></td></tr>`;
-        }).join('')}</tbody></table></div></div>`;
+    if (!byDate[date].length) return;
+    hasAny = true;
+    const d = new Date(date + 'T12:00:00');
+    const isToday = ld(new Date()) === date;
+    const holList = getHolidayList(date);
+    const holBadge = holList.length ? ` · <span class="sch-hol-badge" style="color:${HOLIDAY_COLORS[holList[0].type]||'#888'}">${holList[0].name}</span>` : '';
+    html += `<div class="sch-day-group"><div class="sch-day-hdr ${isToday?'is-today':''}"><div class="sch-day-name">${isToday?'<span class="sch-today-pill">היום</span>':''}יום ${dayNames[d.getDay()]}</div><div class="sch-day-date">${d.getDate()} ${months[d.getMonth()]}${holBadge}</div></div><div class="sch-day-items">`;
+    byDate[date].forEach(t => {
+      if (t._exam) { html += `<div class="tl-slot" style="background:var(--purple-light);border-color:rgba(124,58,237,0.15)"><div class="tl-bar" style="background:var(--purple)"></div><div class="tl-time"><div class="tl-time-h" style="font-size:1rem">📝</div></div><div class="tl-body"><div class="tl-meta"><span class="tl-course-tag" style="background:var(--purple-light);color:var(--purple)">מבחן</span></div><div class="tl-title" style="color:var(--purple);font-weight:900">${t.course}</div></div></div>`; return; }
+      if (t._isAnchor) { const c = t.color||'#94a3b8'; const [th,tm] = (t.time||'00:00').split(':'); html += `<div class="tl-slot anchor-slot"><div class="tl-bar" style="background:${c}"></div><div class="tl-time"><div class="tl-time-h">${th}</div><div class="tl-time-m">${tm}</div></div><div class="tl-body"><div class="tl-meta"><span class="tl-course-tag" style="background:${c}25;color:${c}">עוגן</span></div><div class="tl-title">${t.name}</div></div></div>`; return; }
+      const cColor = getCourseColor(t.course); const sc = t.done?'done':t.missed?'missed':'';
+      const [th,tm] = (t.time||'00:00').split(':');
+      const statusHtml = t.done?`<span class="tl-status" style="background:var(--green-light);color:var(--green)">✓</span>`:t.missed?`<span class="tl-status" style="background:var(--red-light);color:var(--red)">✗</span>`:`<span class="tl-status" style="background:var(--yellow-light);color:var(--yellow)">⏳</span>`;
+      const actionHtml = t.done?`<button class="tl-btn tl-btn-undo" onclick="undoTask('${t.id}')">↩</button>`:t.missed?`<button class="tl-btn tl-btn-done" onclick="doneTask('${t.id}')">✓</button>`:`<button class="tl-btn tl-btn-done" onclick="doneTask('${t.id}')">✓</button><button class="tl-btn tl-btn-miss" onclick="missTask('${t.id}')">✗</button>`;
+      html += `<div class="tl-slot ${sc}"><div class="tl-bar" style="background:${cColor}"></div><div class="tl-time"><div class="tl-time-h">${th}</div><div class="tl-time-m">${tm}</div></div><div class="tl-body"><div class="tl-meta">${t.course?`<span class="tl-course-tag" style="background:${cColor}20;color:${cColor}">${t.course}</span>`:''}<span class="tl-dur">${t.duration||''}</span>${statusHtml}</div><div class="tl-title${t.done?' tl-done':''}">${t.name}</div>${t.notes?`<div class="tl-notes">${t.notes}</div>`:''}</div><div class="tl-actions">${actionHtml}<button class="tl-btn tl-btn-edit" onclick="openManualTaskModal('${t.id}')">✏️</button><button class="tl-btn tl-btn-del" onclick="deleteTask('${t.id}')">🗑</button></div></div>`;
+    });
+    html += `</div></div>`;
   });
-  if(!hasAny) html = '<div class="empty-state">אין משימות או עוגנים בשבוע זה</div>';
+  if (!hasAny) html = `<div class="empty-state"><div class="empty-state-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><div class="empty-state-title">שבוע ריק</div><div class="empty-state-sub">פתח את מתכנן ה-AI ליצירת תוכנית לימודים</div></div>`;
   document.getElementById('schedule-wrap').innerHTML = html;
+}
+
+function _renderScheduleTimeline(sow, eow) {
+  const todayStr = ld(new Date());
+  const dayAbbr = ['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ש׳'];
+  const s = ld(sow), e = ld(eow);
+  // Resolve default day FIRST so strip highlights it correctly
+  if (!schedViewDay || schedViewDay < s || schedViewDay > e) {
+    schedViewDay = (s <= todayStr && todayStr <= e) ? todayStr : s;
+  }
+  let stripHtml = '';
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(sow); d.setDate(sow.getDate() + i);
+    const ds = ld(d);
+    const isToday = ds === todayStr;
+    const hasTask = S.tasks.some(t => t.date === ds) || (S.anchors||[]).some(a => parseInt(a.day) === d.getDay());
+    const hasExam = S.exams.some(ex => ex.date === ds);
+    const dotClass = hasExam ? 'exam' : hasTask ? '' : 'empty';
+    stripHtml += `<button class="day-chip ${isToday?'is-today':''} ${schedViewDay===ds?'selected':''}" onclick="selectScheduleDay('${ds}')" data-day="${ds}"><div class="day-chip-name">${dayAbbr[d.getDay()]}</div><div class="day-chip-num">${d.getDate()}</div><div class="day-chip-dot ${dotClass}"></div></button>`;
+  }
+  const wrap = document.getElementById('day-timeline-view');
+  wrap.innerHTML = `<div class="day-strip" id="day-strip">${stripHtml}</div><div id="tl-day-content"></div>`;
+  renderDayTimeline(schedViewDay);
+  _initDaySwipe();
+}
+
+function selectScheduleDay(ds) {
+  schedViewDay = ds;
+  document.querySelectorAll('.day-chip').forEach(el => el.classList.toggle('selected', el.dataset.day === ds));
+  renderDayTimeline(ds);
+}
+
+const TL_HOUR_PX = 64, TL_PX_MIN = 64 / 60, TL_START_H = 7, TL_END_H = 23;
+
+function renderDayTimeline(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  const dayNames = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+  const months = ['ינו','פבר','מרץ','אפר','מאי','יוני','יולי','אוג','ספט','אוק','נוב','דצמ'];
+  const isToday = dateStr === ld(new Date());
+
+  const events = [];
+  (S.anchors||[]).filter(a => parseInt(a.day) === d.getDay()).forEach(a => {
+    const [sh,sm] = a.start.split(':').map(Number); const [eh,em] = a.end.split(':').map(Number);
+    events.push({ _type:'anchor', name:a.name, color:a.color||'#94a3b8', startMins:sh*60+sm, durMins:(eh*60+em)-(sh*60+sm), time:a.start, _end:a.end });
+  });
+  S.exams.filter(ex => ex.date === dateStr).forEach(ex => {
+    events.push({ _type:'exam', name:ex.course, color:'var(--purple)', startMins:8*60, durMins:30, time:'08:00' });
+  });
+  S.tasks.filter(t => t.date === dateStr).forEach(t => {
+    const [th,tm] = (t.time||'08:00').split(':').map(Number);
+    const dur = parseInt((t.duration||'90').match(/\d+/)?.[0]||90);
+    events.push({ _type:'task', id:t.id, name:t.name, course:t.course, color:getCourseColor(t.course), startMins:th*60+tm, durMins:dur, time:t.time, done:t.done, missed:t.missed, notes:t.notes });
+  });
+  events.sort((a,b) => a.startMins - b.startMins);
+
+  const cols = [];
+  events.forEach(ev => {
+    const evEnd = ev.startMins + Math.max(ev.durMins, 30);
+    let placed = false;
+    for (let c = 0; c < cols.length; c++) { if (cols[c] <= ev.startMins) { ev._col = c; cols[c] = evEnd; placed = true; break; } }
+    if (!placed) { ev._col = cols.length; cols.push(evEnd); }
+  });
+  const totalCols = cols.length || 1;
+  events.forEach(ev => { ev._totalCols = totalCols; });
+
+  const totalH = (TL_END_H - TL_START_H) * TL_HOUR_PX;
+  const holList = getHolidayList(dateStr);
+  const holBadge = holList.length ? `<span class="tl-day-exam-badge" style="background:transparent;color:${HOLIDAY_COLORS[holList[0].type]||'#888'}">${holList[0].name}</span>` : '';
+  const examBadge = S.exams.filter(ex => ex.date === dateStr).map(ex => `<span class="tl-day-exam-badge">מבחן: ${ex.course}</span>`).join('');
+  const taskCount = S.tasks.filter(t => t.date === dateStr).length;
+  const countBadge = taskCount ? `<span class="tl-day-count-badge">${taskCount} משימות</span>` : '';
+
+  const headerHtml = `<div class="tl-day-header"><div><div class="tl-day-title">יום ${dayNames[d.getDay()]}${isToday?` — <span style="color:var(--accent)">היום</span>`:''}</div><div class="tl-day-meta">${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}</div></div><div class="tl-day-badges">${countBadge}${examBadge}${holBadge}</div></div>`;
+
+  let labelsHtml = '', gridHtml = '';
+  for (let h = TL_START_H; h <= TL_END_H; h++) {
+    const top = (h - TL_START_H) * TL_HOUR_PX;
+    labelsHtml += `<div class="tl-hour-label" style="top:${top}px">${String(h).padStart(2,'0')}</div>`;
+    gridHtml += `<div class="tl-grid-line" style="top:${top}px"></div>`;
+    if (h < TL_END_H) gridHtml += `<div class="tl-grid-half" style="top:${top+TL_HOUR_PX/2}px"></div>`;
+  }
+
+  let nowHtml = '';
+  if (isToday) {
+    const nowD = new Date(); const nowMins = nowD.getHours()*60 + nowD.getMinutes();
+    const nowTop = (nowMins - TL_START_H*60) * TL_PX_MIN;
+    if (nowTop >= 0 && nowTop <= totalH) nowHtml = `<div class="tl-now-line" style="top:${nowTop}px"><div class="tl-now-dot"></div></div>`;
+  }
+
+  let eventsHtml = '';
+  const GUTTER = 3;
+  events.forEach(ev => {
+    const top = Math.max(0, (ev.startMins - TL_START_H*60) * TL_PX_MIN);
+    const height = Math.max(28, ev.durMins * TL_PX_MIN - 2);
+    const colW = 100 / ev._totalCols;
+    const rightPct = ev._col * colW;
+    const bgStyle = ev.color.startsWith('var') ? `background:var(--purple-light)` : `background:${ev.color}18`;
+
+    if (ev._type === 'anchor') {
+      eventsHtml += `<div class="tl-ev anchor-ev" style="top:${top}px;height:${height}px;right:${rightPct}%;width:calc(${colW}% - ${GUTTER}px);${bgStyle};border-color:${ev.color};"><div class="tl-ev-bar" style="background:${ev.color}"></div><div class="tl-ev-body"><div class="tl-ev-name" style="color:${ev.color}">⚓ ${ev.name}</div><div class="tl-ev-time">${ev.time} – ${ev._end}</div></div></div>`;
+      return;
+    }
+    if (ev._type === 'exam') {
+      eventsHtml += `<div class="tl-ev anchor-ev" style="top:${top}px;height:${height}px;right:${rightPct}%;width:calc(${colW}% - ${GUTTER}px);background:var(--purple-light);border-color:var(--purple);"><div class="tl-ev-bar" style="background:var(--purple)"></div><div class="tl-ev-body"><div class="tl-ev-name" style="color:var(--purple);font-weight:900">📝 ${ev.name}</div><div class="tl-ev-course" style="color:var(--purple)">מבחן</div></div></div>`;
+      return;
+    }
+    const statusClass = ev.done?'ev-done':ev.missed?'ev-missed':'';
+    const checkIcon = `<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>`;
+    eventsHtml += `<div class="tl-ev ${statusClass}" style="top:${top}px;height:${height}px;right:${rightPct}%;width:calc(${colW}% - ${GUTTER}px);background:${ev.color}18;border-color:${ev.color};" onclick="openTaskQuickActions('${ev.id}')"><div class="tl-ev-bar" style="background:${ev.color}"></div><div class="tl-ev-body"><div class="tl-ev-name ${ev.done?'tl-ev-done-text':''}">${ev.name}</div>${ev.course?`<div class="tl-ev-course" style="color:${ev.color}">${ev.course}</div>`:''}</div>${!ev.done&&!ev.missed?`<button class="tl-ev-check" onclick="event.stopPropagation();quickMarkDone('${ev.id}')">${checkIcon}</button>`:''}</div>`;
+  });
+
+  const uid_tl = `tl-${dateStr}`;
+  const content = document.getElementById('tl-day-content');
+  content.innerHTML = headerHtml + `<div class="timeline-outer" id="${uid_tl}"><div class="timeline-labels" style="height:${totalH}px">${labelsHtml}</div><div class="timeline-events-area" style="height:${totalH}px">${gridHtml}${nowHtml}${eventsHtml}</div></div>`;
+
+  const outerEl = document.getElementById(uid_tl);
+  if (outerEl) {
+    let scrollTarget = 0;
+    if (isToday) { const nowD = new Date(); scrollTarget = Math.max(0, ((nowD.getHours()*60+nowD.getMinutes()) - TL_START_H*60) * TL_PX_MIN - 80); }
+    else if (events.length) { scrollTarget = Math.max(0, (events[0].startMins - TL_START_H*60) * TL_PX_MIN - 40); }
+    setTimeout(() => { outerEl.scrollTop = scrollTarget; }, 50);
+  }
+}
+
+function quickMarkDone(taskId) {
+  const t = S.tasks.find(x => String(x.id) === String(taskId));
+  if (!t || t.done) return;
+  t.done = true; t.missed = false; addPoints(10); save(); renderAll();
+  toast('✅ משימה הושלמה!');
+}
+
+function openTaskQuickActions(taskId) {
+  const t = S.tasks.find(x => String(x.id) === String(taskId));
+  if (!t) return;
+  closeTaskActionSheet();
+  const color = getCourseColor(t.course);
+  const sheet = document.createElement('div');
+  sheet.id = 'task-action-sheet';
+  sheet.innerHTML = `<div class="tas-backdrop" onclick="closeTaskActionSheet()"></div><div class="tas-panel"><div class="tas-handle"></div><div class="tas-header"><div class="tas-ev-bar" style="background:${color}"></div><div class="tas-info"><div class="tas-name">${t.name}</div><div class="tas-meta">${t.course?`<span class="tas-meta-chip" style="color:${color}">${t.course}</span>`:''} ${t.time?`<span class="tas-meta-chip">${t.time}</span>`:''} ${t.duration?`<span class="tas-meta-chip">${t.duration}</span>`:''}</div></div></div><div class="tas-actions">${!t.done&&!t.missed?`<button class="tas-btn tas-done" onclick="closeTaskActionSheet();doneTask('${t.id}')"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>הושלם</button><button class="tas-btn tas-miss" onclick="closeTaskActionSheet();missTask('${t.id}')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>פוספס</button>`:`<button class="tas-btn tas-undo" onclick="closeTaskActionSheet();undoTask('${t.id}')"><svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>בטל</button>`}<button class="tas-btn tas-study" onclick="closeTaskActionSheet();startTutor('${t.id}')"><svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>למד</button><button class="tas-btn tas-edit" onclick="closeTaskActionSheet();openManualTaskModal('${t.id}')"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>ערוך</button><button class="tas-btn tas-delete" onclick="closeTaskActionSheet();deleteTask('${t.id}')"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>מחק</button></div></div>`;
+  document.body.appendChild(sheet);
+  requestAnimationFrame(() => sheet.classList.add('open'));
+}
+
+function closeTaskActionSheet() {
+  const el = document.getElementById('task-action-sheet');
+  if (!el) return;
+  el.classList.remove('open');
+  setTimeout(() => el.remove(), 300);
+}
+
+function _initDaySwipe() {
+  const el = document.getElementById('day-timeline-view');
+  if (!el) return;
+  let tx = 0, ty = 0;
+  el.addEventListener('touchstart', e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; }, {passive:true});
+  el.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - tx;
+    const dy = e.changedTouches[0].clientY - ty;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      const sow = new Date(); sow.setDate(new Date().getDate() - new Date().getDay() + S.weekOffset * 7);
+      const eow = new Date(sow); eow.setDate(sow.getDate() + 6);
+      const s = ld(sow), e = ld(eow);
+      const cur = new Date((schedViewDay||s) + 'T12:00:00');
+      if (dx > 0) { cur.setDate(cur.getDate() - 1); if (ld(cur) < s) { S.weekOffset--; schedViewDay = null; renderSchedule(); return; } }
+      else { cur.setDate(cur.getDate() + 1); if (ld(cur) > e) { S.weekOffset++; schedViewDay = null; renderSchedule(); return; } }
+      selectScheduleDay(ld(cur));
+    }
+  }, {passive:true});
 }
 
 let currentRatingTaskId = null; let tempTaskRating = null;
@@ -1713,11 +1932,12 @@ function saveManualTask() {
 }
 
 function toggleScheduleView() {
-  isGridView = !isGridView;
-  document.getElementById('schedule-wrap').classList.toggle('hidden', isGridView);
-  document.getElementById('calendar-view-wrap').classList.toggle('hidden', !isGridView);
-  document.getElementById('btn-toggle-view').textContent = isGridView ? '📋 תצוגת רשימה' : '📅 תצוגת יומן (Grid)';
-  if (isGridView) renderCalendarView();
+  const modes = ['timeline', 'list', 'grid'];
+  const labels = { timeline: 'רשימה', list: 'לוח שבועי', grid: 'יומן יום' };
+  schedViewMode = modes[(modes.indexOf(schedViewMode) + 1) % modes.length];
+  isGridView = schedViewMode === 'grid';
+  document.getElementById('btn-toggle-view').textContent = labels[schedViewMode];
+  renderSchedule();
 }
 
 function renderCalendarView() {
