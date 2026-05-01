@@ -193,12 +193,11 @@
       <button class="nav-item" onclick="showPage('exams',this)"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span> <span>מבחנים</span></button>
       <button class="nav-item" onclick="showPage('anchors',this)"><span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="3"/><line x1="12" y1="8" x2="12" y2="20"/><path d="M5 20a7 7 0 0014 0"/></svg></span> <span>עוגנים קבועים</span></button>
       <button class="nav-item" onclick="showPage('progress',this)"><span class="nav-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span> <span>התקדמות</span></button>
-      <button class="nav-item" onclick="showPage('calendar',this)"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="13" y2="18"/></svg></span> <span>לוח שנה</span></button>
       <button class="nav-item" onclick="openPsychologist()"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M9 9a3 3 0 116 0c0 2-3 3-3 3"/><circle cx="12" cy="17" r="1"/><circle cx="12" cy="12" r="10"/></svg></span> <span>תמיכה נפשית</span></button>
 
       <div class="sidebar-bottom">
         <hr style="border:none; border-top:1px solid var(--border); margin:0.5rem 0;">
-<button class="nav-item" onclick="openSettings();closeSidebar()"><span class="nav-icon">⚙️</span> <span>הגדרות</span></button>
+<button class="nav-item" onclick="openSettings();closeSidebar()"><span class="nav-icon"><svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></span> <span>הגדרות</span></button>
         <div class="user-chip" onclick="openSettings();closeSidebar()" style="cursor:pointer">
           <div class="user-avatar" id="sb-avatar">?</div>
           <div><div class="user-name" id="sb-name">—</div><div class="user-plan">✓ LLAMA 3 70B</div></div>
@@ -209,17 +208,25 @@
     <div class="main-content">
 
       <div class="page active" id="page-today">
-        <div class="page-header">
-          <div class="page-title" id="today-greeting">שלום 👋</div>
-          <div class="page-sub" id="today-sub"></div>
+        <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div>
+            <div class="page-title" id="today-greeting">שלום 👋</div>
+            <div class="page-sub" id="today-sub"></div>
+          </div>
+          <div class="streak-badge-top" title="ימי רצף ברציפות">
+            <span class="streak-icon">🔥</span>
+            <div class="streak-info">
+              <div class="streak-num" id="sc-streak">0</div>
+              <div class="streak-lbl">ימי רצף</div>
+            </div>
+          </div>
         </div>
 
-        <div class="cards-grid">
+        <div class="cards-grid" style="grid-template-columns: repeat(2, 1fr);">
           <div class="stat-card blue"><div class="stat-num" id="sc-tasks">0</div><div class="stat-label">משימות היום</div></div>
           <div class="stat-card green"><div class="stat-num" id="sc-done">0</div><div class="stat-label">הושלמו ✓</div></div>
           <div class="stat-card red"><div class="stat-num" id="sc-missed">0</div><div class="stat-label">לא בוצעו</div></div>
           <div class="stat-card yellow"><div class="stat-num" id="sc-exams">0</div><div class="stat-label">מבחנים השבוע</div></div>
-          <div class="stat-card purple"><div class="stat-num" id="sc-streak">0🔥</div><div class="stat-label">ימי רצף</div></div>
         </div>
 
         <div id="next-task-widget" class="next-task-widget hidden"></div>
@@ -253,27 +260,28 @@
           </div>
         </div>
 
-        <div class="pomodoro-box" id="pomo-box">
-          <div class="pomo-info">
-            <div class="pomo-title">⏱️ טיימר חכם (Smart Pomodoro)</div>
-            <div class="pomo-sub">בחר משימה מהלו"ז. כשהטיימר יסתיים, המשימה תסומן כבוצעה!</div>
-            <select id="pomo-task-select" class="pomo-select-task"><option value="">-- בחר משימה (רשות) --</option></select>
-            <div class="pomo-prog-wrap"><div class="pomo-prog-fill" id="pomo-prog" style="width:0%"></div></div>
+        <div class="focus-entry-card glass-box">
+          <div class="focus-entry-header">
+            <div class="focus-entry-icon">🧠</div>
+            <div class="focus-entry-texts">
+              <div class="focus-entry-title">מצב פוקוס עמוק</div>
+              <div class="focus-entry-sub">חסום הסחות דעת והיכנס למצב למידה</div>
+            </div>
           </div>
-          <div class="pomo-timer" id="pomo-display">90:00</div>
-          <div class="pomo-btns">
-            <button class="btn-pomo start" id="pomo-start-btn" onclick="pomoStart()">▶ התחל</button>
-            <button class="btn-pomo stop hidden" id="pomo-pause-btn" onclick="pomoPause()">⏸ עצור</button>
-            <button class="btn-pomo reset" onclick="pomoReset()">↺ אפס</button>
-          </div>
+          <select id="pomo-task-select" class="pomo-select-task"><option value="">-- בחר משימה להתמקדות --</option></select>
+          <button class="btn-focus-start" onclick="openFocusMode()">התחל סשן 90 דקות 🔒</button>
         </div>
 
         <div class="section-box">
           <div class="section-head">
             <div class="section-title-sm">📋 הלו"ז שלי להיום</div>
-            <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
-              <button class="btn-sm purple" onclick="aiBriefing()">🤖 קבל תדרוך AI ליום</button>
-              <button class="btn-sm" onclick="showPage('planner',document.querySelectorAll('.nav-item')[1])">+ הוסף מהמתכנן</button>
+            <div style="display:flex;gap:0.75rem;flex-wrap:wrap">
+              <button class="btn-sm purple" style="display:flex;align-items:center;gap:0.5rem" onclick="aiBriefing()">
+                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg> צ'אט AI ליום
+              </button>
+              <button class="btn-sm" style="display:flex;align-items:center;gap:0.5rem" onclick="showPage('planner',document.querySelectorAll('.nav-item')[1])">
+                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> למתכנן השבועי
+              </button>
             </div>
           </div>
           <div class="ai-response hidden" id="briefing-resp" style="margin-bottom:0.9rem;"></div>
@@ -353,23 +361,44 @@
       </div>
 
       <div class="page" id="page-schedule">
-        <div class="page-header"><div class="page-title">לו"ז שבועי</div></div>
-        <div class="section-box">
-          <div class="section-head">
-            <div class="week-nav">
-              <button class="week-nav-btn" onclick="changeWeek(-1)"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg> שבוע קודם</button>
-              <span class="week-label" id="week-label">השבוע</span>
-              <button class="week-nav-btn" onclick="changeWeek(1)">שבוע הבא <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
-            </div>
-            <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
-              <button class="btn-sm" id="btn-toggle-view" onclick="toggleScheduleView()">רשימה</button>
-              <button class="btn-sm green" onclick="openManualTaskModal()">+ הוספה</button>
-              <button class="btn-sm red" onclick="openRecalc('schedule')">⚡ AI</button>
-            </div>
+        <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+          <div>
+            <div class="page-title">לו"ז שבועי</div>
+            <div class="page-sub">החלק או לחץ כדי לנווט</div>
           </div>
-          <div id="day-timeline-view"></div>
-          <div id="schedule-wrap" class="hidden"><div class="empty-state">אין משימות</div></div>
-          <div id="calendar-view-wrap" class="hidden"></div>
+          <div class="calendar-nav-controls">
+            <button class="cal-nav-btn" onclick="changeWeek(-1)">❮</button>
+            <div class="cal-nav-label" id="week-label" onclick="toggleCalendarViewModal()">...</div>
+            <button class="cal-nav-btn" onclick="changeWeek(1)">❯</button>
+          </div>
+        </div>
+        <div class="section-box glass-box" style="position:relative; overflow:hidden; min-height:600px;">
+          <!-- WEEKLY TIMELINE VIEW -->
+          <div id="schedule-weekly-view" class="schedule-view-transition zoom-active">
+            <div class="section-head">
+              <div class="horizontal-date-slider" id="date-slider">
+                <!-- Slider days will be injected via JS -->
+              </div>
+              <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:1rem;justify-content:center;width:100%;">
+                <button class="btn-sm green" style="flex:1;font-size:0.85rem;" onclick="openManualTaskModal()">+ משימה</button>
+                <button class="btn-sm red" style="flex:1;font-size:0.85rem;" onclick="openRecalc('schedule')"><svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg> סידור AI</button>
+                <button class="btn-sm purple" style="flex:1;font-size:0.85rem;" onclick="toggleCalendarViewModal()"><svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> זום ליומן</button>
+              </div>
+            </div>
+            <div id="day-timeline-view" class="timeline-container"></div>
+            <div id="schedule-wrap" class="hidden"><div class="empty-state">אין משימות</div></div>
+          </div>
+          
+          <!-- MONTHLY CALENDAR VIEW (Integrated) -->
+          <div id="schedule-monthly-view" class="schedule-view-transition zoom-out-up">
+            <div class="month-cal-controls" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;padding:0.5rem;background:var(--surface2);border-radius:16px;">
+              <button class="btn-sm" onclick="changeCalMonth(-1)">❮ קודם</button>
+              <div id="cal-month-label" style="font-size:1.2rem;font-weight:900;letter-spacing:-0.5px;cursor:pointer" onclick="toggleCalendarViewModal()" title="חזרה ללוז שבועי">...</div>
+              <button class="btn-sm" onclick="changeCalMonth(1)">הבא ❯</button>
+            </div>
+            <div id="month-cal-wrap"></div>
+            <button class="btn-sm" style="width:100%;margin-top:1rem;" onclick="toggleCalendarViewModal()">חזרה ללו"ז יומי / שבועי</button>
+          </div>
         </div>
       </div>
 
@@ -380,6 +409,15 @@
           <div class="form-grid" style="margin-bottom:0.75rem">
             <div><label class="field-label">שם הקורס</label><input type="text" id="ex-course" placeholder="אנליזה..." /></div>
             <div><label class="field-label">תאריך</label><input type="date" id="ex-date" /></div>
+            <div>
+              <label class="field-label">סוג</label>
+              <select id="ex-type">
+                <option value="מבחן">📝 מבחן</option>
+                <option value="בוחן">📋 בוחן</option>
+                <option value="עבודה">📄 עבודה</option>
+                <option value="הגשה">📤 הגשה</option>
+              </select>
+            </div>
           </div>
           <button class="btn-sm" onclick="addExam()">+ הוסף</button>
         </div>
@@ -485,37 +523,6 @@
         <div class="section-box">
           <div class="section-head"><div class="section-title-sm">ניתוח שבועי</div></div>
           <button class="btn-primary" onclick="openRecalc('weekly')" style="font-size:0.9rem;">התחל ישיבת סיכום שבועית</button>
-        </div>
-      </div>
-
-      <!-- ── CALENDAR PAGE ── -->
-      <div class="page" id="page-calendar">
-        <div class="page-header">
-          <div class="page-title">לוח שנה</div>
-          <div class="page-sub">תצוגת חודש — מבחנים, משימות וחגים</div>
-        </div>
-
-        <!-- Legend -->
-        <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;font-size:0.75rem;font-weight:700">
-          <span style="display:flex;align-items:center;gap:0.3rem"><span style="width:10px;height:10px;border-radius:50%;background:var(--accent);display:inline-block"></span>היום</span>
-          <span style="display:flex;align-items:center;gap:0.3rem"><span style="width:10px;height:10px;border-radius:3px;background:var(--purple-light);border:1px solid var(--purple);display:inline-block"></span>מבחן 📝</span>
-          <span style="display:flex;align-items:center;gap:0.3rem"><span style="width:8px;height:8px;border-radius:50%;background:#2563eb;display:inline-block"></span>חג יהודי</span>
-          <span style="display:flex;align-items:center;gap:0.3rem"><span style="width:8px;height:8px;border-radius:50%;background:#d97706;display:inline-block"></span>לאומי</span>
-          <span style="display:flex;align-items:center;gap:0.3rem"><span style="width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block"></span>מוסלמי</span>
-          <span style="display:flex;align-items:center;gap:0.3rem"><span style="width:8px;height:8px;border-radius:50%;background:#dc2626;display:inline-block"></span>נוצרי</span>
-          <span style="display:flex;align-items:center;gap:0.3rem"><span style="width:10px;height:10px;border-radius:50%;background:var(--green);display:inline-block"></span>משימה</span>
-        </div>
-
-        <div class="section-box">
-          <div class="section-head">
-            <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap">
-              <button class="week-nav-btn" onclick="changeCalMonth(-1)">→ חודש קודם</button>
-              <span class="week-label" id="cal-month-label">—</span>
-              <button class="week-nav-btn" onclick="changeCalMonth(1)">חודש הבא ←</button>
-            </div>
-            <button class="btn-sm" onclick="calMonth=new Date().getMonth();calYear=new Date().getFullYear();renderMonthCalendar()">📍 היום</button>
-          </div>
-          <div id="month-cal-wrap" class="month-cal-wrap"></div>
         </div>
       </div>
 
@@ -796,6 +803,93 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- ══════════════════════════════════════════
+     FOCUS LOCK MODE — Premium distraction blocker
+     ══════════════════════════════════════════ -->
+<div id="focus-lock-overlay" class="focus-lock-overlay hidden">
+  <!-- Animated background particles -->
+  <div class="fl-bg">
+    <div class="fl-orb fl-orb-1"></div>
+    <div class="fl-orb fl-orb-2"></div>
+    <div class="fl-orb fl-orb-3"></div>
+  </div>
+
+  <div class="fl-content">
+    <!-- Top bar -->
+    <div class="fl-top">
+      <div class="fl-mode-badge" id="fl-mode-badge">🔥 מצב פוקוס</div>
+      <div class="fl-task-name" id="fl-task-name">לומד...</div>
+    </div>
+
+    <!-- Main timer orb -->
+    <div class="fl-timer-wrap">
+      <svg class="fl-ring-svg" viewBox="0 0 240 240">
+        <circle class="fl-ring-bg" cx="120" cy="120" r="108"/>
+        <circle class="fl-ring-fill" id="fl-ring-fill" cx="120" cy="120" r="108"/>
+      </svg>
+      <div class="fl-timer-inner">
+        <div class="fl-breathing" id="fl-breathing-icon">🧘</div>
+        <div class="fl-digits" id="fl-digits">90:00</div>
+        <div class="fl-timer-label" id="fl-timer-label">דקות ריכוז</div>
+      </div>
+    </div>
+
+    <!-- Breathing guide -->
+    <div class="fl-breath-guide" id="fl-breath-guide">
+      <div class="fl-breath-dot"></div>
+      <span id="fl-breath-text">שאף... </span>
+    </div>
+
+    <!-- Stats row -->
+    <div class="fl-stats">
+      <div class="fl-stat">
+        <div class="fl-stat-val" id="fl-sessions-done">0</div>
+        <div class="fl-stat-lbl">סשנים היום</div>
+      </div>
+      <div class="fl-stat">
+        <div class="fl-stat-val" id="fl-focus-pct">0%</div>
+        <div class="fl-stat-lbl">התקדמות</div>
+      </div>
+      <div class="fl-stat">
+        <div class="fl-stat-val" id="fl-xp-earned">+0</div>
+        <div class="fl-stat-lbl">XP בסשן</div>
+      </div>
+    </div>
+
+    <!-- Exit challenge -->
+    <div class="fl-exit-section">
+      <button class="fl-exit-trigger" onclick="focusLockShowChallenge()">
+        🔓 יציאה ממצב פוקוס
+      </button>
+    </div>
+  </div>
+
+  <!-- Challenge modal (appears over the lock) -->
+  <div class="fl-challenge" id="fl-challenge">
+    <div class="fl-challenge-card">
+      <div class="fl-challenge-icon">🧮</div>
+      <div class="fl-challenge-title">כדי לצאת — פתור את השאלה:</div>
+      <div class="fl-challenge-q" id="fl-challenge-q">15 + 27 = ?</div>
+      <input type="number" id="fl-challenge-ans" class="fl-challenge-input"
+             placeholder="התשובה שלך" onkeydown="if(event.key==='Enter')focusLockCheckAnswer()" />
+      <div class="fl-challenge-err hidden" id="fl-challenge-err">❌ לא נכון — נסה שוב!</div>
+      <div style="display:flex;gap:0.75rem;justify-content:center;margin-top:1rem">
+        <button class="fl-challenge-submit" onclick="focusLockCheckAnswer()">אשר ✓</button>
+        <button class="fl-challenge-cancel" onclick="focusLockHideChallenge()">ביטול</button>
+      </div>
+      <div class="fl-challenge-motivate">אתה כמעט שם! עוד קצת ריכוז 💪</div>
+    </div>
+  </div>
+</div>
+
+  <div class="action-sheet-backdrop" id="task-action-backdrop" onclick="closeTaskActionSheet()"></div>
+  <div class="action-sheet-modal" id="task-action-sheet">
+    <div class="action-sheet-drag"></div>
+    <div class="action-sheet-title" id="task-action-title">שם המשימה</div>
+    <div class="action-sheet-options" id="task-action-options">
+      <!-- Options injected by JS -->
+    </div>
+  </div>
 
 <script src=https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2></script>
 <script src=app.js></script>

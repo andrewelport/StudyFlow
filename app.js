@@ -1,4 +1,4 @@
-﻿// ── SUPABASE INIT ──
+// ── SUPABASE INIT ──
 const SUPABASE_URL = 'https://cysywoaquuuteyxcxumz.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN5c3l3b2FxdXV1dGV5eGN4dW16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4NzUyMjUsImV4cCI6MjA5MjQ1MTIyNX0.fnZbaYT2782XQpn6Bku5VkK-Xxmc9BwoA9e3bwjIibM';
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -188,7 +188,7 @@ function getCourseColor(course) {
 }
 
 // ── MULTI-FAITH HOLIDAYS ──
-const HOLIDAY_COLORS = { jewish:'#2563eb', national:'#d97706', muslim:'#10b981', christian:'#dc2626' };
+const HOLIDAY_COLORS = { jewish:'#2563eb', national:'#d97706', muslim:'#0891b2', christian:'#dc2626' };
 
 // Each date maps to an array of { name, type }
 const HOLIDAYS = {
@@ -356,23 +356,36 @@ let _syncTimer = null;
 
 // ── INIT & ONBOARDING ──
 window.onload = async () => {
-  await checkAuth();
+  const hasSession = await checkAuth();
 
-  const saved = localStorage.getItem('sf_v11_groq');
+  if (!currentUser) {
+    // Not logged in — show auth screen, clear any stale local data
+    return;
+  }
+
+  // Use user-specific key so each account has its own local cache
+  const userKey = 'sf_v11_' + currentUser.id;
+
+  const saved = localStorage.getItem(userKey);
   if (saved) { try { S = { ...S, ...JSON.parse(saved) }; } catch(e) {} }
 
+  // Always try to load from cloud (cloud is the source of truth)
   const cloudLoaded = await loadFromCloud();
   if (cloudLoaded) {
-    localStorage.setItem('sf_v11_groq', JSON.stringify(S));
+    localStorage.setItem(userKey, JSON.stringify(S));
   }
 
   document.body.setAttribute('data-theme', S.theme || 'light');
   if (S.userName) { initApp(); return; }
-  if (S.userName) document.getElementById('inp-name').value = S.userName;
+  // Show onboarding
+  document.getElementById('setup-screen').style.display = '';
 };
 
 const save = () => {
-  localStorage.setItem('sf_v11_groq', JSON.stringify(S));
+  if (currentUser) {
+    const userKey = 'sf_v11_' + currentUser.id;
+    localStorage.setItem(userKey, JSON.stringify(S));
+  }
   clearTimeout(_syncTimer);
   _syncTimer = setTimeout(syncToCloud, 2500);
 };
@@ -460,9 +473,13 @@ function toggleTheme() {
 
 function confirmReset() {
   if (confirm('האם למחוק את כל הנתונים? לא ניתן לשחזר.')) {
-    localStorage.removeItem('sf_v11_groq');
-    if (currentUser) db.from('user_data').delete().eq('user_id', currentUser.id).then(() => location.reload());
-    else location.reload();
+    if (currentUser) {
+      localStorage.removeItem('sf_v11_' + currentUser.id);
+      db.from('user_data').delete().eq('user_id', currentUser.id).then(() => location.reload());
+    } else {
+      localStorage.removeItem('sf_v11_groq');
+      location.reload();
+    }
   }
 }
 
@@ -588,18 +605,31 @@ function addAnchorRow(){
   const row=document.createElement('div'); row.className='anchor-builder-row'; row.id=rowId;
   row.innerHTML=`
     <div style="display:flex;gap:0.45rem;align-items:center;margin-bottom:0.6rem">
-      <input type="text" placeholder="שם (הרצאה, עבודה, אימון...)" style="flex:1;font-size:0.84rem;padding:0.5rem 0.65rem" />
+      <input type="text" placeholder="שם הפעילות (הרצאה, עבודה, אימון...)" style="flex:1;font-size:0.84rem;padding:0.5rem 0.65rem" required />
       <input type="color" value="#4f6ef7" style="width:38px;height:38px;padding:0.2rem;cursor:pointer;border-radius:8px;flex-shrink:0" title="צבע" />
-      <input type="number" value="0" min="0" max="180" style="width:60px;font-size:0.78rem;padding:0.45rem" title="זמן נסיעה (דק')" placeholder="נסיעה" />
       <button class="btn-del-row" onclick="document.getElementById('${rowId}').remove()">✕</button>
     </div>
     <div style="margin-bottom:0.55rem">
       <div style="font-size:0.7rem;color:var(--muted);font-weight:700;margin-bottom:0.35rem">ימים בשבוע</div>
       <div style="display:flex;gap:0.3rem;flex-wrap:wrap">${[0,1,2,3,4,5,6].map(d=>`<button type="button" class="ob-day-btn" data-day="${d}" onclick="toggleObDay(this,'${rowId}')">${dayShort[d]}</button>`).join('')}</div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.35rem">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.75rem">
       <div><label style="font-size:0.7rem;color:var(--muted);font-weight:700;display:block;margin-bottom:0.25rem">שעת התחלה</label><input type="time" value="09:00" class="ob-def-start" style="font-size:0.82rem;padding:0.45rem" onchange="updateObPerDayRows('${rowId}')" /></div>
       <div><label style="font-size:0.7rem;color:var(--muted);font-weight:700;display:block;margin-bottom:0.25rem">שעת סיום</label><input type="time" value="16:00" class="ob-def-end" style="font-size:0.82rem;padding:0.45rem" onchange="updateObPerDayRows('${rowId}')" /></div>
+    </div>
+    <div style="background:linear-gradient(135deg,#fff7ed,#ffedd5);border:1.5px solid #f97316;border-radius:12px;padding:0.7rem 0.85rem;margin-bottom:0.45rem">
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem">
+        <span style="font-size:1rem">🚗</span>
+        <div>
+          <div style="font-size:0.82rem;font-weight:800;color:#c2410c">זמן נסיעה / הגעה — חובה למלא!</div>
+          <div style="font-size:0.72rem;color:#92400e;margin-top:1px">ה-AI יחסום את הזמן הזה לפני ואחרי הפעילות</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.5rem">
+        <input type="number" value="0" min="0" max="180" class="ob-travel-inp" style="width:72px;font-size:1rem;font-weight:800;padding:0.45rem 0.6rem;border:2px solid #f97316;border-radius:8px;text-align:center;color:#c2410c" />
+        <span style="font-size:0.85rem;font-weight:700;color:#92400e">דקות נסיעה</span>
+        <span style="font-size:0.75rem;color:#b45309;margin-right:auto">(כתוב 0 אם ללא נסיעה)</span>
+      </div>
     </div>
     <div class="ob-per-day-wrap"></div>`;
   document.getElementById('anchor-builder').appendChild(row);
@@ -645,7 +675,7 @@ function collectAnchors(){
     const name = (row.querySelector('input[type="text"]')?.value || '').trim();
     if (!name) return;
     const color = row.querySelector('input[type="color"]')?.value || '#4f6ef7';
-    const travelMin = Math.max(0, Math.min(180, parseInt(row.querySelector('input[type="number"]')?.value || 0)));
+    const travelMin = Math.max(0, Math.min(180, parseInt(row.querySelector('.ob-travel-inp')?.value || 0)));
     const activeDays = Array.from(row.querySelectorAll('.ob-day-btn.active')).map(b => parseInt(b.dataset.day));
     const defaultStart = row.querySelector('.ob-def-start')?.value || '09:00';
     const defaultEnd = row.querySelector('.ob-def-end')?.value || '16:00';
@@ -694,10 +724,16 @@ function finishOnboarding(){ save(); initApp(); }
 function initApp(){
   document.getElementById('setup-screen').style.display='none';
   document.getElementById('app-screen').style.display='block';
-  document.getElementById('sb-name').textContent = S.userName;
-  document.getElementById('sb-avatar').textContent = S.userName[0].toUpperCase();
+  // Avatar: use name initials, fallback to email initial, fallback to '?'
+  const displayName = S.userName || '';
+  const emailInitial = currentUser?.email ? currentUser.email[0].toUpperCase() : '?';
+  const avatarInitial = displayName
+    ? displayName.trim().split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2)
+    : emailInitial;
+  document.getElementById('sb-name').textContent = displayName || currentUser?.email || 'משתמש';
+  document.getElementById('sb-avatar').textContent = avatarInitial;
   const now=new Date(); const days=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת']; const months=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
-  document.getElementById('today-greeting').textContent=`שלום, ${S.userName} 👋`;
+  document.getElementById('today-greeting').textContent=`שלום, ${displayName||emailInitial} 👋`;
   document.getElementById('today-sub').textContent=`יום ${days[now.getDay()]}, ${now.getDate()} ב${months[now.getMonth()]} ${now.getFullYear()}`;
 
   // Auto-open sidebar on desktop (wide screens)
@@ -879,14 +915,96 @@ function renderProgress(){
 
 function addPoints(n){ S.points = (S.points || 0) + n; updateStreak(); save(); renderTreeMini(); }
 function updateStreak(){ const today = ld(new Date()); const yesterday = ld(new Date(Date.now() - 86400000)); if(S.lastStudyDate === today) return; if(S.lastStudyDate === yesterday){ S.streak = (S.streak||0) + 1; } else { S.streak = 1; } S.lastStudyDate = today; }
-function renderTreeMini(){ if(document.getElementById('sc-streak')) document.getElementById('sc-streak').textContent = (S.streak || 0) + '🔥'; }
+function renderTreeMini(){ if(document.getElementById('sc-streak')) document.getElementById('sc-streak').textContent = (S.streak || 0); }
 
 // ── POMODORO ──
 let pomoInterval=null, pomoSeconds=90*60, pomoRunning=false, pomoMode='work'; const POMO_WORK=90*60, POMO_BREAK=20*60;
 function renderPomoTaskSelect() { const select = document.getElementById('pomo-task-select'); if(!select) return; const today = ld(new Date()); const pendingTasks = S.tasks.filter(t => t.date === today && !t.done && !t.missed); select.innerHTML = '<option value="">-- בחר משימה (רשות) --</option>' + pendingTasks.map(t => `<option value="${t.id}">${t.time} | ${t.name}</option>`).join(''); }
-function pomoStart(){ if(pomoRunning)return; pomoRunning=true; document.getElementById('pomo-start-btn').classList.add('hidden'); document.getElementById('pomo-pause-btn').classList.remove('hidden'); pomoInterval=setInterval(()=>{ pomoSeconds--; if(pomoSeconds<=0){ clearInterval(pomoInterval); pomoRunning=false; if(pomoMode==='work'){ const taskId = document.getElementById('pomo-task-select').value; if(taskId) { const pt = S.tasks.find(x => String(x.id) === String(taskId)); if(pt){ pt.done=true; pt.missed=false; addPoints(10); save(); renderAll(); } else { addPoints(10); save(); } toast('🍅 פגישת פוקוס הושלמה! משימה סומנה כבוצעת ✓'); renderPomoTaskSelect(); } else { toast('🎉 הזמן נגמר! קח הפסקה'); } pomoMode='break'; pomoSeconds=POMO_BREAK; } else { pomoMode='work'; pomoSeconds=POMO_WORK; toast('⚡ ההפסקה נגמרה! חזרה לריכוז'); } document.getElementById('pomo-start-btn').classList.remove('hidden'); document.getElementById('pomo-pause-btn').classList.add('hidden'); } const total = pomoMode==='work'?POMO_WORK:POMO_BREAK; const pct = ((total-pomoSeconds)/total*100).toFixed(1); const m = String(Math.floor(pomoSeconds/60)).padStart(2,'0'); const s = String(pomoSeconds%60).padStart(2,'0'); document.getElementById('pomo-display').textContent=`${m}:${s}`; document.getElementById('pomo-prog').style.width=pct+'%'; },1000); }
-function pomoPause(){clearInterval(pomoInterval);pomoRunning=false;document.getElementById('pomo-start-btn').classList.remove('hidden');document.getElementById('pomo-pause-btn').classList.add('hidden');}
-function pomoReset(){pomoPause();pomoMode='work';pomoSeconds=POMO_WORK;document.getElementById('pomo-display').textContent='90:00';document.getElementById('pomo-prog').style.width='0%';}
+function pomoStart(){
+  if(pomoRunning) return;
+  pomoRunning = true;
+  document.getElementById('pomo-start-btn')?.classList.add('hidden');
+  document.getElementById('pomo-pause-btn')?.classList.remove('hidden');
+
+  // Get task name for Focus Lock
+  const taskSel = document.getElementById('pomo-task-select');
+  const taskId = taskSel ? taskSel.value : null;
+  const pt = taskId ? S.tasks.find(x => String(x.id) === String(taskId)) : null;
+  const taskName = pt ? pt.name : (pomoMode === 'break' ? '☕ הפסקה' : 'מפגש ריכוז');
+  const totalSecs = pomoMode === 'work' ? POMO_WORK : POMO_BREAK;
+  const elapsed = totalSecs - pomoSeconds;
+
+  // Open Focus Lock overlay
+  focusLockOpen(taskName, totalSecs, elapsed, pomoMode === 'work' ? 'work' : 'break');
+  FL.xpEarned = 0;
+
+  pomoInterval = setInterval(() => {
+    pomoSeconds--;
+    const total = pomoMode === 'work' ? POMO_WORK : POMO_BREAK;
+    const elapsed2 = total - pomoSeconds;
+    const m = String(Math.floor(pomoSeconds / 60)).padStart(2, '0');
+    const s = String(pomoSeconds % 60).padStart(2, '0');
+    const timeStr = `${m}:${s}`;
+
+    // Update pomo display (background)
+    const displayEl = document.getElementById('pomo-display');
+    if (displayEl) displayEl.textContent = timeStr;
+    const progEl = document.getElementById('pomo-prog');
+    if (progEl) progEl.style.width = ((elapsed2 / total) * 100).toFixed(1) + '%';
+
+    // Update Focus Lock overlay
+    if (FL.active) {
+      focusLockUpdateTimer(timeStr, total, elapsed2);
+      FL.xpEarned = Math.floor(elapsed2 / 60); // 1 XP per minute
+    }
+
+    if (pomoSeconds <= 0) {
+      clearInterval(pomoInterval);
+      pomoRunning = false;
+
+      if (pomoMode === 'work') {
+        FL.sessionsDone++;
+        addPoints(20);
+        save();
+
+        if (pt) {
+          const found = S.tasks.find(x => String(x.id) === String(taskId));
+          if (found) { found.done = true; found.missed = false; save(); renderAll(); }
+        }
+
+        // Transition to break in Focus Lock
+        pomoMode = 'break';
+        pomoSeconds = POMO_BREAK;
+        focusLockOpen('☕ הפסקה מגיעה לך!', POMO_BREAK, 0, 'break');
+        toast('🍅 פוקוס הושלם! +20 נקודות 🎉 קח הפסקה');
+        renderPomoTaskSelect();
+      } else {
+        pomoMode = 'work';
+        pomoSeconds = POMO_WORK;
+        focusLockClose();
+        toast('⚡ ההפסקה נגמרה! חזרה לריכוז');
+      }
+      document.getElementById('pomo-start-btn').classList.remove('hidden');
+      document.getElementById('pomo-pause-btn').classList.add('hidden');
+    }
+  }, 1000);
+}
+function pomoPause(){
+  clearInterval(pomoInterval);
+  pomoRunning = false;
+  document.getElementById('pomo-start-btn')?.classList.remove('hidden');
+  document.getElementById('pomo-pause-btn')?.classList.add('hidden');
+}
+function pomoReset(){
+  pomoPause();
+  focusLockClose();
+  pomoMode='work';
+  pomoSeconds=POMO_WORK;
+  const displayEl = document.getElementById('pomo-display');
+  if (displayEl) displayEl.textContent='90:00';
+  const progEl = document.getElementById('pomo-prog');
+  if (progEl) progEl.style.width='0%';
+}
 
 // ── THE SMART WAZE ALGORITHM ──
 function getAvailableSlots(startDateStr, examDateStr, currentPriority){
@@ -1393,9 +1511,9 @@ function renderSemesterPlanTable(tasks, courses) {
         </div>
         <div style="flex:1;padding:0.45rem 0.75rem;display:flex;flex-direction:column;justify-content:center;">
           <div style="display:flex;gap:0.3rem;align-items:center;margin-bottom:0.1rem;flex-wrap:wrap;">
-            <span style="font-size:0.6rem;font-weight:700;padding:0.1rem 0.4rem;border-radius:99px;background:${isCrunch?'var(--red-light)':'var(--accent-light)'};color:${isCrunch?'var(--red)':'var(--accent)'}">${isCrunch?'🔥':'📚'}</span>
+            <span style="font-size:0.65rem;font-weight:800;padding:0.15rem 0.5rem;border-radius:99px;background:${isCrunch?'var(--red-light)':'var(--accent-light)'};color:${isCrunch?'var(--red)':'var(--accent)'}">${isCrunch?'קראנץ׳':'רגיל'}</span>
             <span style="font-size:0.6rem;color:var(--muted);font-family:var(--mono)">${fmtDate(t.date)}</span>
-            ${hol?`<span style="font-size:0.58rem;color:var(--yellow);font-weight:700">⚠️ ${hol}</span>`:''}
+            ${hol?`<span style="font-size:0.58rem;color:var(--yellow);font-weight:700;border:1px solid var(--yellow);padding:0 4px;border-radius:4px;">חג: ${hol}</span>`:''}
           </div>
           <div style="font-size:0.84rem;font-weight:700;color:var(--text)">${t.name}</div>
         </div>
@@ -1407,7 +1525,7 @@ function renderSemesterPlanTable(tasks, courses) {
         <div style="width:12px;height:12px;border-radius:50%;background:${cColor};flex-shrink:0;"></div>
         <div style="font-size:0.95rem;font-weight:900;color:var(--text);flex:1">${courseName}</div>
         <span style="font-size:0.72rem;background:var(--accent-light);color:var(--accent);padding:0.2rem 0.6rem;border-radius:99px;font-weight:700">${cTasks.length} משימות</span>
-        ${crunchCount?`<span style="font-size:0.72rem;background:var(--red-light);color:var(--red);padding:0.2rem 0.6rem;border-radius:99px;font-weight:700">🔥 ${crunchCount} קראנץ׳</span>`:''}
+        ${crunchCount?`<span style="font-size:0.72rem;background:var(--red-light);color:var(--red);padding:0.2rem 0.6rem;border-radius:99px;font-weight:700">קראנץ׳ ${crunchCount}</span>`:''}
       </div>
       <div style="padding:0.75rem;">${cards}</div>
     </div>`;
@@ -1415,10 +1533,10 @@ function renderSemesterPlanTable(tasks, courses) {
 
   const totalHours = (tasks.length * 1.5).toFixed(0);
   const summaryHtml = `<div style="display:flex;gap:0.55rem;margin-bottom:1.25rem;flex-wrap:wrap;">
-    <div style="background:var(--green-light);border:1px solid rgba(22,201,141,0.3);border-radius:10px;padding:0.45rem 0.85rem;font-size:0.78rem;font-weight:700;color:var(--green)">✅ ${tasks.length} משימות</div>
-    <div style="background:var(--accent-light);border:1px solid var(--border2);border-radius:10px;padding:0.45rem 0.85rem;font-size:0.78rem;font-weight:700;color:var(--accent)">⏱️ ~${totalHours}ש׳</div>
-    <div style="background:var(--purple-light);border:1px solid rgba(139,92,246,0.3);border-radius:10px;padding:0.45rem 0.85rem;font-size:0.78rem;font-weight:700;color:var(--purple)">📚 ${Object.keys(byCourse).length} קורסים</div>
-    <div style="background:var(--red-light);border:1px solid rgba(247,96,96,0.25);border-radius:10px;padding:0.45rem 0.85rem;font-size:0.78rem;font-weight:700;color:var(--red)">🔥 ${tasks.filter(t=>t.priority==='גבוה'||crunchKW.some(k=>t.name.includes(k))).length} קראנץ׳</div>
+    <div style="background:var(--green-light);border:1px solid rgba(22,201,141,0.3);border-radius:10px;padding:0.45rem 0.85rem;font-size:0.78rem;font-weight:700;color:var(--green)">משימות: ${tasks.length}</div>
+    <div style="background:var(--accent-light);border:1px solid var(--border2);border-radius:10px;padding:0.45rem 0.85rem;font-size:0.78rem;font-weight:700;color:var(--accent)">שעות: ~${totalHours}</div>
+    <div style="background:var(--purple-light);border:1px solid rgba(139,92,246,0.3);border-radius:10px;padding:0.45rem 0.85rem;font-size:0.78rem;font-weight:700;color:var(--purple)">קורסים: ${Object.keys(byCourse).length}</div>
+    <div style="background:var(--red-light);border:1px solid rgba(247,96,96,0.25);border-radius:10px;padding:0.45rem 0.85rem;font-size:0.78rem;font-weight:700;color:var(--red)">קראנץ׳: ${tasks.filter(t=>t.priority==='גבוה'||crunchKW.some(k=>t.name.includes(k))).length}</div>
   </div>`;
 
   document.getElementById('semester-table-wrap').innerHTML = summaryHtml + courseHtml;
@@ -1467,22 +1585,11 @@ function renderSchedule() {
   const sow = new Date(now); sow.setDate(now.getDate() - now.getDay() + S.weekOffset * 7);
   const eow = new Date(sow); eow.setDate(sow.getDate() + 6);
   const monthNames = ['ינו','פבר','מרץ','אפר','מאי','יוני','יולי','אוג','ספט','אוק','נוב','דצמ'];
-  document.getElementById('week-label').textContent = `${sow.getDate()} ${monthNames[sow.getMonth()]} — ${eow.getDate()} ${monthNames[eow.getMonth()]}`;
+  const weekLabelEl = document.getElementById('week-label');
+  if (weekLabelEl) weekLabelEl.textContent = `${sow.getDate()} ${monthNames[sow.getMonth()]} — ${eow.getDate()} ${monthNames[eow.getMonth()]}`;
 
-  document.getElementById('calendar-view-wrap').classList.add('hidden');
-
-  if (schedViewMode === 'grid') {
-    document.getElementById('day-timeline-view').classList.add('hidden');
-    document.getElementById('schedule-wrap').classList.add('hidden');
-    document.getElementById('calendar-view-wrap').classList.remove('hidden');
-    renderCalendarView(); return;
-  }
-  if (schedViewMode === 'list') {
-    document.getElementById('day-timeline-view').classList.add('hidden');
-    document.getElementById('schedule-wrap').classList.remove('hidden');
-    _renderScheduleList(sow, eow, monthNames); return;
-  }
-  // DEFAULT: timeline
+  schedViewMode = 'timeline'; // Force timeline view
+  
   document.getElementById('schedule-wrap').classList.add('hidden');
   document.getElementById('day-timeline-view').classList.remove('hidden');
   _renderScheduleTimeline(sow, eow);
@@ -1512,13 +1619,13 @@ function _renderScheduleList(sow, eow, months) {
     const holBadge = holList.length ? ` · <span class="sch-hol-badge" style="color:${HOLIDAY_COLORS[holList[0].type]||'#888'}">${holList[0].name}</span>` : '';
     html += `<div class="sch-day-group"><div class="sch-day-hdr ${isToday?'is-today':''}"><div class="sch-day-name">${isToday?'<span class="sch-today-pill">היום</span>':''}יום ${dayNames[d.getDay()]}</div><div class="sch-day-date">${d.getDate()} ${months[d.getMonth()]}${holBadge}</div></div><div class="sch-day-items">`;
     byDate[date].forEach(t => {
-      if (t._exam) { html += `<div class="tl-slot" style="background:var(--purple-light);border-color:rgba(124,58,237,0.15)"><div class="tl-bar" style="background:var(--purple)"></div><div class="tl-time"><div class="tl-time-h" style="font-size:1rem">📝</div></div><div class="tl-body"><div class="tl-meta"><span class="tl-course-tag" style="background:var(--purple-light);color:var(--purple)">מבחן</span></div><div class="tl-title" style="color:var(--purple);font-weight:900">${t.course}</div></div></div>`; return; }
+      if (t._exam) { html += `<div class="tl-slot" style="background:var(--purple-light);border-color:rgba(124,58,237,0.15)"><div class="tl-bar" style="background:var(--purple)"></div><div class="tl-time"><div class="tl-time-h" style="font-size:1rem"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8l-6-6z"></path></svg></div></div><div class="tl-body"><div class="tl-meta"><span class="tl-course-tag" style="background:var(--purple-light);color:var(--purple)">מבחן</span></div><div class="tl-title" style="color:var(--purple);font-weight:900">${t.course}</div></div></div>`; return; }
       if (t._isAnchor) { const c = t.color||'#94a3b8'; const [th,tm] = (t.time||'00:00').split(':'); html += `<div class="tl-slot anchor-slot"><div class="tl-bar" style="background:${c}"></div><div class="tl-time"><div class="tl-time-h">${th}</div><div class="tl-time-m">${tm}</div></div><div class="tl-body"><div class="tl-meta"><span class="tl-course-tag" style="background:${c}25;color:${c}">עוגן</span></div><div class="tl-title">${t.name}</div></div></div>`; return; }
       const cColor = getCourseColor(t.course); const sc = t.done?'done':t.missed?'missed':'';
       const [th,tm] = (t.time||'00:00').split(':');
-      const statusHtml = t.done?`<span class="tl-status" style="background:var(--green-light);color:var(--green)">✓</span>`:t.missed?`<span class="tl-status" style="background:var(--red-light);color:var(--red)">✗</span>`:`<span class="tl-status" style="background:var(--yellow-light);color:var(--yellow)">⏳</span>`;
-      const actionHtml = t.done?`<button class="tl-btn tl-btn-undo" onclick="undoTask('${t.id}')">↩</button>`:t.missed?`<button class="tl-btn tl-btn-done" onclick="doneTask('${t.id}')">✓</button>`:`<button class="tl-btn tl-btn-done" onclick="doneTask('${t.id}')">✓</button><button class="tl-btn tl-btn-miss" onclick="missTask('${t.id}')">✗</button>`;
-      html += `<div class="tl-slot ${sc}"><div class="tl-bar" style="background:${cColor}"></div><div class="tl-time"><div class="tl-time-h">${th}</div><div class="tl-time-m">${tm}</div></div><div class="tl-body"><div class="tl-meta">${t.course?`<span class="tl-course-tag" style="background:${cColor}20;color:${cColor}">${t.course}</span>`:''}<span class="tl-dur">${t.duration||''}</span>${statusHtml}</div><div class="tl-title${t.done?' tl-done':''}">${t.name}</div>${t.notes?`<div class="tl-notes">${t.notes}</div>`:''}</div><div class="tl-actions">${actionHtml}<button class="tl-btn tl-btn-edit" onclick="openManualTaskModal('${t.id}')">✏️</button><button class="tl-btn tl-btn-del" onclick="deleteTask('${t.id}')">🗑</button></div></div>`;
+      const statusHtml = t.done?`<span class="tl-status" style="background:var(--green-light);color:var(--green)">הושלם</span>`:t.missed?`<span class="tl-status" style="background:var(--red-light);color:var(--red)">פוספס</span>`:`<span class="tl-status" style="background:var(--yellow-light);color:var(--yellow)">ממתין</span>`;
+      const actionHtml = `<button class="tl-btn" style="background:transparent;border:none;box-shadow:none;color:var(--muted)" onclick="openTaskActionSheet('${t.id}')"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>`;
+      html += `<div class="tl-slot ${sc}"><div class="tl-bar" style="background:${cColor}"></div><div class="tl-time"><div class="tl-time-h">${th}</div><div class="tl-time-m">${tm}</div></div><div class="tl-body"><div class="tl-meta">${t.course?`<span class="tl-course-tag" style="background:${cColor}20;color:${cColor}">${t.course}</span>`:''}<span class="tl-dur">${t.duration||''}</span>${statusHtml}</div><div class="tl-title${t.done?' tl-done':''}">${t.name}</div>${t.notes?`<div class="tl-notes">${t.notes}</div>`:''}</div><div class="tl-actions">${actionHtml}</div></div>`;
     });
     html += `</div></div>`;
   });
@@ -1542,17 +1649,20 @@ function _renderScheduleTimeline(sow, eow) {
     const hasTask = S.tasks.some(t => t.date === ds) || (S.anchors||[]).some(a => parseInt(a.day) === d.getDay());
     const hasExam = S.exams.some(ex => ex.date === ds);
     const dotClass = hasExam ? 'exam' : hasTask ? '' : 'empty';
-    stripHtml += `<button class="day-chip ${isToday?'is-today':''} ${schedViewDay===ds?'selected':''}" onclick="selectScheduleDay('${ds}')" data-day="${ds}"><div class="day-chip-name">${dayAbbr[d.getDay()]}</div><div class="day-chip-num">${d.getDate()}</div><div class="day-chip-dot ${dotClass}"></div></button>`;
+    stripHtml += `<div class="date-slide-item ${isToday?'is-today':''} ${schedViewDay===ds?'active':''}" onclick="selectScheduleDay('${ds}')" data-day="${ds}"><div class="date-slide-day">${dayAbbr[d.getDay()]}</div><div class="date-slide-date">${d.getDate()}</div><div class="day-chip-dot ${dotClass}" style="margin-top:2px;"></div></div>`;
   }
+  const slider = document.getElementById('date-slider');
+  if (slider) slider.innerHTML = stripHtml;
+  
   const wrap = document.getElementById('day-timeline-view');
-  wrap.innerHTML = `<div class="day-strip" id="day-strip">${stripHtml}</div><div id="tl-day-content"></div>`;
+  wrap.innerHTML = `<div id="tl-day-content"></div>`;
   renderDayTimeline(schedViewDay);
   _initDaySwipe();
 }
 
 function selectScheduleDay(ds) {
   schedViewDay = ds;
-  document.querySelectorAll('.day-chip').forEach(el => el.classList.toggle('selected', el.dataset.day === ds));
+  document.querySelectorAll('.date-slide-item').forEach(el => el.classList.toggle('active', el.dataset.day === ds));
   renderDayTimeline(ds);
 }
 
@@ -1615,24 +1725,25 @@ function renderDayTimeline(dateStr) {
 
   let eventsHtml = '';
   const GUTTER = 3;
-  events.forEach(ev => {
+  events.forEach((ev, idx) => {
     const top = Math.max(0, (ev.startMins - TL_START_H*60) * TL_PX_MIN);
     const height = Math.max(28, ev.durMins * TL_PX_MIN - 2);
     const colW = 100 / ev._totalCols;
     const rightPct = ev._col * colW;
     const bgStyle = ev.color.startsWith('var') ? `background:var(--purple-light)` : `background:${ev.color}18`;
+    const animDelay = `animation-delay: ${idx * 0.08}s;`;
 
     if (ev._type === 'anchor') {
-      eventsHtml += `<div class="tl-ev anchor-ev" style="top:${top}px;height:${height}px;right:${rightPct}%;width:calc(${colW}% - ${GUTTER}px);${bgStyle};border-color:${ev.color};"><div class="tl-ev-bar" style="background:${ev.color}"></div><div class="tl-ev-body"><div class="tl-ev-name" style="color:${ev.color}">⚓ ${ev.name}</div><div class="tl-ev-time">${ev.time} – ${ev._end}</div></div></div>`;
+      eventsHtml += `<div class="tl-ev anchor-ev" style="top:${top}px;height:${height}px;right:${rightPct}%;width:calc(${colW}% - ${GUTTER}px);${bgStyle};border-color:${ev.color};${animDelay}"><div class="tl-ev-bar" style="background:${ev.color}"></div><div class="tl-ev-body"><div class="tl-ev-name" style="color:${ev.color}"><svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2" fill="none" style="margin-left:4px;vertical-align:middle"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>${ev.name}</div><div class="tl-ev-time">${ev.time} – ${ev._end}</div></div></div>`;
       return;
     }
     if (ev._type === 'exam') {
-      eventsHtml += `<div class="tl-ev anchor-ev" style="top:${top}px;height:${height}px;right:${rightPct}%;width:calc(${colW}% - ${GUTTER}px);background:var(--purple-light);border-color:var(--purple);"><div class="tl-ev-bar" style="background:var(--purple)"></div><div class="tl-ev-body"><div class="tl-ev-name" style="color:var(--purple);font-weight:900">📝 ${ev.name}</div><div class="tl-ev-course" style="color:var(--purple)">מבחן</div></div></div>`;
+      eventsHtml += `<div class="tl-ev anchor-ev" style="top:${top}px;height:${height}px;right:${rightPct}%;width:calc(${colW}% - ${GUTTER}px);background:var(--purple-light);border-color:var(--purple);${animDelay}"><div class="tl-ev-bar" style="background:var(--purple)"></div><div class="tl-ev-body"><div class="tl-ev-name" style="color:var(--purple);font-weight:900"><svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2" fill="none" style="margin-left:4px;vertical-align:middle"><path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8l-6-6z"></path><path d="M14 3v5h5M16 13H8M16 17H8M10 9H8"></path></svg>${ev.name}</div><div class="tl-ev-course" style="color:var(--purple)">מבחן</div></div></div>`;
       return;
     }
     const statusClass = ev.done?'ev-done':ev.missed?'ev-missed':'';
     const checkIcon = `<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>`;
-    eventsHtml += `<div class="tl-ev ${statusClass}" style="top:${top}px;height:${height}px;right:${rightPct}%;width:calc(${colW}% - ${GUTTER}px);background:${ev.color}18;border-color:${ev.color};" onclick="openTaskQuickActions('${ev.id}')"><div class="tl-ev-bar" style="background:${ev.color}"></div><div class="tl-ev-body"><div class="tl-ev-name ${ev.done?'tl-ev-done-text':''}">${ev.name}</div>${ev.course?`<div class="tl-ev-course" style="color:${ev.color}">${ev.course}</div>`:''}</div>${!ev.done&&!ev.missed?`<button class="tl-ev-check" onclick="event.stopPropagation();quickMarkDone('${ev.id}')">${checkIcon}</button>`:''}</div>`;
+    eventsHtml += `<div class="tl-ev ${statusClass}" style="top:${top}px;height:${height}px;right:${rightPct}%;width:calc(${colW}% - ${GUTTER}px);background:${ev.color}18;border-color:${ev.color};${animDelay}" onclick="openTaskQuickActions('${ev.id}')"><div class="tl-ev-bar" style="background:${ev.color}"></div><div class="tl-ev-body"><div class="tl-ev-name ${ev.done?'tl-ev-done-text':''}">${ev.name}</div>${ev.course?`<div class="tl-ev-course" style="color:${ev.color}">${ev.course}</div>`:''}</div>${!ev.done&&!ev.missed?`<button class="tl-ev-check" onclick="event.stopPropagation();quickMarkDone('${ev.id}')">${checkIcon}</button>`:''}</div>`;
   });
 
   const uid_tl = `tl-${dateStr}`;
@@ -1656,22 +1767,11 @@ function quickMarkDone(taskId) {
 }
 
 function openTaskQuickActions(taskId) {
-  const t = S.tasks.find(x => String(x.id) === String(taskId));
-  if (!t) return;
-  closeTaskActionSheet();
-  const color = getCourseColor(t.course);
-  const sheet = document.createElement('div');
-  sheet.id = 'task-action-sheet';
-  sheet.innerHTML = `<div class="tas-backdrop" onclick="closeTaskActionSheet()"></div><div class="tas-panel"><div class="tas-handle"></div><div class="tas-header"><div class="tas-ev-bar" style="background:${color}"></div><div class="tas-info"><div class="tas-name">${t.name}</div><div class="tas-meta">${t.course?`<span class="tas-meta-chip" style="color:${color}">${t.course}</span>`:''} ${t.time?`<span class="tas-meta-chip">${t.time}</span>`:''} ${t.duration?`<span class="tas-meta-chip">${t.duration}</span>`:''}</div></div></div><div class="tas-actions">${!t.done&&!t.missed?`<button class="tas-btn tas-done" onclick="closeTaskActionSheet();doneTask('${t.id}')"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>הושלם</button><button class="tas-btn tas-miss" onclick="closeTaskActionSheet();missTask('${t.id}')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>פוספס</button>`:`<button class="tas-btn tas-undo" onclick="closeTaskActionSheet();undoTask('${t.id}')"><svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>בטל</button>`}<button class="tas-btn tas-study" onclick="closeTaskActionSheet();startTutor('${t.id}')"><svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>למד</button><button class="tas-btn tas-edit" onclick="closeTaskActionSheet();openManualTaskModal('${t.id}')"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>ערוך</button><button class="tas-btn tas-delete" onclick="closeTaskActionSheet();deleteTask('${t.id}')"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>מחק</button></div></div>`;
-  document.body.appendChild(sheet);
-  requestAnimationFrame(() => sheet.classList.add('open'));
+  openTaskActionSheet(taskId);
 }
 
-function closeTaskActionSheet() {
-  const el = document.getElementById('task-action-sheet');
-  if (!el) return;
-  el.classList.remove('open');
-  setTimeout(() => el.remove(), 300);
+function closeTaskActionSheetOld() {
+  // kept for reference to not break line numbers
 }
 
 function _initDaySwipe() {
@@ -1721,15 +1821,16 @@ function renderTodayTasks(){
   const priBg={גבוה:'var(--red-light)',בינוני:'var(--yellow-light)',שוטף:'var(--green-light)'};
   const priIcon={גבוה:'🔴',בינוני:'🟡',שוטף:'🟢'};
 
-  wrap.innerHTML = `<div class="today-timeline">${items.map(t => {
+  wrap.innerHTML = `<div class="today-timeline">${items.map((t, idx) => {
     const [th, tm] = (t.time||'00:00').split(':');
+    const animDelay = `animation-delay: ${idx * 0.08}s;`;
 
     if (t._isAnchor) {
-      return `<div class="tl-slot anchor-slot">
+      return `<div class="tl-slot anchor-slot" style="${animDelay}">
         <div class="tl-bar" style="background:${t.color}"></div>
         <div class="tl-time"><div class="tl-time-h">${th}</div><div class="tl-time-m">${tm}</div></div>
         <div class="tl-body">
-          <div class="tl-meta"><span style="font-size:0.8rem">🔒</span><span style="font-size:0.8rem;font-weight:800;color:var(--muted)">${t.name}</span></div>
+          <div class="tl-meta"><svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2" fill="none" style="margin-left:4px;vertical-align:middle"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><span style="font-size:0.8rem;font-weight:800;color:var(--muted)">${t.name}</span></div>
           <div class="tl-notes">${t.time} – ${t._end}${t.travelMin>0?` · נסיעה ${t.travelMin} דק'`:''} · עוגן קבוע — חסום ל-AI</div>
         </div>
       </div>`;
@@ -1738,23 +1839,18 @@ function renderTodayTasks(){
     const sc = t.done ? 'done' : t.missed ? 'missed' : '';
     const cColor = getCourseColor(t.course);
     const statusHtml = t.done
-      ? `<span class="tl-status" style="background:var(--green-light);color:var(--green)">✓ בוצע</span>`
+      ? `<span class="tl-status" style="background:var(--green-light);color:var(--green)">✓</span>`
       : t.missed
-      ? `<span class="tl-status" style="background:var(--red-light);color:var(--red)">✗ פוספס</span>`
-      : `<span class="tl-status" style="background:var(--accent-light);color:var(--accent)">⏳ ממתין</span>`;
-    const actionHtml = t.done
-      ? `<button class="tl-btn tl-btn-undo" onclick="undoTask('${t.id}')">↩ בטל</button>`
-      : t.missed
-      ? `<span style="font-size:0.67rem;color:var(--muted);max-width:72px;word-break:break-word;display:block;text-align:center">${t.missedReason||'פוספס'}</span>`
-      : `<button class="tl-btn tl-btn-done" onclick="doneTask('${t.id}')">✓ סיים</button><button class="tl-btn tl-btn-miss" onclick="missTask('${t.id}')">✗</button>`;
+      ? `<span class="tl-status" style="background:var(--red-light);color:var(--red)">✗</span>`
+      : `<span class="tl-status" style="background:var(--accent-light);color:var(--accent)">⏳</span>`;
 
-    return `<div class="tl-slot ${sc}">
+    return `<div class="tl-slot ${sc}" style="${animDelay}">
       <div class="tl-bar" style="background:${cColor}"></div>
       <div class="tl-time"><div class="tl-time-h">${th}</div><div class="tl-time-m">${tm}</div></div>
       <div class="tl-body">
         <div class="tl-meta">
           ${t.course?`<span class="tl-course-tag" style="background:${cColor}22;color:${cColor}">${t.course}</span>`:''}
-          ${t.priority?`<span class="tl-pri" style="background:${priBg[t.priority]||'var(--yellow-light)'};color:${priColor[t.priority]||'var(--yellow)'}">${priIcon[t.priority]||''} ${t.priority}</span>`:''}
+          ${t.priority?`<span class="tl-pri" style="background:${priBg[t.priority]||'var(--yellow-light)'};color:${priColor[t.priority]||'var(--yellow)'}">${t.priority}</span>`:''}
           <span class="tl-dur">${t.duration||''}</span>
           ${statusHtml}
         </div>
@@ -1762,10 +1858,10 @@ function renderTodayTasks(){
         ${t.notes?`<div class="tl-notes">📝 ${t.notes}</div>`:''}
       </div>
       <div class="tl-actions">
-        ${actionHtml}
-        ${!t.done&&!t.missed?`<button class="tl-btn tl-btn-study" onclick="startTutor('${t.id}')" title="תרגול סוקרטי">🧠</button>`:''}
-        <button class="tl-btn tl-btn-edit" onclick="openManualTaskModal('${t.id}')" title="ערוך">✏️</button>
-        <button class="tl-btn tl-btn-del" onclick="deleteTask('${t.id}')" title="מחק">🗑</button>
+        ${!t.done && !t.missed ? `<button class="tl-btn tl-btn-done" onclick="doneTask('${t.id}')" title="סיים משימה">✓</button>` : ''}
+        <button class="tl-btn" style="background:transparent;border:none;box-shadow:none;color:var(--muted)" onclick="openTaskActionSheet('${t.id}')">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
+        </button>
       </div>
     </div>`;
   }).join('')}</div>`;
@@ -1773,7 +1869,7 @@ function renderTodayTasks(){
   renderPomoTaskSelect();
 }
 
-function renderAnchorsList(){ const wrap = document.getElementById('anchors-list-wrap'); if(!Array.isArray(S.anchors) || !S.anchors.length){ wrap.innerHTML = '<div class="empty-state">אין עוגנים מוגדרים</div>'; return; } const dn=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת']; wrap.innerHTML = S.anchors.map(a => `<div class="anchor-card"><div class="anchor-dot" style="background:${a.color||'#4f6ef7'}"></div><div style="flex:1"><div class="anchor-name-d">${a.name}</div><div class="anchor-time-d">יום ${dn[a.day||0]} · ${a.start||'00:00'} – ${a.end||'00:00'} ${a.travelMin > 0 ? `(נסיעה: ${a.travelMin} דק')` : ''}</div></div><button class="btn-sm" onclick="editAnchor('${a.id}')" title="ערוך עוגן" style="margin-left:0.35rem">✏️</button><button class="btn-sm red" onclick="removeAnchor('${a.id}')">🗑️</button></div>`).join(''); }
+function renderAnchorsList(){ const wrap = document.getElementById('anchors-list-wrap'); if(!Array.isArray(S.anchors) || !S.anchors.length){ wrap.innerHTML = '<div class="empty-state">אין עוגנים מוגדרים</div>'; return; } const dn=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת']; wrap.innerHTML = S.anchors.map(a => `<div class="anchor-card"><div class="anchor-dot" style="background:${a.color||'#4f6ef7'}"></div><div style="flex:1"><div class="anchor-name-d">${a.name}</div><div class="anchor-time-d">יום ${dn[a.day||0]} · ${a.start||'00:00'} – ${a.end||'00:00'} ${a.travelMin > 0 ? `(נסיעה: ${a.travelMin} דק')` : ''}</div></div><button class="btn-sm" onclick="editAnchor('${a.id}')" title="ערוך עוגן" style="margin-left:0.35rem"><svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg></button><button class="btn-sm red" onclick="removeAnchor('${a.id}')"><svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button></div>`).join(''); }
 
 // ── MONTHLY CALENDAR ──
 function changeCalMonth(dir) {
@@ -1813,7 +1909,7 @@ function renderMonthCalendar() {
     const numClass = isToday ? 'today-circle' : isPast ? 'past-num' : '';
     let inner = `<div class="month-cal-day-num${numClass ? ' ' + numClass : ''}">${d}</div>`;
     holidayItems.forEach(hol => { const c=HOLIDAY_COLORS[hol.type]||'#888'; inner+=`<div class="month-cal-holiday" style="color:${c}"><span class="hol-dot" style="background:${c}"></span>${hol.name}</div>`; });
-    dayExams.forEach(ex => { inner += `<div class="month-cal-exam-chip" title="${ex.course}">📝 ${ex.course}</div>`; });
+    dayExams.forEach(ex => { inner += `<div class="month-cal-exam-chip" title="${ex.course}"><svg viewBox="0 0 24 24" width="10" height="10" stroke="currentColor" stroke-width="2" fill="none" style="margin-left:2px"><path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8l-6-6z"></path></svg> ${ex.course}</div>`; });
     const chips = dayTasks.slice(0, 2);
     const dots = dayTasks.slice(2);
     chips.forEach(t => {
@@ -1994,14 +2090,14 @@ function renderCalendarView() {
       }
       dayAnchors.forEach(a => {
         const c = a.color || 'var(--accent)';
-        cell += `<div class="cal-task-item" style="border-color:${c};background:${c}1a;color:${c}"><div class="cal-task-name">⚓ ${a.name}</div></div>`;
+        cell += `<div class="cal-task-item" style="border-color:${c};background:${c}1a;color:${c}"><div class="cal-task-name"><svg viewBox="0 0 24 24" width="10" height="10" stroke="currentColor" stroke-width="2" fill="none" style="margin-left:2px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> ${a.name}</div></div>`;
       });
       dayTasks.forEach(t => {
         const c = getCourseColor(t.course);
         let bg = `${c}1e`, border = c, color = c, nameStyle = '';
         if (t.done) { bg = `${c}0e`; nameStyle = 'text-decoration:line-through;opacity:0.65'; }
         if (t.missed) { bg = 'var(--red-light)'; border = 'var(--red)'; color = 'var(--red)'; }
-        const icon = t.done ? '✓ ' : t.missed ? '✗ ' : '';
+        const icon = t.done ? '<svg viewBox="0 0 24 24" width="10" height="10" stroke="currentColor" stroke-width="2" fill="none" style="margin-left:2px"><polyline points="20 6 9 17 4 12"></polyline></svg>' : t.missed ? '<svg viewBox="0 0 24 24" width="10" height="10" stroke="currentColor" stroke-width="2" fill="none" style="margin-left:2px"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>' : '';
         cell += `<div class="cal-task-item" style="border-color:${border};background:${bg};color:${color}" onclick="openManualTaskModal('${t.id}')">
           <div class="cal-task-name" style="${nameStyle}">${icon}${t.name}</div>
           ${t.course ? `<div class="cal-task-course">${t.course}</div>` : ''}
@@ -2346,16 +2442,20 @@ function scheduleExamCrunch(examId) {
 }
 
 function addExam(){
-    const course = document.getElementById('ex-course').value.trim(); const date = document.getElementById('ex-date').value;
+    const course = document.getElementById('ex-course').value.trim();
+    const date = document.getElementById('ex-date').value;
+    const type = document.getElementById('ex-type')?.value || 'מבחן';
     if(!course || !date){ toast('נא למלא שם קורס ותאריך'); return; }
     if(course.length > 80){ toast('⚠️ שם הקורס ארוך מדי (מקסימום 80 תווים)'); return; }
-    if(new Date(date) < new Date(ld(new Date()))){ toast('⚠️ תאריך מבחן לא יכול להיות בעבר'); return; }
+    if(new Date(date) < new Date(ld(new Date()))){ toast('⚠️ תאריך לא יכול להיות בעבר'); return; }
     const yearsFromNow = new Date(); yearsFromNow.setFullYear(yearsFromNow.getFullYear() + 3);
-    if(new Date(date) > yearsFromNow){ toast('⚠️ תאריך המבחן נראה לא הגיוני'); return; }
-    if(S.exams.find(e => e.course === course && e.date === date)){ toast('⚠️ מבחן זה כבר קיים!'); return; }
-    S.exams.push({id:uid(), course, date, type:'מבחן', conf:3, createdDate: ld(new Date()), readyPct:0});
-    save(); renderExams(); toast('✅ מבחן נוסף!');
-    document.getElementById('ex-course').value = ''; document.getElementById('ex-date').value = '';
+    if(new Date(date) > yearsFromNow){ toast('⚠️ תאריך נראה לא הגיוני'); return; }
+    if(S.exams.find(e => e.course === course && e.date === date)){ toast('⚠️ יעד זה כבר קיים!'); return; }
+    S.exams.push({id:uid(), course, date, type, conf:3, createdDate: ld(new Date()), readyPct:0});
+    save(); renderExams(); toast(`✅ ${type} נוסף!`);
+    document.getElementById('ex-course').value = '';
+    document.getElementById('ex-date').value = '';
+    if(document.getElementById('ex-type')) document.getElementById('ex-type').value = 'מבחן';
 }
 
 let selectedExamId = null;
@@ -2370,12 +2470,18 @@ function renderExams(){
     const isVeryUrgent = daysLeft <= 3;
     const urgentStyle = isVeryUrgent ? 'border-color:var(--red);background:var(--red-light);' : isUrgent ? 'border-color:var(--yellow);background:var(--yellow-light);' : '';
     const daysColor = isVeryUrgent ? 'var(--red)' : isUrgent ? 'var(--yellow)' : 'var(--accent)';
+    const typeEmoji = {'מבחן':'📝','בוחן':'📋','עבודה':'📄','הגשה':'📤'}[ex.type||'מבחן'] || '📝';
+    const typeColor = {'מבחן':'var(--accent)','בוחן':'var(--purple)','עבודה':'var(--green)','הגשה':'var(--yellow)'}[ex.type||'מבחן'] || 'var(--accent)';
     return `<div class="exam-row-card" style="cursor:pointer;${urgentStyle}" onclick="selectedExamId='${ex.id}'; renderExams();">
       <div class="exam-info">
-        <div class="exam-name" style="font-size:1.1rem">${isVeryUrgent?'🚨 ':''}${ex.course}</div>
-        <div class="exam-meta" style="font-weight:700;color:${daysColor}">עוד ${daysLeft} ימים — ${ex.date}</div>
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.25rem">
+          <span style="font-size:0.72rem;font-weight:800;background:${typeColor}20;color:${typeColor};padding:2px 8px;border-radius:99px;border:1px solid ${typeColor}40">${typeEmoji} ${ex.type||'מבחן'}</span>
+          ${isVeryUrgent?'<span style="font-size:0.72rem;font-weight:800;background:var(--red-light);color:var(--red);padding:2px 8px;border-radius:99px">🚨 דחוף</span>':''}
+        </div>
+        <div class="exam-name" style="font-size:1.1rem">${ex.course}</div>
+        <div class="exam-meta" style="font-weight:700;color:${daysColor}">עוד ${daysLeft} ימים — ${fmtDate(ex.date)}</div>
       </div>
-      <button class="btn-sm" style="background:var(--surface2);color:var(--text);pointer-events:none;">צפה בהתקדמות ➔</button>
+      <button class="btn-sm" style="background:var(--surface2);color:var(--text);pointer-events:none;">פרטים ➔</button>
     </div>`;
   }).join('');
 }
@@ -2904,4 +3010,201 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   });
+}
+
+// ══════════════════════════════════════════
+// FOCUS LOCK MODE — Premium Distraction Blocker
+// ══════════════════════════════════════════
+const FL = {
+  active: false,
+  challengeA: 0, challengeB: 0, challengeAnswer: 0,
+  sessionsDone: 0,
+  xpEarned: 0,
+  breathPhase: 0,
+  breathTimer: null,
+  wakeLock: null,
+  CIRCUMFERENCE: 678.6, // 2π × 108
+};
+
+function focusLockOpen(taskName, totalSecs, elapsedSecs, mode) {
+  const overlay = document.getElementById('focus-lock-overlay');
+  if (!overlay) return;
+  FL.active = true;
+  overlay.classList.remove('hidden', 'break-mode');
+  if (mode === 'break') overlay.classList.add('break-mode');
+
+  // Set task name
+  document.getElementById('fl-task-name').textContent = taskName || (mode === 'break' ? '☕ זמן הפסקה' : 'מפגש ריכוז');
+  document.getElementById('fl-mode-badge').textContent = mode === 'break' ? '☕ הפסקה' : '🔥 מצב פוקוס';
+  document.getElementById('fl-timer-label').textContent = mode === 'break' ? 'דקות הפסקה' : 'דקות ריכוז';
+  document.getElementById('fl-breathing-icon').textContent = mode === 'break' ? '☕' : '🧘';
+
+  // Update stats
+  document.getElementById('fl-sessions-done').textContent = FL.sessionsDone;
+  document.getElementById('fl-xp-earned').textContent = '+' + FL.xpEarned;
+
+  // Update ring
+  focusLockUpdateRing(totalSecs, elapsedSecs);
+
+  // Request Wake Lock (keep screen on)
+  if ('wakeLock' in navigator && !FL.wakeLock) {
+    navigator.wakeLock.request('screen').then(wl => { FL.wakeLock = wl; }).catch(() => {});
+  }
+
+  // Start breathing guide
+  focusLockBreathStart();
+
+  // Prevent back/swipe navigation
+  history.pushState({ focusLock: true }, '');
+  window.addEventListener('popstate', _flPopState, { once: true });
+}
+
+function _flPopState(e) {
+  if (FL.active) {
+    history.pushState({ focusLock: true }, '');
+    focusLockShowChallenge();
+  }
+}
+
+function focusLockUpdateRing(totalSecs, elapsedSecs) {
+  const pct = totalSecs > 0 ? Math.min(1, elapsedSecs / totalSecs) : 0;
+  const offset = FL.CIRCUMFERENCE * (1 - pct);
+  const ring = document.getElementById('fl-ring-fill');
+  if (ring) ring.style.strokeDashoffset = offset.toFixed(1);
+
+  // Update focus percent
+  document.getElementById('fl-focus-pct').textContent = Math.round(pct * 100) + '%';
+}
+
+function focusLockUpdateTimer(timeStr, totalSecs, elapsedSecs) {
+  const el = document.getElementById('fl-digits');
+  if (el) el.textContent = timeStr;
+  focusLockUpdateRing(totalSecs, elapsedSecs);
+  document.getElementById('fl-xp-earned').textContent = '+' + FL.xpEarned;
+}
+
+function focusLockBreathStart() {
+  if (FL.breathTimer) clearInterval(FL.breathTimer);
+  const phases = ['שאף...', 'עצור...', 'נשוף...', 'עצור...'];
+  let i = 0;
+  const update = () => {
+    const el = document.getElementById('fl-breath-text');
+    if (el) el.textContent = phases[i % phases.length];
+    i++;
+  };
+  update();
+  FL.breathTimer = setInterval(update, 4000);
+}
+
+function focusLockClose() {
+  FL.active = false;
+  const overlay = document.getElementById('focus-lock-overlay');
+  if (overlay) overlay.classList.add('hidden');
+  if (FL.breathTimer) { clearInterval(FL.breathTimer); FL.breathTimer = null; }
+  if (FL.wakeLock) { FL.wakeLock.release(); FL.wakeLock = null; }
+}
+
+function focusLockShowChallenge() {
+  // Generate random math challenge (gets harder over time)
+  const difficulty = Math.min(FL.sessionsDone + 1, 4);
+  const max = [0, 20, 50, 100, 200][difficulty];
+  FL.challengeA = Math.floor(Math.random() * max) + 1;
+  FL.challengeB = Math.floor(Math.random() * max) + 1;
+  const ops = ['+', '-', '×'][Math.min(difficulty - 1, 2)];
+  if (ops === '+') FL.challengeAnswer = FL.challengeA + FL.challengeB;
+  else if (ops === '-') { FL.challengeAnswer = FL.challengeA - FL.challengeB; }
+  else { FL.challengeA = Math.floor(Math.random() * 12) + 2; FL.challengeB = Math.floor(Math.random() * 12) + 2; FL.challengeAnswer = FL.challengeA * FL.challengeB; }
+  document.getElementById('fl-challenge-q').textContent = `${FL.challengeA} ${ops} ${FL.challengeB} = ?`;
+  document.getElementById('fl-challenge-ans').value = '';
+  document.getElementById('fl-challenge-err').classList.add('hidden');
+  document.getElementById('fl-challenge').classList.add('visible');
+  setTimeout(() => document.getElementById('fl-challenge-ans')?.focus(), 100);
+}
+
+function focusLockHideChallenge() {
+  document.getElementById('fl-challenge').classList.remove('visible');
+}
+
+function focusLockCheckAnswer() {
+  const ans = parseInt(document.getElementById('fl-challenge-ans').value);
+  if (ans === FL.challengeAnswer) {
+    focusLockHideChallenge();
+    focusLockClose();
+    // Stop pomo if running
+    pomoPause();
+    toast('יצאת ממצב פוקוס — חזור בקרוב! 💪');
+  } else {
+    const err = document.getElementById('fl-challenge-err');
+    err.classList.remove('hidden');
+    err.textContent = '❌ לא נכון — נסה שוב! הרמז: ' + (ans > FL.challengeAnswer ? 'פחות' : 'יותר');
+    document.getElementById('fl-challenge-ans').value = '';
+    document.getElementById('fl-challenge-ans').focus();
+    // Shake animation
+    const card = document.querySelector('.fl-challenge-card');
+    card.style.animation = 'none';
+    setTimeout(() => { card.style.animation = ''; }, 10);
+  }
+}
+
+function openFocusMode() {
+  pomoStart();
+}
+
+let isMonthViewOpen = false;
+function toggleCalendarViewModal() {
+  const weekly = document.getElementById('schedule-weekly-view');
+  const monthly = document.getElementById('schedule-monthly-view');
+  const weekLabelEl = document.getElementById('week-label');
+  
+  isMonthViewOpen = !isMonthViewOpen;
+  if (isMonthViewOpen) {
+    weekly.classList.remove('zoom-active');
+    weekly.classList.add('zoom-out-down');
+    monthly.classList.remove('zoom-out-up');
+    monthly.classList.add('zoom-active');
+    
+    // Set initial month based on currently viewed week
+    const now = new Date();
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + S.weekOffset * 7);
+    calMonth = d.getMonth();
+    calYear = d.getFullYear();
+    if(weekLabelEl) weekLabelEl.textContent = 'חזרה ללו"ז שבועי';
+    renderMonthCalendar();
+  } else {
+    monthly.classList.remove('zoom-active');
+    monthly.classList.add('zoom-out-up');
+    weekly.classList.remove('zoom-out-down');
+    weekly.classList.add('zoom-active');
+    renderSchedule();
+  }
+}
+
+// Action Sheet Logic
+function openTaskActionSheet(taskId) {
+  const t = S.tasks.find(x => String(x.id) === String(taskId));
+  if (!t) return;
+  document.getElementById('task-action-title').textContent = t.name;
+  
+  let opts = '';
+  if (!t.done && !t.missed) {
+    opts += `<button class="action-btn green-btn" onclick="doneTask('${t.id}');closeTaskActionSheet()"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg> סיום משימה</button>`;
+    opts += `<button class="action-btn" onclick="startTutor('${t.id}');closeTaskActionSheet()"><svg viewBox="0 0 24 24"><path d="M9 12h.01M15 12h.01M12 2a8 8 0 0 0-8 8c0 1.5.5 3 1.4 4.2L4 22l4-1.5c1.2.7 2.6 1.1 4 1.1a8 8 0 0 0 8-8c0-4.4-3.6-8-8-8z"></path></svg> צ'אט AI בנושא</button>`;
+    opts += `<button class="action-btn" onclick="openManualTaskModal('${t.id}');closeTaskActionSheet()"><svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg> עריכת משימה</button>`;
+    opts += `<button class="action-btn red-btn" onclick="missTask('${t.id}');closeTaskActionSheet()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> סימון כפוספס</button>`;
+  } else if (t.done) {
+    opts += `<button class="action-btn" onclick="undoTask('${t.id}');closeTaskActionSheet()"><svg viewBox="0 0 24 24"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg> ביטול סימון</button>`;
+  } else if (t.missed) {
+    opts += `<button class="action-btn green-btn" onclick="doneTask('${t.id}');closeTaskActionSheet()"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg> שינוי לסיום</button>`;
+  }
+  
+  opts += `<button class="action-btn red-btn" onclick="deleteTask('${t.id}');closeTaskActionSheet()"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> מחיקה לצמיתות</button>`;
+  
+  document.getElementById('task-action-options').innerHTML = opts;
+  document.getElementById('task-action-backdrop').classList.add('open');
+  document.getElementById('task-action-sheet').classList.add('open');
+}
+
+function closeTaskActionSheet() {
+  document.getElementById('task-action-backdrop').classList.remove('open');
+  document.getElementById('task-action-sheet').classList.remove('open');
 }
