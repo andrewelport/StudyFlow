@@ -100,7 +100,7 @@
 
     <div class="ob-step active" id="ob-step-1">
       <div class="ob-step-label">שלב 1 / 4 — פרטים בסיסיים</div>
-      <div class="setup-note">🎓 ברוך הבא ל-StudyFlow! ה-AI כבר מוכן — אין צורך בשום הגדרה טכנית.</div>
+      <div class="setup-note">ברוך הבא ל-StudyFlow — ה-AI מוכן ממתין לך, אין צורך בשום הגדרה טכנית.</div>
       <div class="form-grid">
         <div class="form-row">
           <label class="field-label">השם שלך *</label>
@@ -114,7 +114,7 @@
       <div class="setup-divider"></div>
       <div class="form-grid">
         <div class="form-row">
-          <label class="field-label">⏰ שעת קימה רגילה</label>
+          <label class="field-label">שעת קימה רגילה</label>
           <select id="inp-wake">
             <option value="06:00">06:00</option><option value="06:30">06:30</option>
             <option value="07:00">07:00</option><option value="07:30">07:30</option>
@@ -125,7 +125,7 @@
           <div class="field-hint">ה-AI לא יתכנן לפני שעה זו</div>
         </div>
         <div class="form-row">
-          <label class="field-label">🌙 שעת סיום יום לימודים</label>
+          <label class="field-label">שעת סיום יום לימודים</label>
           <select id="inp-sleep">
             <option value="20:00">20:00</option><option value="21:00">21:00</option>
             <option value="22:00" selected>22:00</option><option value="23:00">23:00</option>
@@ -138,18 +138,18 @@
     </div>
 
     <div class="ob-step" id="ob-step-2">
-      <div class="ob-step-label">שלב 2 / 4 — "רצפת הבטון" שלך</div>
-      <div class="ob-q">אילו זמנים תפוסים באופן קבוע?</div>
-      <div class="ob-sub">הרצאות, משמרות בעבודה, אימונים. המערכת תחתוך את השעות האלו מתמטית וה-AI לעולם לא יקבע בהן למידה!</div>
+      <div class="ob-step-label">שלב 2 / 4 — הזמנים הקבועים שלך</div>
+      <div class="ob-q">אילו זמנים חוזרים בכל שבוע?</div>
+      <div class="ob-sub">הרצאות, משמרות בעבודה, אימונים. ה-AI לעולם לא יתכנן למידה בשעות אלו.</div>
       <div id="anchor-builder"></div>
       <button class="btn-add-anchor" onclick="addAnchorRow()">+ הוסף זמן קבוע (עוגן)</button>
       <button class="btn-primary" onclick="obNext(2)">המשך לשלב הבא →</button>
     </div>
 
     <div class="ob-step" id="ob-step-3">
-      <div class="ob-step-label">שלב 3 / 4 — פרופיל למידה אישי</div>
-      <div class="ob-q">6 שאלות קצרות להכיר אותך</div>
-      <div class="ob-sub">התשובות יעזרו ל-AI לשבץ את המשימות בצורה שהכי מתאימה למוח שלך.</div>
+      <div class="ob-step-label">שלב 3 / 4 — פרופיל למידה</div>
+      <div class="ob-q" style="font-size:1rem;margin-bottom:0.3rem">6 שאלות להתאמה אישית</div>
+      <div class="ob-sub">ה-AI ישתמש בתשובות כדי לתזמן משימות בהתאם לאופן שבו המוח שלך עובד בצורה הטובה ביותר.</div>
       <div id="profile-q-wrap"></div>
       <button class="btn-primary" onclick="obNext(3)" style="margin-top:1rem">המשך לשלב הבא →</button>
     </div>
@@ -187,20 +187,20 @@
     <nav class="sidebar" id="sidebar">
       <div class="sidebar-logo">Study<span>Flow</span></div>
       <div class="sidebar-sub">ה-Waze של הלימודים 🎓</div>
-      <button class="nav-item active" onclick="showPage('today',this)"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span> <span>היום</span></button>
-      <button class="nav-item" onclick="showPage('planner',this)"><span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg></span> <span>מתכנן AI</span></button>
-      <button class="nav-item" onclick="showPage('schedule',this)"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span> <span>לו"ז שבועי</span></button>
-      <button class="nav-item" onclick="showPage('exams',this)"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span> <span>מבחנים</span></button>
-      <button class="nav-item" onclick="showPage('anchors',this)"><span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="3"/><line x1="12" y1="8" x2="12" y2="20"/><path d="M5 20a7 7 0 0014 0"/></svg></span> <span>עוגנים קבועים</span></button>
-      <button class="nav-item" onclick="showPage('progress',this)"><span class="nav-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span> <span>התקדמות</span></button>
-      <button class="nav-item" onclick="openPsychologist()"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M9 9a3 3 0 116 0c0 2-3 3-3 3"/><circle cx="12" cy="17" r="1"/><circle cx="12" cy="12" r="10"/></svg></span> <span>תמיכה נפשית</span></button>
+      <button class="nav-item active" onclick="showPage('today',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span> <span>היום</span></button>
+      <button class="nav-item" onclick="showPage('planner',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span> <span>מתכנן AI</span></button>
+      <button class="nav-item" onclick="showPage('schedule',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></span> <span>לו"ז שבועי</span></button>
+      <button class="nav-item" onclick="showPage('exams',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span> <span>מבחנים</span></button>
+      <button class="nav-item" onclick="showPage('anchors',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="5" r="3"/><line x1="12" y1="22" x2="12" y2="8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/></svg></span> <span>עוגנים קבועים</span></button>
+      <button class="nav-item" onclick="showPage('progress',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> <span>התקדמות</span></button>
+      <button class="nav-item" onclick="openPsychologist()"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> <span>תמיכה נפשית</span></button>
 
       <div class="sidebar-bottom">
         <hr style="border:none; border-top:1px solid var(--border); margin:0.5rem 0;">
 <button class="nav-item" onclick="openSettings();closeSidebar()"><span class="nav-icon"><svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></span> <span>הגדרות</span></button>
         <div class="user-chip" onclick="openSettings();closeSidebar()" style="cursor:pointer">
           <div class="user-avatar" id="sb-avatar">?</div>
-          <div><div class="user-name" id="sb-name">—</div><div class="user-plan">✓ LLAMA 3 70B</div></div>
+          <div><div class="user-name" id="sb-name">—</div><div class="user-plan">LLAMA 3 70B</div></div>
         </div>
       </div>
     </nav>
@@ -262,7 +262,7 @@
 
         <div class="focus-entry-card glass-box">
           <div class="focus-entry-header">
-            <div class="focus-entry-icon">🧠</div>
+            <div class="focus-entry-icon"><svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="1.8" fill="none"><path d="M12 2a4 4 0 0 1 4 4c0 .34-.04.67-.1 1A4 4 0 0 1 19 11c0 1.45-.78 2.72-1.95 3.42A4 4 0 0 1 13 18h-2a4 4 0 0 1-4.05-3.58A4 4 0 0 1 5 11a4 4 0 0 1 3.1-3.9A4 4 0 0 1 12 2z"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg></div>
             <div class="focus-entry-texts">
               <div class="focus-entry-title">מצב פוקוס עמוק</div>
               <div class="focus-entry-sub">חסום הסחות דעת והיכנס למצב למידה</div>
@@ -274,7 +274,7 @@
 
         <div class="section-box">
           <div class="section-head">
-            <div class="section-title-sm">📋 הלו"ז שלי להיום</div>
+            <div class="section-title-sm">הלו"ז שלי להיום</div>
             <div style="display:flex;gap:0.75rem;flex-wrap:wrap">
               <button class="btn-sm purple" style="display:flex;align-items:center;gap:0.5rem" onclick="aiBriefing()">
                 <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg> צ'אט AI ליום
@@ -412,9 +412,9 @@
             <div>
               <label class="field-label">סוג</label>
               <select id="ex-type">
-                <option value="מבחן">📝 מבחן</option>
-                <option value="בוחן">📋 בוחן</option>
-                <option value="עבודה">📄 עבודה</option>
+                <option value="מבחן">מבחן</option>
+                <option value="בוחן">בוחן</option>
+                <option value="עבודה">עבודה</option>
                 <option value="הגשה">📤 הגשה</option>
               </select>
             </div>
@@ -571,7 +571,7 @@
 
 <div class="modal-overlay hidden" id="anchor-modal">
   <div class="modal-box" style="max-width:500px">
-    <div class="modal-title" id="anchor-modal-title">⚓ הוסף עוגן קבוע</div>
+    <div class="modal-title" id="anchor-modal-title">הוסף עוגן קבוע</div>
     <div class="form-row"><input type="text" id="anc-name" placeholder="שם המשמרת/אימון..." /></div>
     <div class="form-grid" style="margin-bottom:0.75rem">
       <div><label class="field-label">צבע</label><input type="color" id="anc-color" value="#4f6ef7" style="height:42px;padding:0.3rem;cursor:pointer;" /></div>
@@ -653,92 +653,112 @@
 
 <!-- ── SETTINGS MODAL ── -->
 <div class="modal-overlay hidden" id="settings-modal">
-  <div class="modal-box" style="max-width:420px">
-    <div class="modal-title">הגדרות</div>
-
-    <!-- פרטים אישיים -->
-    <div class="acc-section" id="acc-personal">
-      <div class="acc-header" onclick="toggleAccordion('acc-personal')">
-        <span>פרטים אישיים</span>
-        <span class="acc-arrow">&#9660;</span>
-      </div>
-      <div class="acc-body">
-        <div class="form-row"><label class="field-label">שם</label><input type="text" id="settings-name" placeholder="השם שלך" /></div>
-        <div class="form-row"><label class="field-label">מוסד לימודים</label><input type="text" id="settings-inst" placeholder="אוניברסיטה / מכללה" /></div>
-      </div>
+  <div class="settings-panel">
+    <div class="settings-hdr">
+      <div class="settings-hdr-title">הגדרות</div>
+      <button class="settings-hdr-close" onclick="closeModal('settings-modal')">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </div>
 
-    <!-- שעות לימוד -->
-    <div class="acc-section" id="acc-hours">
-      <div class="acc-header" onclick="toggleAccordion('acc-hours')">
-        <span>שעות לימוד</span>
-        <span class="acc-arrow">&#9660;</span>
+    <div class="settings-body">
+      <!-- Profile -->
+      <div class="settings-sec-label">פרופיל</div>
+      <div class="settings-card">
+        <div class="settings-row">
+          <div class="settings-row-icon" style="background:var(--accent-light);color:var(--accent)">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </div>
+          <label class="settings-row-label">שם</label>
+          <input type="text" class="settings-row-input" id="settings-name" placeholder="השם שלך" />
+        </div>
+        <div class="settings-row settings-row-sep">
+          <div class="settings-row-icon" style="background:var(--purple-light);color:var(--purple)">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          </div>
+          <label class="settings-row-label">מוסד</label>
+          <input type="text" class="settings-row-input" id="settings-inst" placeholder="אוניברסיטה..." />
+        </div>
       </div>
-      <div class="acc-body">
-        <div class="form-grid">
-          <div class="form-row">
-            <label class="field-label">שעת קימה</label>
-            <select id="settings-wake">
-              <option value="06:00">06:00</option><option value="06:30">06:30</option>
-              <option value="07:00">07:00</option><option value="07:30">07:30</option>
-              <option value="08:00">08:00</option><option value="08:30">08:30</option>
-              <option value="09:00">09:00</option><option value="09:30">09:30</option>
-              <option value="10:00">10:00</option>
-            </select>
+
+      <!-- Schedule -->
+      <div class="settings-sec-label">שעות לימוד</div>
+      <div class="settings-card">
+        <div class="settings-row">
+          <div class="settings-row-icon" style="background:#fef3c7;color:#d97706">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           </div>
-          <div class="form-row">
-            <label class="field-label">שעת סיום</label>
-            <select id="settings-sleep">
-              <option value="20:00">20:00</option><option value="21:00">21:00</option>
-              <option value="22:00">22:00</option><option value="23:00">23:00</option><option value="23:59">00:00</option>
-            </select>
+          <label class="settings-row-label">שעת קימה</label>
+          <select class="settings-row-select" id="settings-wake">
+            <option value="06:00">06:00</option><option value="06:30">06:30</option>
+            <option value="07:00">07:00</option><option value="07:30">07:30</option>
+            <option value="08:00">08:00</option><option value="08:30">08:30</option>
+            <option value="09:00">09:00</option><option value="09:30">09:30</option>
+            <option value="10:00">10:00</option>
+          </select>
+        </div>
+        <div class="settings-row settings-row-sep">
+          <div class="settings-row-icon" style="background:#ede9fe;color:#7c3aed">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
           </div>
+          <label class="settings-row-label">שעת סיום</label>
+          <select class="settings-row-select" id="settings-sleep">
+            <option value="20:00">20:00</option><option value="21:00">21:00</option>
+            <option value="22:00">22:00</option><option value="23:00">23:00</option><option value="23:59">00:00</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- AI -->
+      <div class="settings-sec-label">חיבור AI</div>
+      <div class="settings-card">
+        <div class="settings-row-full">
+          <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.5rem">
+            <div class="settings-row-icon" style="background:#ecfdf5;color:#059669;flex-shrink:0">
+              <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            </div>
+            <label style="font-size:0.88rem;font-weight:700;color:var(--text)">Groq API Key</label>
+          </div>
+          <input type="password" id="settings-api-key" placeholder="gsk_..." autocomplete="off" style="width:100%;background:var(--surface);border:1.5px solid var(--border2);border-radius:10px;padding:0.65rem 0.9rem;font-size:0.88rem;color:var(--text);font-family:var(--mono)" />
+          <div id="api-key-status" style="margin-top:0.35rem;font-size:0.75rem;font-weight:600"></div>
+          <div style="margin-top:0.25rem;font-size:0.72rem;color:var(--muted)">השג בחינם: console.groq.com/keys</div>
+        </div>
+      </div>
+
+      <!-- Appearance -->
+      <div class="settings-sec-label">מראה</div>
+      <div class="settings-card">
+        <div class="settings-row settings-row-action" onclick="toggleTheme()">
+          <div class="settings-row-icon" style="background:#f0f9ff;color:#0ea5e9">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg>
+          </div>
+          <label class="settings-row-label" id="theme-btn-label" style="cursor:pointer">מצב לילה / יום</label>
+          <svg viewBox="0 0 24 24" width="14" height="14" stroke="var(--muted)" stroke-width="2" fill="none"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+      </div>
+
+      <!-- Account -->
+      <div class="settings-sec-label">חשבון</div>
+      <div class="settings-card">
+        <div class="settings-row settings-row-action settings-row-danger" onclick="signOut()">
+          <div class="settings-row-icon" style="background:var(--red-light);color:var(--red)">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          </div>
+          <label class="settings-row-label" style="color:var(--red);cursor:pointer">יציאה מהחשבון</label>
+          <svg viewBox="0 0 24 24" width="14" height="14" stroke="var(--muted)" stroke-width="2" fill="none"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="settings-row settings-row-sep settings-row-action" onclick="confirmReset()">
+          <div class="settings-row-icon" style="background:var(--yellow-light);color:var(--yellow)">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </div>
+          <label class="settings-row-label" style="color:var(--muted);cursor:pointer">מחיקת כל הנתונים</label>
+          <svg viewBox="0 0 24 24" width="14" height="14" stroke="var(--muted)" stroke-width="2" fill="none"><polyline points="9 18 15 12 9 6"/></svg>
         </div>
       </div>
     </div>
 
-    <!-- חיבור AI -->
-    <div class="acc-section" id="acc-ai">
-      <div class="acc-header" onclick="toggleAccordion('acc-ai')">
-        <span>חיבור AI</span>
-        <span class="acc-arrow">&#9660;</span>
-      </div>
-      <div class="acc-body">
-        <div class="form-row">
-          <label class="field-label">Groq API Key</label>
-          <input type="password" id="settings-api-key" placeholder="gsk_..." autocomplete="off" />
-          <div id="api-key-status" class="field-hint" style="margin-top:0.3rem;font-weight:600"></div>
-          <div class="field-hint">השג בחינם: console.groq.com/keys</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- מראה -->
-    <div class="acc-section" id="acc-appearance">
-      <div class="acc-header" onclick="toggleAccordion('acc-appearance')">
-        <span>מראה</span>
-        <span class="acc-arrow">&#9660;</span>
-      </div>
-      <div class="acc-body">
-        <button class="nav-item" onclick="toggleTheme()" style="width:100%;justify-content:flex-start;padding:0.7rem 0.9rem;border-radius:10px"><span class="nav-icon">🌓</span> <span id="theme-btn-label">מצב לילה / יום</span></button>
-      </div>
-    </div>
-
-    <!-- חשבון -->
-    <div class="acc-section" id="acc-account">
-      <div class="acc-header" onclick="toggleAccordion('acc-account')">
-        <span>חשבון</span>
-        <span class="acc-arrow">&#9660;</span>
-      </div>
-      <div class="acc-body">
-        <button class="nav-item" onclick="signOut()" style="width:100%;justify-content:flex-start;padding:0.7rem 0.9rem;border-radius:10px;color:var(--red);margin-bottom:0.5rem"><span class="nav-icon">🚪</span> <span>יציאה מהחשבון</span></button>
-        <button class="nav-item" onclick="confirmReset()" style="width:100%;justify-content:flex-start;padding:0.7rem 0.9rem;border-radius:10px;color:var(--muted)"><span class="nav-icon">🗑️</span> <span>מחיקת כל הנתונים</span></button>
-      </div>
-    </div>
-
-    <div class="modal-footer">
-      <button class="btn-confirm" onclick="saveSettings()">שמור שינויים</button>
-      <button class="btn-cancel" onclick="closeModal('settings-modal')">ביטול</button>
+    <div class="settings-ftr">
+      <button class="btn-primary" style="width:100%;padding:0.9rem" onclick="saveSettings()">שמור שינויים</button>
     </div>
   </div>
 </div>
@@ -755,30 +775,37 @@
         <div><label class="field-label">משך (דקות)</label><input type="number" id="edit-t-dur" /></div>
       </div>
       <div class="form-row" style="margin-top:0.75rem">
-        <label class="field-label">📝 הערות / חומר ללמוד</label>
+        <label class="field-label">הערות / חומר ללמוד</label>
         <textarea id="edit-t-notes" style="min-height:60px;font-size:0.85rem;" placeholder="פרקים, עמודים, נושאים ספציפיים..."></textarea>
       </div>
       <div class="modal-footer" style="margin-top:1.5rem"><button class="btn-confirm" onclick="saveManualTask()">שמור</button><button class="btn-cancel" onclick="closeModal('task-edit-modal')">ביטול</button></div>
     </div>
   </div>
 </div>
-<div class="modal-overlay hidden" id="rating-modal">
-  <div class="modal-box" style="text-align:center">
-    <div class="modal-title">כל הכבוד! 🎉</div>
-    <div class="modal-sub" id="rating-task-name">איך הייתה הלמידה?</div>
-    <div style="display:flex; justify-content:center; gap:0.5rem; margin:1.5rem 0; direction:ltr;">
-      <button class="btn-sm" style="font-size:1.5rem" onclick="submitTaskRating(1)">⭐</button>
-      <button class="btn-sm" style="font-size:1.5rem" onclick="submitTaskRating(2)">⭐⭐</button>
-      <button class="btn-sm" style="font-size:1.5rem" onclick="submitTaskRating(3)">⭐⭐⭐</button>
-      <button class="btn-sm" style="font-size:1.5rem" onclick="submitTaskRating(4)">⭐⭐⭐⭐</button>
-      <button class="btn-sm" style="font-size:1.5rem" onclick="submitTaskRating(5)">⭐⭐⭐⭐⭐</button>
+<div class="modal-overlay hidden" id="rating-modal" onclick="if(event.target===this)finishTaskRating(true)">
+  <div class="modal-box rating-modal-box" style="text-align:center;max-width:360px;position:relative">
+    <button onclick="finishTaskRating(true)" style="position:absolute;top:0.75rem;left:0.75rem;background:var(--surface2);border:none;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted)">
+      <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <div class="rating-success-ring">
+      <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
     </div>
-    <div id="rating-bad-wrap" class="hidden">
-      <label class="field-label" style="text-align:right">מה היה קשה? ה-AI ילמד מזה:</label>
-      <input type="text" id="rating-feedback" placeholder="החומר לא היה ברור..." />
-      <button class="btn-sm red" style="margin-top:1rem; width:100%" onclick="finishTaskRating()">שמור פידבק וסיים</button>
+    <div class="modal-title" style="font-size:1.2rem;margin-bottom:0.2rem">משימה הושלמה!</div>
+    <div class="modal-sub" id="rating-task-name" style="font-size:0.82rem;margin-top:0.2rem;color:var(--muted)"></div>
+    <div style="font-size:0.8rem;font-weight:700;color:var(--text);margin-top:1.1rem;margin-bottom:0">דרג את הפגישה</div>
+    <div class="star-row" id="star-row">
+      <button class="star-b" onclick="selectStar(1)"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+      <button class="star-b" onclick="selectStar(2)"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+      <button class="star-b" onclick="selectStar(3)"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+      <button class="star-b" onclick="selectStar(4)"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+      <button class="star-b" onclick="selectStar(5)"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
     </div>
-    <button class="btn-cancel" id="rating-skip-btn" style="margin-top:1rem" onclick="finishTaskRating(true)">דלג</button>
+    <div id="rating-bad-wrap" class="hidden" style="text-align:right;margin-top:0.75rem">
+      <label class="field-label">מה היה קשה? ה-AI ילמד מזה:</label>
+      <input type="text" id="rating-feedback" placeholder="החומר לא היה ברור, הייתי עייף..." />
+      <button class="btn-primary" style="margin-top:0.85rem;font-size:0.88rem;width:100%" onclick="finishTaskRating()">שמור ועדכן</button>
+    </div>
+    <button class="btn-primary" id="rating-skip-btn" style="margin-top:0.75rem;width:100%;background:var(--surface2);color:var(--muted);border:1px solid var(--border)" onclick="finishTaskRating(true)">דלג על הדירוג</button>
   </div>
 </div>
 
@@ -787,7 +814,7 @@
     <div style="background:linear-gradient(135deg,#8b5cf6,#6366f1);padding:1.4rem 1.65rem;color:white;flex-shrink:0;">
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <div>
-          <div style="font-size:1.15rem;font-weight:900;margin-bottom:0.2rem;">🧠 תמיכה נפשית ולימודית</div>
+          <div style="font-size:1.15rem;font-weight:900;margin-bottom:0.2rem;">תמיכה נפשית ולימודית</div>
           <div style="font-size:0.8rem;opacity:0.85;">שיחה בטוחה — חרדת מבחנים, מוטיבציה, שחיקה</div>
         </div>
         <button class="btn-cancel" onclick="document.getElementById('psych-overlay').classList.add('hidden')" style="border-color:rgba(255,255,255,0.4);color:white;background:rgba(0,0,0,0.1);">✕ סגור</button>
@@ -883,12 +910,13 @@
 </div>
 
   <div class="action-sheet-backdrop" id="task-action-backdrop" onclick="closeTaskActionSheet()"></div>
-  <div class="action-sheet-modal" id="task-action-sheet">
+  <div class="action-sheet-modal" id="task-sheet-panel">
     <div class="action-sheet-drag"></div>
     <div class="action-sheet-title" id="task-action-title">שם המשימה</div>
     <div class="action-sheet-options" id="task-action-options">
       <!-- Options injected by JS -->
     </div>
+    <button class="action-btn action-cancel-btn" onclick="closeTaskActionSheet()" style="margin-top:0.5rem;background:var(--surface2);color:var(--muted)">ביטול</button>
   </div>
 
 <script src=https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2></script>

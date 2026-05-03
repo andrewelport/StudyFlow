@@ -141,6 +141,8 @@ let currentTutorTask = null;
 let tutorHistory = [];
 let isGridView = false;
 let schedViewDay = null;
+let _swipeController = null;
+let selectedMonthDay = null;
 let schedViewMode = 'timeline';
 let pendingRecalcActions = null;
 let psychHistory = [];
@@ -150,12 +152,12 @@ let calMonth = new Date().getMonth();
 let calYear = new Date().getFullYear();
 
 const PROFILE_QS=[
-  {id:'focus_time',q:'באיזו שעה אתה הכי ממוקד?',opts:['🌅 בוקר (6-10)','☀️ צהריים (10-14)','🌇 אחה"צ (14-18)','🌙 ערב (18-23)']},
-  {id:'focus_span',q:'כמה זמן אתה מצליח להתרכז ברצף?',opts:['⚡ 15-25 דקות','🎯 30-45 דקות','💪 60-75 דקות','🦾 90+ דקות']},
-  {id:'style',q:'מה עוזר לך יותר ללמוד?',opts:['📦 בלוקים ארוכים','🎵 משימות קצרות ומהירות','🔁 חזרה לפני חדש','📖 קריאה ואחר כך תרגול']},
-  {id:'exam_fear',q:'מה מפחיד אותך יותר לפני מבחן?',opts:['⏰ לא לסיים ללמוד','🧠 לא להבין לעומק','😬 לשכוח ברגע האמת','📊 טעויות בתרגילים']},
-  {id:'env',q:'איפה סביבת הלמידה האידיאלית שלך?',opts:['🤫 ספרייה / שקט מוחלט','🎧 בחדר עם מוזיקה','☕ קפה / רעש לבן','🗣️ למידה עם חברים']},
-  {id:'breaks',q:'מה מרענן אותך בהפסקות?',opts:['📱 טלפון ורשתות','🚶‍♂️ תזוזה / מתיחות','☕ קפה / נשנוש','🧘 מנוחה לעיניים']}
+  {id:'focus_time',q:'באיזו שעה אתה הכי ממוקד?',opts:['בוקר  06–10','צהריים  10–14','אחה"צ  14–18','ערב  18–23']},
+  {id:'focus_span',q:'כמה זמן אתה מצליח להתרכז ברצף?',opts:['15–25 דקות','30–45 דקות','60–75 דקות','90+ דקות']},
+  {id:'style',q:'מה שיטת הלמידה שמתאימה לך?',opts:['בלוקים ארוכים','משימות קצרות','חזרה לפני חדש','קריאה ואז תרגול']},
+  {id:'exam_fear',q:'מה הכי מאתגר אותך לפני מבחן?',opts:['לא לסיים ללמוד','לא להבין לעומק','לשכוח ברגע האמת','טעויות בחישובים']},
+  {id:'env',q:'איפה אתה לומד הכי טוב?',opts:['שקט מוחלט','עם מוזיקה','קפה / רעש רקע','עם חברים']},
+  {id:'breaks',q:'מה מחזיר אותך לריכוז בהפסקות?',opts:['טלפון ורשתות','תזוזה / מתיחות','קפה / נשנוש','מנוחה לעיניים']}
 ];
 let profileAnswers={};
 
@@ -604,31 +606,41 @@ function addAnchorRow(){
   const dayShort=['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ש׳'];
   const row=document.createElement('div'); row.className='anchor-builder-row'; row.id=rowId;
   row.innerHTML=`
-    <div style="display:flex;gap:0.45rem;align-items:center;margin-bottom:0.6rem">
-      <input type="text" placeholder="שם הפעילות (הרצאה, עבודה, אימון...)" style="flex:1;font-size:0.84rem;padding:0.5rem 0.65rem" required />
-      <input type="color" value="#4f6ef7" style="width:38px;height:38px;padding:0.2rem;cursor:pointer;border-radius:8px;flex-shrink:0" title="צבע" />
-      <button class="btn-del-row" onclick="document.getElementById('${rowId}').remove()">✕</button>
+    <div class="ab-header">
+      <div style="display:flex;gap:0.45rem;align-items:center;flex:1">
+        <input type="text" placeholder="שם הפעילות *" class="ab-name-inp" required />
+        <input type="color" value="#4f6ef7" class="ab-color-inp" title="בחר צבע" />
+      </div>
+      <button class="ab-del-btn" onclick="document.getElementById('${rowId}').remove()" title="הסר">
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+      </button>
     </div>
-    <div style="margin-bottom:0.55rem">
-      <div style="font-size:0.7rem;color:var(--muted);font-weight:700;margin-bottom:0.35rem">ימים בשבוע</div>
-      <div style="display:flex;gap:0.3rem;flex-wrap:wrap">${[0,1,2,3,4,5,6].map(d=>`<button type="button" class="ob-day-btn" data-day="${d}" onclick="toggleObDay(this,'${rowId}')">${dayShort[d]}</button>`).join('')}</div>
+    <div class="ab-section">
+      <label class="ab-label">ימים בשבוע <span class="ab-required">*</span></label>
+      <div class="ab-days">${[0,1,2,3,4,5,6].map(d=>`<button type="button" class="ob-day-btn" data-day="${d}" onclick="toggleObDay(this,'${rowId}')">${dayShort[d]}</button>`).join('')}</div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.75rem">
-      <div><label style="font-size:0.7rem;color:var(--muted);font-weight:700;display:block;margin-bottom:0.25rem">שעת התחלה</label><input type="time" value="09:00" class="ob-def-start" style="font-size:0.82rem;padding:0.45rem" onchange="updateObPerDayRows('${rowId}')" /></div>
-      <div><label style="font-size:0.7rem;color:var(--muted);font-weight:700;display:block;margin-bottom:0.25rem">שעת סיום</label><input type="time" value="16:00" class="ob-def-end" style="font-size:0.82rem;padding:0.45rem" onchange="updateObPerDayRows('${rowId}')" /></div>
-    </div>
-    <div style="background:linear-gradient(135deg,#fff7ed,#ffedd5);border:1.5px solid #f97316;border-radius:12px;padding:0.7rem 0.85rem;margin-bottom:0.45rem">
-      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem">
-        <span style="font-size:1rem">🚗</span>
+    <div class="ab-section">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">
         <div>
-          <div style="font-size:0.82rem;font-weight:800;color:#c2410c">זמן נסיעה / הגעה — חובה למלא!</div>
-          <div style="font-size:0.72rem;color:#92400e;margin-top:1px">ה-AI יחסום את הזמן הזה לפני ואחרי הפעילות</div>
+          <label class="ab-label">שעת התחלה <span class="ab-required">*</span></label>
+          <input type="time" value="09:00" class="ob-def-start ab-time-inp" onchange="updateObPerDayRows('${rowId}')" />
+        </div>
+        <div>
+          <label class="ab-label">שעת סיום <span class="ab-required">*</span></label>
+          <input type="time" value="16:00" class="ob-def-end ab-time-inp" onchange="updateObPerDayRows('${rowId}')" />
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:0.5rem">
-        <input type="number" value="0" min="0" max="180" class="ob-travel-inp" style="width:72px;font-size:1rem;font-weight:800;padding:0.45rem 0.6rem;border:2px solid #f97316;border-radius:8px;text-align:center;color:#c2410c" />
-        <span style="font-size:0.85rem;font-weight:700;color:#92400e">דקות נסיעה</span>
-        <span style="font-size:0.75rem;color:#b45309;margin-right:auto">(כתוב 0 אם ללא נסיעה)</span>
+    </div>
+    <div class="ab-travel-section">
+      <div class="ab-travel-icon">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+      </div>
+      <div style="flex:1">
+        <div class="ab-travel-label">זמן נסיעה <span class="ab-required">*</span> <span class="ab-travel-hint">(ה-AI חוסם זמן זה לפני ואחרי)</span></div>
+        <div class="ab-travel-row">
+          <input type="number" value="0" min="0" max="180" class="ob-travel-inp ab-travel-num" placeholder="0" />
+          <span class="ab-travel-unit">דקות (0 אם ללא נסיעה)</span>
+        </div>
       </div>
     </div>
     <div class="ob-per-day-wrap"></div>`;
@@ -652,7 +664,7 @@ function updateObPerDayRows(rowId) {
     const lbl = document.createElement('div');
     lbl.className = 'ob-per-day-label';
     lbl.style.cssText = 'font-size:0.7rem;color:var(--muted);font-weight:700;margin-bottom:0.35rem;margin-top:0.1rem';
-    lbl.textContent = '⚙️ כוון שעות לכל יום בנפרד (אופציונלי)';
+    lbl.textContent = 'שעות שונות לכל יום (אופציונלי)';
     perDayWrap.prepend(lbl);
   }
   const existingDays = new Set(Array.from(perDayWrap.querySelectorAll('[data-day]')).map(el => parseInt(el.dataset.day)));
@@ -695,19 +707,22 @@ function collectAnchors(){
   return results;
 }
 function renderProfileQs(){
-  document.getElementById('profile-q-wrap').innerHTML = PROFILE_QS.map(q => `
-    <div style="margin-bottom:1.25rem">
-      <div class="ob-q" style="font-size:0.95rem">${q.q}</div>
-      <div class="ob-opts" id="opts-${q.id}">
-        ${q.opts.map(opt => `<div class="ob-opt" onclick="selectProfileOpt(this,'${q.id}')">${opt}</div>`).join('')}
-        <div class="ob-opt" onclick="selectProfileOpt(this,'${q.id}',true)" style="grid-column:1/-1;justify-content:flex-start;font-style:italic;color:var(--muted)">✏️ אחר — הכנס בעצמך...</div>
+  document.getElementById('profile-q-wrap').innerHTML = PROFILE_QS.map((q, idx) => `
+    <div class="pq-block">
+      <div class="pq-header">
+        <span class="pq-num">${String(idx+1).padStart(2,'0')}</span>
+        <span class="pq-q">${q.q}</span>
       </div>
-      <input type="text" id="other-${q.id}" placeholder="כתוב כאן..." style="display:none;margin-top:0.4rem;font-size:0.85rem;padding:0.5rem 0.7rem;direction:rtl" oninput="profileAnswers['${q.id}']=this.value.trim()">
+      <div class="pq-opts" id="opts-${q.id}">
+        ${q.opts.map(opt => `<div class="pq-opt" onclick="selectProfileOpt(this,'${q.id}')">${opt}</div>`).join('')}
+        <div class="pq-opt pq-other" onclick="selectProfileOpt(this,'${q.id}',true)" style="grid-column:1/-1">אחר — הכנס בעצמך</div>
+      </div>
+      <input type="text" id="other-${q.id}" placeholder="כתוב כאן..." class="pq-other-inp" style="display:none" oninput="profileAnswers['${q.id}']=this.value.trim()">
     </div>
   `).join('');
 }
 function selectProfileOpt(el, qId, isOther) {
-  el.closest('.ob-opts').querySelectorAll('.ob-opt').forEach(o => o.classList.remove('sel'));
+  el.closest('.pq-opts').querySelectorAll('.pq-opt').forEach(o => o.classList.remove('sel'));
   el.classList.add('sel');
   const otherInput = document.getElementById('other-' + qId);
   if (isOther) {
@@ -1135,8 +1150,9 @@ JSON בלבד: {"tasks":[{"date":"YYYY-MM-DD","time":"HH:MM","course":"${course}
     });
     S.pendingPlan = validTasks.map(t => ({...t, id:uid(), done:false, missed:false}));
     if(S.pendingPlan.length === 0) { throw new Error('ה-AI לא מצא זמנים חוקיים.'); }
+    if(!S.exams.find(e => e.course === course && e.date === date)){ S.exams.push({id:uid(), course, date, type:'מבחן', conf:parseInt(priority), readyPct:0, createdDate: ld(new Date())}); }
+    save();
     renderPlanTable(S.pendingPlan); document.getElementById('plan-result-box').classList.remove('hidden');
-    if(!S.exams.find(e => e.course === course && e.date === date)){ S.exams.push({id:uid(), course, date, type:'מבחן', conf:parseInt(priority), readyPct:0, createdDate: ld(new Date())}); save(); }
   } catch(e) {
     const msg = e.message?.includes('JSON') ? 'שגיאה בעיבוד תשובת ה-AI — נסה שוב'
       : e.message?.includes('API Key') ? e.message
@@ -1199,34 +1215,31 @@ function renderPlanTable(tasks, wrapId){
   wrap.innerHTML = summaryHtml + weekHtml;
 }
 function addPlanToSchedule() {
-  if (!S.pendingPlan.length) return;
-  // Calculate what will be replaced for transparency
+  if (!S.pendingPlan.length) { toast('⚠️ אין תוכנית לאישור — צור תוכנית תחילה'); return; }
+  // Calculate what will be replaced
   let replacedTasks = [];
   S.pendingPlan.forEach(newT => {
     S.tasks.filter(old => old.date === newT.date && old.time === newT.time && !old.done && old.course !== newT.course)
       .forEach(t => replacedTasks.push(t));
   });
-  // Ask for confirmation if displacing tasks from other courses
   const otherCourseReplacements = replacedTasks.filter(t => t.course !== S.pendingPlan[0]?.course);
-  if (otherCourseReplacements.length > 0) {
-    const names = otherCourseReplacements.slice(0,3).map(t=>`"${t.name}"`).join(', ');
-    const more = otherCourseReplacements.length > 3 ? ` ועוד ${otherCourseReplacements.length-3}` : '';
-    if (!confirm(`⚠️ הוספת התוכנית תחליף ${otherCourseReplacements.length} משימות מקורסים אחרים: ${names}${more}.\n\nלהמשיך?`)) return;
-  }
   const planCount = S.pendingPlan.length;
   S.pendingPlan.forEach(newT => {
     S.tasks = S.tasks.filter(old => !(old.date === newT.date && old.time === newT.time && !old.done));
     S.tasks.push(newT);
   });
-  // Holiday check AFTER adding — so AI can update/delete the now-saved tasks
+  // Holiday check AFTER adding
   const holidayTasks = S.pendingPlan.filter(t => getHoliday(t.date));
   const hadHoliday = holidayTasks.length > 0;
-  S.pendingPlan = []; save(); renderAll();
+  // Clear & persist first, then give feedback
+  S.pendingPlan = [];
+  save();
   document.getElementById('plan-result-box').classList.add('hidden');
   const msg = otherCourseReplacements.length > 0
-    ? `✓ ${planCount} משימות נוספו (הוחלפו ${otherCourseReplacements.length} משימות מקורסים אחרים) 📅`
-    : `✓ ${planCount} משימות נוספו ללו"ז המלא! 🚀`;
+    ? `נוספו ${planCount} משימות (הוחלפו ${otherCourseReplacements.length} משימות מקורסים אחרים)`
+    : `נוספו ${planCount} משימות ללו"ז!`;
   toast(msg);
+  try { renderAll(); } catch(e) { console.error('renderAll error in addPlanToSchedule:', e); }
   // Post-add holiday notification — tasks are now in S.tasks so AI can reschedule them
   if (hadHoliday) {
     const hNames = [...new Set(holidayTasks.map(t => `${fmtDate(t.date)} (${getHoliday(t.date)})`))].join(', ');
@@ -1624,7 +1637,7 @@ function _renderScheduleList(sow, eow, months) {
       const cColor = getCourseColor(t.course); const sc = t.done?'done':t.missed?'missed':'';
       const [th,tm] = (t.time||'00:00').split(':');
       const statusHtml = t.done?`<span class="tl-status" style="background:var(--green-light);color:var(--green)">הושלם</span>`:t.missed?`<span class="tl-status" style="background:var(--red-light);color:var(--red)">פוספס</span>`:`<span class="tl-status" style="background:var(--yellow-light);color:var(--yellow)">ממתין</span>`;
-      const actionHtml = `<button class="tl-btn" style="background:transparent;border:none;box-shadow:none;color:var(--muted)" onclick="openTaskActionSheet('${t.id}')"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>`;
+      const actionHtml = `<button class="tl-btn tl-btn-menu" onclick="openTaskActionSheet('${t.id}')" title="אפשרויות"><span class="tl-btn-menu-text">אפשרויות</span><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>`;
       html += `<div class="tl-slot ${sc}"><div class="tl-bar" style="background:${cColor}"></div><div class="tl-time"><div class="tl-time-h">${th}</div><div class="tl-time-m">${tm}</div></div><div class="tl-body"><div class="tl-meta">${t.course?`<span class="tl-course-tag" style="background:${cColor}20;color:${cColor}">${t.course}</span>`:''}<span class="tl-dur">${t.duration||''}</span>${statusHtml}</div><div class="tl-title${t.done?' tl-done':''}">${t.name}</div>${t.notes?`<div class="tl-notes">${t.notes}</div>`:''}</div><div class="tl-actions">${actionHtml}</div></div>`;
     });
     html += `</div></div>`;
@@ -1685,7 +1698,7 @@ function renderDayTimeline(dateStr) {
   S.tasks.filter(t => t.date === dateStr).forEach(t => {
     const [th,tm] = (t.time||'08:00').split(':').map(Number);
     const dur = parseInt((t.duration||'90').match(/\d+/)?.[0]||90);
-    events.push({ _type:'task', id:t.id, name:t.name, course:t.course, color:getCourseColor(t.course), startMins:th*60+tm, durMins:dur, time:t.time, done:t.done, missed:t.missed, notes:t.notes });
+    events.push({ _type:'task', id:t.id, name:t.name, course:t.course, priority:t.priority, color:getCourseColor(t.course), startMins:th*60+tm, durMins:dur, time:t.time, done:t.done, missed:t.missed, notes:t.notes });
   });
   events.sort((a,b) => a.startMins - b.startMins);
 
@@ -1743,7 +1756,23 @@ function renderDayTimeline(dateStr) {
     }
     const statusClass = ev.done?'ev-done':ev.missed?'ev-missed':'';
     const checkIcon = `<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>`;
-    eventsHtml += `<div class="tl-ev ${statusClass}" style="top:${top}px;height:${height}px;right:${rightPct}%;width:calc(${colW}% - ${GUTTER}px);background:${ev.color}18;border-color:${ev.color};${animDelay}" onclick="openTaskQuickActions('${ev.id}')"><div class="tl-ev-bar" style="background:${ev.color}"></div><div class="tl-ev-body"><div class="tl-ev-name ${ev.done?'tl-ev-done-text':''}">${ev.name}</div>${ev.course?`<div class="tl-ev-course" style="color:${ev.color}">${ev.course}</div>`:''}</div>${!ev.done&&!ev.missed?`<button class="tl-ev-check" onclick="event.stopPropagation();quickMarkDone('${ev.id}')">${checkIcon}</button>`:''}</div>`;
+    const priorityDot = (ev.priority === 'גבוה') ? `<span style="width:6px;height:6px;border-radius:50%;background:var(--red);display:inline-block;margin-left:3px;vertical-align:middle;flex-shrink:0"></span>` : '';
+    const statusBadge = ev.done
+      ? `<span style="font-size:0.58rem;font-weight:900;color:var(--green);background:var(--green-light);padding:0.06rem 0.35rem;border-radius:99px;display:inline-block">בוצע</span>`
+      : ev.missed
+        ? `<span style="font-size:0.58rem;font-weight:900;color:var(--red);background:var(--red-light);padding:0.06rem 0.35rem;border-radius:99px;display:inline-block">פוספס</span>`
+        : '';
+    const notesLine = ev.notes && height > 60
+      ? `<div style="font-size:0.65rem;color:var(--muted);margin-top:0.15rem;overflow:hidden;max-height:2em;line-height:1.3;white-space:nowrap;text-overflow:ellipsis">${ev.notes}</div>`
+      : '';
+    const timeLine = height > 45
+      ? `<div style="display:flex;align-items:center;gap:0.3rem;margin-top:0.15rem;flex-wrap:wrap">
+          ${ev.course?`<span style="font-size:0.63rem;font-weight:800;color:${ev.color}">${ev.course}</span>`:''}
+          <span style="font-size:0.6rem;color:var(--muted);font-family:var(--mono)">${ev.time}${ev.durMins?` · ${ev.durMins}ד'`:''}</span>
+          ${statusBadge}
+        </div>`
+      : statusBadge;
+    eventsHtml += `<div class="tl-ev ${statusClass}" style="top:${top}px;height:${height}px;right:${rightPct}%;width:calc(${colW}% - ${GUTTER}px);background:${ev.color}18;border-color:${ev.color};${animDelay}" onclick="openTaskQuickActions('${ev.id}')"><div class="tl-ev-bar" style="background:${ev.color}"></div><div class="tl-ev-body"><div class="tl-ev-name ${ev.done?'tl-ev-done-text':''}">${priorityDot}${ev.name}</div>${timeLine}${notesLine}</div>${!ev.done&&!ev.missed?`<button class="tl-ev-check" onclick="event.stopPropagation();quickMarkDone('${ev.id}')">${checkIcon}</button>`:''}</div>`;
   });
 
   const uid_tl = `tl-${dateStr}`;
@@ -1777,29 +1806,114 @@ function closeTaskActionSheetOld() {
 function _initDaySwipe() {
   const el = document.getElementById('day-timeline-view');
   if (!el) return;
+  if (_swipeController) _swipeController.abort();
+  _swipeController = new AbortController();
+  const { signal } = _swipeController;
   let tx = 0, ty = 0;
-  el.addEventListener('touchstart', e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; }, {passive:true});
+  el.addEventListener('touchstart', e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; }, { passive: true, signal });
   el.addEventListener('touchend', e => {
     const dx = e.changedTouches[0].clientX - tx;
     const dy = e.changedTouches[0].clientY - ty;
-    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+    if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.5) {
       const sow = new Date(); sow.setDate(new Date().getDate() - new Date().getDay() + S.weekOffset * 7);
       const eow = new Date(sow); eow.setDate(sow.getDate() + 6);
-      const s = ld(sow), e = ld(eow);
-      const cur = new Date((schedViewDay||s) + 'T12:00:00');
+      const s = ld(sow), eStr = ld(eow);
+      const cur = new Date((schedViewDay || s) + 'T12:00:00');
       if (dx > 0) { cur.setDate(cur.getDate() - 1); if (ld(cur) < s) { S.weekOffset--; schedViewDay = null; renderSchedule(); return; } }
-      else { cur.setDate(cur.getDate() + 1); if (ld(cur) > e) { S.weekOffset++; schedViewDay = null; renderSchedule(); return; } }
+      else { cur.setDate(cur.getDate() + 1); if (ld(cur) > eStr) { S.weekOffset++; schedViewDay = null; renderSchedule(); return; } }
       selectScheduleDay(ld(cur));
     }
-  }, {passive:true});
+  }, { passive: true, signal });
 }
 
-let currentRatingTaskId = null; let tempTaskRating = null;
-function doneTask(id){ const t = S.tasks.find(x => String(x.id) === String(id)); if(!t) return; if(t.done) { t.done = false; save(); renderAll(); return; } currentRatingTaskId = id; document.getElementById('rating-task-name').textContent = t.name; document.getElementById('rating-bad-wrap').classList.add('hidden'); document.getElementById('rating-skip-btn').classList.remove('hidden'); document.getElementById('rating-modal').classList.remove('hidden'); }
-function submitTaskRating(stars) { tempTaskRating = stars; if(stars <= 3) { document.getElementById('rating-bad-wrap').classList.remove('hidden'); document.getElementById('rating-skip-btn').classList.add('hidden'); } else { finishTaskRating(); } }
-function finishTaskRating(skip = false) { const t = S.tasks.find(x => String(x.id) === String(currentRatingTaskId)); if(t) { t.done = true; t.missed = false; if(!skip) { t.rating = tempTaskRating; t.feedback = document.getElementById('rating-feedback').value || ''; } addPoints(10); save(); renderAll(); } document.getElementById('rating-feedback').value = ''; closeModal('rating-modal'); }
-function undoTask(id){ const t=S.tasks.find(t=>String(t.id)===String(id)); if(t){t.done=false;t.missed=false;save();renderAll();} }
-function deleteTask(id){ S.tasks=S.tasks.filter(t=>String(t.id)!==String(id)); save(); renderAll(); }
+let currentRatingTaskId = null; let tempTaskRating = null; let _ratingTimeout = null;
+
+function doneTask(id) {
+  const t = S.tasks.find(x => String(x.id) === String(id));
+  if (!t) return;
+  if (t.done) { t.done = false; save(); renderAll(); toast('↩ משימה הוחזרה לפתוחה'); return; }
+  currentRatingTaskId = id;
+  tempTaskRating = null;
+  if (_ratingTimeout) { clearTimeout(_ratingTimeout); _ratingTimeout = null; }
+  document.getElementById('rating-task-name').textContent = t.name;
+  document.getElementById('rating-bad-wrap').classList.add('hidden');
+  const skipBtn = document.getElementById('rating-skip-btn');
+  skipBtn.textContent = 'דלג על הדירוג';
+  skipBtn.onclick = () => finishTaskRating(true);
+  skipBtn.classList.remove('hidden');
+  document.getElementById('rating-feedback').value = '';
+  document.querySelectorAll('.star-b').forEach(b => b.classList.remove('lit', 'preview'));
+  document.getElementById('rating-modal').classList.remove('hidden');
+}
+
+function previewStars(n) {
+  document.querySelectorAll('.star-b').forEach((b, i) => {
+    b.classList.remove('lit', 'preview');
+    if (i < (tempTaskRating || 0)) b.classList.add('lit');
+    else if (i < n) b.classList.add('preview');
+  });
+}
+
+function selectStar(n) {
+  tempTaskRating = n;
+  document.querySelectorAll('.star-b').forEach((b, i) => {
+    b.classList.remove('preview');
+    b.classList.toggle('lit', i < n);
+    // Add pop animation
+    if(i < n) {
+      b.style.transform = 'scale(1.2)';
+      setTimeout(()=> { b.style.transform = ''; }, 150);
+    }
+  });
+  const skipBtn = document.getElementById('rating-skip-btn');
+  if (n <= 3) {
+    document.getElementById('rating-bad-wrap').classList.remove('hidden');
+    skipBtn.classList.add('hidden');
+    skipBtn.onclick = () => finishTaskRating(true);
+    if (_ratingTimeout) { clearTimeout(_ratingTimeout); _ratingTimeout = null; }
+  } else {
+    document.getElementById('rating-bad-wrap').classList.add('hidden');
+    skipBtn.textContent = 'אישור';
+    skipBtn.onclick = () => finishTaskRating(); // save the rating, don't skip
+    skipBtn.classList.remove('hidden');
+    if (_ratingTimeout) clearTimeout(_ratingTimeout);
+    _ratingTimeout = setTimeout(() => { _ratingTimeout = null; finishTaskRating(); }, 800);
+  }
+}
+
+function submitTaskRating(stars) { selectStar(stars); }
+
+function finishTaskRating(skip = false) {
+  if (_ratingTimeout) { clearTimeout(_ratingTimeout); _ratingTimeout = null; }
+  const t = S.tasks.find(x => String(x.id) === String(currentRatingTaskId));
+  const savedRating = tempTaskRating;
+  const savedFeedback = document.getElementById('rating-feedback')?.value?.trim() || '';
+  // Close FIRST — ensures modal always closes even if rendering throws
+  document.getElementById('rating-feedback').value = '';
+  tempTaskRating = null;
+  currentRatingTaskId = null;
+  closeModal('rating-modal');
+  if (t) {
+    t.done = true; t.missed = false;
+    if (savedRating) { t.rating = savedRating; t.feedback = savedFeedback; }
+    try { addPoints(10); save(); renderAll(); } catch(e) { console.error('rating renderAll:', e); try { save(); } catch(_) {} }
+    toast(savedRating ? `${savedRating}/5 כוכבים — תודה!` : 'משימה הושלמה!');
+  }
+}
+function undoTask(id){ 
+  const t=S.tasks.find(t=>String(t.id)===String(id)); 
+  if(t){
+    t.done=false;
+    t.missed=false;
+    save();
+    closeTaskActionSheet();
+    setTimeout(() => {
+      renderAll();
+      toast('↩ משימה הוחזרה לפתוחה');
+    }, 150);
+  } 
+}
+function deleteTask(id){ S.tasks=S.tasks.filter(t=>String(t.id)!==String(id)); save(); renderAll(); toast('נמחקה'); }
 function missTask(id){ missedTaskId=id; const t=S.tasks.find(t=>String(t.id)===String(id)); document.getElementById('missed-task-name').textContent=`משימה: "${t?.name||''}"`; document.getElementById('missed-modal').classList.remove('hidden'); }
 function confirmMissed(){ if(!missedTaskId)return; const t=S.tasks.find(t=>String(t.id)===String(missedTaskId)); if(t){t.missed=true;t.done=false;t.missedReason=selectedOpt||'לא צוין';} save(); closeModal('missed-modal'); renderAll(); }
 
@@ -1858,9 +1972,9 @@ function renderTodayTasks(){
         ${t.notes?`<div class="tl-notes">📝 ${t.notes}</div>`:''}
       </div>
       <div class="tl-actions">
-        ${!t.done && !t.missed ? `<button class="tl-btn tl-btn-done" onclick="doneTask('${t.id}')" title="סיים משימה">✓</button>` : ''}
-        <button class="tl-btn" style="background:transparent;border:none;box-shadow:none;color:var(--muted)" onclick="openTaskActionSheet('${t.id}')">
-          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
+        ${!t.done && !t.missed ? `<button class="tl-btn tl-btn-done" onclick="doneTask('${t.id}')" title="סיים משימה"><svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></button>` : ''}
+        <button class="tl-btn tl-btn-menu" onclick="openTaskActionSheet('${t.id}')" title="אפשרויות">
+          <span class="tl-btn-menu-text">אפשרויות</span><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
         </button>
       </div>
     </div>`;
@@ -1885,48 +1999,155 @@ function renderMonthCalendar() {
   const monthNames = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
   const dayShort = ['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ש׳'];
   const today = ld(new Date());
+  if (!selectedMonthDay) selectedMonthDay = today;
   const firstDay = new Date(calYear, calMonth, 1);
   const lastDay = new Date(calYear, calMonth + 1, 0);
   const firstDayOfWeek = firstDay.getDay();
   const daysInMonth = lastDay.getDate();
   const labelEl = document.getElementById('cal-month-label');
   if (labelEl) labelEl.textContent = `${monthNames[calMonth]} ${calYear}`;
-  let html = '';
-  // Day headers
-  dayShort.forEach(d => { html += `<div class="month-cal-header">${d}</div>`; });
-  // Empty cells before first day
-  for (let i = 0; i < firstDayOfWeek; i++) html += `<div class="month-cal-cell empty"></div>`;
-  // Day cells
+  let gridHtml = '';
+  dayShort.forEach(d => { gridHtml += `<div class="mc2-header">${d}</div>`; });
+  for (let i = 0; i < firstDayOfWeek; i++) gridHtml += `<div class="mc2-cell mc2-empty"></div>`;
   for (let d = 1; d <= daysInMonth; d++) {
     const mm = String(calMonth + 1).padStart(2, '0');
     const dd = String(d).padStart(2, '0');
     const dateStr = `${calYear}-${mm}-${dd}`;
     const isToday = dateStr === today;
     const isPast = dateStr < today;
-    const holidayItems = getHolidayList(dateStr);
+    const isSelected = dateStr === selectedMonthDay;
     const dayTasks = S.tasks.filter(t => t.date === dateStr);
-    const dayExams = S.exams.filter(e => e.date === dateStr);
-    const numClass = isToday ? 'today-circle' : isPast ? 'past-num' : '';
-    let inner = `<div class="month-cal-day-num${numClass ? ' ' + numClass : ''}">${d}</div>`;
-    holidayItems.forEach(hol => { const c=HOLIDAY_COLORS[hol.type]||'#888'; inner+=`<div class="month-cal-holiday" style="color:${c}"><span class="hol-dot" style="background:${c}"></span>${hol.name}</div>`; });
-    dayExams.forEach(ex => { inner += `<div class="month-cal-exam-chip" title="${ex.course}"><svg viewBox="0 0 24 24" width="10" height="10" stroke="currentColor" stroke-width="2" fill="none" style="margin-left:2px"><path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8l-6-6z"></path></svg> ${ex.course}</div>`; });
-    const chips = dayTasks.slice(0, 2);
-    const dots = dayTasks.slice(2);
-    chips.forEach(t => {
-      const c = getCourseColor(t.course);
-      inner += `<div class="month-cal-task-chip" style="background:${c}22;color:${c};border-color:${c}" title="${t.name}">${t.done ? '✓ ' : ''}${t.name}</div>`;
-    });
-    if (dots.length) {
-      inner += `<div class="month-cal-dots-row">${dots.map(t => `<div class="month-cal-task-dot" style="background:${getCourseColor(t.course)}" title="${t.name}"></div>`).join('')}</div>`;
-      if (dots.length > 4) inner += `<div class="month-cal-more">+${dots.length - 4}</div>`;
-    }
-    let cellClass = 'month-cal-cell';
-    if (isToday) cellClass += ' is-today';
-    else if (isPast) cellClass += ' is-past';
-    html += `<div class="${cellClass}">${inner}</div>`;
+    const dayExams = S.exams.filter(ex => ex.date === dateStr);
+    const dayAnchors = (S.anchors||[]).filter(a => parseInt(a.day) === (new Date(dateStr + 'T12:00:00')).getDay());
+    const dotItems = [
+      ...dayExams.map(() => ({ c: 'var(--purple)', shape: 'diamond' })),
+      ...dayAnchors.map(a => ({ c: a.color || '#94a3b8', shape: 'bar' })),
+      ...dayTasks.filter(t=>!t.done&&!t.missed).map(t => ({ c: getCourseColor(t.course), shape: 'dot' })),
+      ...dayTasks.filter(t=>t.done).map(() => ({ c: 'var(--green)', shape: 'dot' })),
+    ].slice(0, 4);
+    const dotsHtml = dotItems.map(({c, shape}) =>
+      shape === 'diamond'
+        ? `<div class="mc2-dot" style="background:${c};border-radius:2px;transform:rotate(45deg);width:5px;height:5px"></div>`
+        : shape === 'bar'
+          ? `<div class="mc2-dot" style="background:${c};border-radius:3px;width:8px;height:4px"></div>`
+          : `<div class="mc2-dot" style="background:${c}"></div>`
+    ).join('');
+    let cellCls = 'mc2-cell';
+    if (isToday) cellCls += ' mc2-today';
+    else if (isPast) cellCls += ' mc2-past';
+    if (isSelected) cellCls += ' mc2-selected';
+    gridHtml += `<div class="${cellCls}" data-date="${dateStr}" onclick="selectMonthDay('${dateStr}')"><div class="mc2-num">${d}</div><div class="mc2-dots">${dotsHtml}</div></div>`;
   }
-  wrap.innerHTML = html;
+  // Build legend from actual courses in this month
+  const monthCourses = [...new Set(S.tasks.filter(t => t.date.startsWith(`${calYear}-${String(calMonth+1).padStart(2,'0')}`)).map(t=>t.course).filter(Boolean))].slice(0,3);
+  const legendItems = [
+    `<div class="mc2-legend-item"><div class="mc2-dot" style="background:#94a3b8;border-radius:3px;width:10px;height:5px;flex-shrink:0"></div><span>עוגן קבוע</span></div>`,
+    `<div class="mc2-legend-item"><div style="width:7px;height:7px;border-radius:2px;transform:rotate(45deg);background:var(--purple);flex-shrink:0"></div><span>מבחן</span></div>`,
+    ...monthCourses.map(c=>`<div class="mc2-legend-item"><div class="mc2-dot" style="background:${getCourseColor(c)};flex-shrink:0"></div><span>${c}</span></div>`),
+    monthCourses.length === 0 ? `<div class="mc2-legend-item"><div class="mc2-dot" style="background:var(--accent);flex-shrink:0"></div><span>משימה</span></div>` : '',
+  ].filter(Boolean).join('');
+  wrap.innerHTML = `<div class="mc2-grid">${gridHtml}</div><div class="mc2-legend">${legendItems}</div><div id="mc2-detail-panel" class="mc2-detail-panel"></div>`;
+  renderMonthDayDetail(selectedMonthDay);
 }
+
+function selectMonthDay(dateStr) {
+  selectedMonthDay = dateStr;
+  document.querySelectorAll('.mc2-cell[data-date]').forEach(el => {
+    el.classList.toggle('mc2-selected', el.dataset.date === dateStr);
+  });
+  renderMonthDayDetail(dateStr);
+}
+
+function renderMonthDayDetail(dateStr) {
+  const panel = document.getElementById('mc2-detail-panel');
+  if (!panel || !dateStr) return;
+  const d = new Date(dateStr + 'T12:00:00');
+  const dayNames = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+  const months = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+  const tasks = S.tasks.filter(t => t.date === dateStr).sort((a,b) => (a.time||'').localeCompare(b.time||''));
+  const exams = S.exams.filter(ex => ex.date === dateStr);
+  const anchors = (S.anchors||[]).filter(a => parseInt(a.day) === d.getDay()).sort((a,b) => (a.start||'').localeCompare(b.start||''));
+  const holidays = getHolidayList ? getHolidayList(dateStr) : [];
+  const isToday = dateStr === ld(new Date());
+  const todayBadge = isToday ? `<span style="background:var(--accent);color:white;font-size:0.62rem;font-weight:800;padding:0.12rem 0.5rem;border-radius:99px;margin-right:0.4rem">היום</span>` : '';
+  const title = `<div class="mc2-detail-title">${todayBadge}יום ${dayNames[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]}</div>`;
+
+  if (!tasks.length && !exams.length && !anchors.length && !holidays.length) {
+    panel.innerHTML = title + `<div class="mc2-detail-empty">אין אירועים ביום זה</div>`;
+    panel.classList.add('mc2-detail-visible');
+    return;
+  }
+  let rows = '';
+
+  holidays.forEach(h => {
+    const c = (HOLIDAY_COLORS && HOLIDAY_COLORS[h.type]) || '#888';
+    rows += `<div class="mc2-detail-row" style="border-right-color:${c}">
+      <div class="mc2-detail-time-col"><span class="mc2-ev-dot" style="background:${c}"></span></div>
+      <div class="mc2-detail-content"><div class="mc2-detail-name" style="color:${c};font-weight:800">${h.name}</div></div>
+    </div>`;
+  });
+
+  exams.forEach(ex => {
+    const daysLeft = Math.max(0, Math.ceil((new Date(ex.date) - new Date()) / 86400000));
+    rows += `<div class="mc2-detail-row" style="border-right-color:var(--purple);background:var(--purple-light)">
+      <div class="mc2-detail-time-col"><span style="font-family:var(--mono);font-size:0.7rem;color:var(--purple);font-weight:900">מבחן</span></div>
+      <div class="mc2-detail-content">
+        <div class="mc2-detail-name" style="color:var(--purple);font-weight:900">${ex.course}</div>
+        ${daysLeft === 0 ? `<div class="mc2-detail-sub" style="color:var(--purple)">היום!</div>` : daysLeft <= 3 ? `<div class="mc2-detail-sub" style="color:var(--red)">בעוד ${daysLeft} ימים</div>` : ''}
+      </div>
+    </div>`;
+  });
+
+  anchors.forEach(a => {
+    const c = a.color || '#94a3b8';
+    const durMins = (() => { try { const [sh,sm]=(a.start||'0:0').split(':').map(Number); const [eh,em]=(a.end||'0:0').split(':').map(Number); return (eh*60+em)-(sh*60+sm); } catch(e){return 0;}})();
+    const durStr = durMins > 0 ? ` · ${durMins >= 60 ? Math.floor(durMins/60)+'ש'+' '+(durMins%60?durMins%60+'ד':'') : durMins+'ד'}` : '';
+    rows += `<div class="mc2-detail-row" style="border-right-color:${c}">
+      <div class="mc2-detail-time-col">
+        <span style="font-family:var(--mono);font-size:0.72rem;font-weight:800;color:${c}">${a.start}</span>
+        <span style="font-size:0.62rem;color:var(--muted)">${a.end}</span>
+      </div>
+      <div class="mc2-detail-content">
+        <div class="mc2-detail-name" style="color:${c};font-weight:800">${a.name}</div>
+        <div class="mc2-detail-sub">עוגן קבוע${durStr}</div>
+      </div>
+    </div>`;
+  });
+
+  tasks.forEach(t => {
+    const c = getCourseColor(t.course);
+    const isDone = t.done, isMissed = t.missed;
+    const statusBg = isDone ? 'var(--green-light)' : isMissed ? 'var(--red-light)' : 'transparent';
+    const statusBdr = isDone ? 'var(--green)' : isMissed ? 'var(--red)' : c;
+    const statusLabel = isDone
+      ? `<span style="color:var(--green);font-size:0.65rem;font-weight:900;background:var(--green-light);padding:0.08rem 0.4rem;border-radius:99px">בוצע</span>`
+      : isMissed
+        ? `<span style="color:var(--red);font-size:0.65rem;font-weight:900;background:var(--red-light);padding:0.08rem 0.4rem;border-radius:99px">פוספס</span>`
+        : '';
+    const priorityDot = t.priority === 'גבוה' ? `<span style="width:7px;height:7px;border-radius:50%;background:var(--red);display:inline-block;margin-left:4px;vertical-align:middle"></span>` : '';
+    const notesHtml = t.notes ? `<div class="mc2-detail-notes">${t.notes.length > 60 ? t.notes.slice(0,60)+'…' : t.notes}</div>` : '';
+    rows += `<div class="mc2-detail-row" style="border-right-color:${statusBdr};background:${statusBg};cursor:pointer" onclick="selectScheduleDay('${dateStr}');showPage('schedule',document.querySelectorAll('.nav-item')[2])">
+      <div class="mc2-detail-time-col">
+        <span style="font-family:var(--mono);font-size:0.72rem;font-weight:800;color:${c}">${t.time||''}</span>
+        <span style="font-size:0.6rem;color:var(--muted)">${t.duration||''}</span>
+      </div>
+      <div class="mc2-detail-content">
+        <div class="mc2-detail-name" style="${isDone?'text-decoration:line-through;opacity:0.6':''}">
+          ${priorityDot}${t.name}
+        </div>
+        <div style="display:flex;align-items:center;gap:0.4rem;margin-top:0.2rem;flex-wrap:wrap">
+          ${t.course ? `<span style="font-size:0.63rem;font-weight:800;color:${c}">${t.course}</span>` : ''}
+          ${statusLabel}
+        </div>
+        ${notesHtml}
+      </div>
+    </div>`;
+  });
+
+  panel.innerHTML = title + `<div class="mc2-detail-rows">${rows}</div>`;
+  panel.classList.add('mc2-detail-visible');
+}
+
 function showAddAnchorModal(){
   document.getElementById('anchor-modal').dataset.editId = '';
   document.getElementById('anchor-modal-title').textContent = '⚓ הוסף עוגן קבוע';
@@ -2794,8 +3015,14 @@ async function sendRecalc() {
 
   try {
     const _content3 = await callAI({ messages: [...recalcHistory, {role:'system', content:ruleReminder}], temperature: 0.3, json: true });
-    const parsed = extractJSON(_content3);
-    recalcHistory.push({role: 'assistant', content: parsed.reply || ''});
+    let parsed;
+    try {
+      parsed = extractJSON(_content3);
+    } catch(_) {
+      // AI returned plain text instead of JSON — treat as a reply
+      parsed = { reply: _content3 };
+    }
+    recalcHistory.push({role: 'assistant', content: parsed.reply || _content3 || ''});
 
     let updated = false;
     if(parsed.actions) {
@@ -2822,7 +3049,11 @@ async function sendRecalc() {
     chat.scrollTop = chat.scrollHeight;
   } catch(e) {
     document.getElementById('recalc-loading')?.remove();
-    chat.innerHTML += `<div class="chat-msg ai"><div class="chat-bubble" style="color:var(--red)">שגיאת תקשורת: ה-AI לא ענה בפורמט תקין. נסה שוב.</div></div>`;
+    const errMsg = e.message?.includes('API Key') ? `⚠️ ${e.message}`
+      : e.message?.includes('429') ? '⚠️ חריגת מגבלת API — נסה שוב בעוד דקה'
+      : e.message?.includes('401') ? '⚠️ מפתח API לא תקין — עדכן בהגדרות'
+      : 'שגיאת תקשורת — נסה לנסח מחדש';
+    chat.innerHTML += `<div class="chat-msg ai"><div class="chat-bubble" style="color:var(--red)">${errMsg}</div></div>`;
     console.error(e);
   }
 }
@@ -3192,7 +3423,7 @@ function openTaskActionSheet(taskId) {
     opts += `<button class="action-btn" onclick="openManualTaskModal('${t.id}');closeTaskActionSheet()"><svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg> עריכת משימה</button>`;
     opts += `<button class="action-btn red-btn" onclick="missTask('${t.id}');closeTaskActionSheet()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> סימון כפוספס</button>`;
   } else if (t.done) {
-    opts += `<button class="action-btn" onclick="undoTask('${t.id}');closeTaskActionSheet()"><svg viewBox="0 0 24 24"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg> ביטול סימון</button>`;
+    opts += `<button class="action-btn" onclick="undoTask('${t.id}')"><svg viewBox="0 0 24 24"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg> ביטול סימון והחזרה לפתוחה</button>`;
   } else if (t.missed) {
     opts += `<button class="action-btn green-btn" onclick="doneTask('${t.id}');closeTaskActionSheet()"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg> שינוי לסיום</button>`;
   }
@@ -3201,10 +3432,12 @@ function openTaskActionSheet(taskId) {
   
   document.getElementById('task-action-options').innerHTML = opts;
   document.getElementById('task-action-backdrop').classList.add('open');
-  document.getElementById('task-action-sheet').classList.add('open');
+  document.getElementById('task-sheet-panel').classList.add('open');
 }
 
 function closeTaskActionSheet() {
-  document.getElementById('task-action-backdrop').classList.remove('open');
-  document.getElementById('task-action-sheet').classList.remove('open');
+  const bd = document.getElementById('task-action-backdrop');
+  if (bd) { bd.style.pointerEvents = 'none'; bd.classList.remove('open'); }
+  const panel = document.getElementById('task-sheet-panel');
+  if (panel) panel.classList.remove('open');
 }
