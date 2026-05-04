@@ -854,22 +854,24 @@ async function _callGroqDirect({ messages, temperature, json, maxTokens }) {
 
 async function callAI({ messages, temperature = 0.7, json = false, maxTokens = 4096 }) {
   try {
-    const res = await fetch('/.netlify/functions/groq-proxy', {
+    const res = await fetch('/api/groq-proxy', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages, temperature, json, maxTokens })
     });
-    // Rate limit is definitive — don't fall back
     if (res.status === 429) throw new Error('חריגת מגבלת AI — נסה שוב בעוד דקה');
+    if (res.status === 500) {
+      const d = await res.json().catch(() => ({}));
+      if (d.error && d.error.includes('GROQ_API_KEY')) throw new Error('GROQ_API_KEY לא מוגדר בשרת — הגדר אותו ב-Vercel Environment Variables');
+    }
     if (res.ok) {
       const d = await res.json();
       if (d.error) throw new Error(d.error.message || 'שגיאה ב-AI');
       return d.choices[0].message.content;
     }
-    // Any other non-ok status (404 not deployed, 500 no env key, etc.) → try personal key
+    // 404 = proxy not deployed at this path, fall through to personal key
   } catch (e) {
-    if (e.message && e.message.includes('חריגת')) throw e;
-    // Network errors, CORS, etc. — fall through to direct
+    if (e.message && (e.message.includes('חריגת') || e.message.includes('GROQ_API_KEY'))) throw e;
   }
   return await _callGroqDirect({ messages, temperature, json, maxTokens });
 }
