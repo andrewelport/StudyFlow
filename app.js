@@ -161,8 +161,6 @@ const PROFILE_QS=[
   {id:'focus_span', icon:'🧠', q:'כמה זמן אתה מצליח להתרכז ברצף?', opts:['⚡ עד 25 דקות','🎯 30–45 דקות','💪 60–75 דקות','🏆 90+ דקות']},
   {id:'style',      icon:'📖', q:'מה שיטת הלמידה שמתאימה לך?', opts:['📝 קריאה וסיכום','🔧 פתרון תרגילים','🎧 האזנה / וידאו','👥 הסבר לאחרים']},
   {id:'exam_fear',  icon:'💡', q:'מה הכי מאתגר אותך לפני מבחן?', opts:['⏰ לא לסיים ללמוד','🤔 לא להבין לעומק','😰 לשכוח בלחץ','❓ שאלות מפתיעות']},
-  {id:'env',        icon:'📍', q:'איפה אתה לומד הכי טוב?', opts:['📚 ספרייה / שקט','🏠 בית / חדר שלי','☕ קפה / רעש רקע','🌍 לא משנה לי']},
-  {id:'breaks',     icon:'☕', q:'מה מחזיר אותך לריכוז בהפסקות?', opts:['📱 טלפון / רשתות','🤸 תזוזה / מתיחות','🍪 קפה / נשנוש','👁️ מנוחה לעיניים']}
 ];
 let profileAnswers={};
 
@@ -617,9 +615,20 @@ function obNext(step){
     S.wakeTime=document.getElementById('inp-wake').value;
     S.sleepTime=document.getElementById('inp-sleep').value;
   }
-  if(step===2){ S.anchors=collectAnchors(); renderProfileQs(); }
+  if(step===2){
+    // Warn if any anchor row has no days selected (it will be silently skipped)
+    const incompleteRows = Array.from(document.querySelectorAll('.anchor-builder-row')).filter(row => {
+      const hasName = (row.querySelector('input[type="text"]')?.value || '').trim();
+      const hasDays = row.querySelectorAll('.ob-day-btn.active').length > 0;
+      return hasName && !hasDays;
+    });
+    if (incompleteRows.length) { toast('⚠️ בחר לפחות יום אחד לכל עוגן'); return; }
+    S.anchors = collectAnchors();
+    save(); // Save anchors immediately so they don't get lost
+    renderProfileQs();
+  }
   if(step===3){
-    S.profile = { focus_time:'בוקר (6-10)', focus_span:'60-75 דקות', style:'לבד', exam_fear:'לא לסיים ללמוד', env:'ספרייה / שקט מוחלט', breaks:'תזוזה / מתיחות', ...profileAnswers };
+    S.profile = { focus_time:'בוקר (6-10)', focus_span:'60-75 דקות', style:'לבד', exam_fear:'לא לסיים ללמוד', ...profileAnswers };
     document.getElementById('ob-summary').innerHTML=`שם: <b>${S.userName}</b><br>מוסד: ${S.institution||'לא צוין'}<br>עוגנים: ${S.anchors.length} | שעות למידה: ${S.wakeTime}–${S.sleepTime}`;
   }
   document.getElementById('ob-step-'+step).classList.remove('active');
@@ -1472,22 +1481,123 @@ function renderCourseManager() {
 
 // ── PLANNER PAGE MANAGEMENT ──
 
+let _plShGoal = 'ok';
+
 function renderPlannerPage() {
   if (!S.courses) S.courses = [];
   const hasCourses = S.courses.length > 0;
-  const hasHobbies = (S.hobbies || []).length > 0;
-  const isFirstTime = !hasCourses && !hasHobbies;
-  const emptyEl = document.getElementById('pl-empty-state');
+  const isFirstTime = !hasCourses;
+  const startHere = document.getElementById('pl-start-here');
   const coursesEl = document.getElementById('pl-courses-section');
   const hobbiesEl = document.getElementById('pl-hobbies-section');
-  if (emptyEl) emptyEl.classList.toggle('hidden', !isFirstTime);
+  const actionsEl = document.getElementById('pl-actions-row');
+  if (startHere) startHere.classList.toggle('hidden', !isFirstTime);
   if (coursesEl) coursesEl.style.display = isFirstTime ? 'none' : '';
   if (hobbiesEl) hobbiesEl.style.display = isFirstTime ? 'none' : '';
-  if (!isFirstTime) {
+  if (actionsEl) actionsEl.style.display = isFirstTime ? 'none' : '';
+  if (isFirstTime) {
+    const rows = document.getElementById('pl-sh-course-rows');
+    if (rows && !rows.children.length) plShAddCourseRow();
+    _plShRenderHobbies();
+  } else {
     renderCourseCards();
     renderHobbyCardsInPlanner();
   }
   renderCourseManager();
+}
+
+function plShAddCourseRow() {
+  const wrap = document.getElementById('pl-sh-course-rows');
+  if (!wrap) return;
+  const id = 'plsh-' + uid();
+  const div = document.createElement('div');
+  div.className = 'pl-sh-course-row';
+  div.id = id;
+  div.innerHTML = `
+    <input type="text" class="plsh-name" placeholder="שם הקורס *" />
+    <input type="date" class="plsh-exam" />
+    <input type="number" class="plsh-hrs" value="6" min="1" max="40" />
+    <button onclick="document.getElementById('${id}').remove()" class="btn-sm red" title="הסר">✕</button>
+  `;
+  wrap.appendChild(div);
+  div.querySelector('.plsh-name').focus();
+}
+
+function plShAddHobby() {
+  const inp = document.getElementById('pl-sh-hobby-inp');
+  const name = inp.value.trim();
+  if (!name) return;
+  if (!S.hobbies) S.hobbies = [];
+  if (S.hobbies.find(h => h.name === name)) { toast('תחביב זה כבר קיים'); return; }
+  S.hobbies.push({ id: uid(), name, timesPerWeek: 2, minPerSession: 60 });
+  inp.value = '';
+  _plShRenderHobbies();
+}
+
+function _plShRenderHobbies() {
+  const wrap = document.getElementById('pl-sh-hobby-chips');
+  if (!wrap) return;
+  wrap.innerHTML = (S.hobbies || []).map(h =>
+    `<span class="pl-sh-hobby-chip">${h.name}<span onclick="S.hobbies=S.hobbies.filter(x=>x.id!=='${h.id}');_plShRenderHobbies()" class="pl-sh-chip-x">×</span></span>`
+  ).join('');
+}
+
+function plShSelectGoal(el) {
+  document.querySelectorAll('.pl-sh-goal-opt').forEach(o => o.classList.remove('sel'));
+  el.classList.add('sel');
+  _plShGoal = el.dataset.val;
+}
+
+function plShBuildFirstWeek() {
+  const rows = document.querySelectorAll('#pl-sh-course-rows .pl-sh-course-row');
+  if (!rows.length) { toast('הוסף לפחות קורס אחד'); return; }
+  const newCourses = [];
+  let valid = true;
+  rows.forEach(row => {
+    const name = row.querySelector('.plsh-name')?.value.trim();
+    const examDate = row.querySelector('.plsh-exam')?.value;
+    const hours = parseInt(row.querySelector('.plsh-hrs')?.value) || 6;
+    if (!name) { toast('הכנס שם לכל קורס'); valid = false; return; }
+    if (!examDate) { toast(`הכנס תאריך מבחן לקורס "${name}"`); valid = false; return; }
+    if (new Date(examDate) < new Date()) { toast(`תאריך מבחן של "${name}" כבר עבר`); valid = false; return; }
+    newCourses.push({ id: uid(), name, examDate, hoursPerWeek: hours });
+  });
+  if (!valid) return;
+  if (!S.courses) S.courses = [];
+  newCourses.forEach(c => {
+    if (!S.courses.find(x => x.name === c.name)) {
+      S.courses.push(c);
+      if (!S.exams.find(e => e.course === c.name)) {
+        S.exams.push({ id: uid(), course: c.name, date: c.examDate, type: 'מבחן', conf: 3, readyPct: 0, createdDate: ld(new Date()) });
+      }
+    }
+  });
+  save();
+  const coursesNames = newCourses.map(c => c.name);
+  // Build _wr state for first-week generation — skip Q&A, use defaults
+  _wr = {
+    qs: [], qi: 0,
+    answers: {
+      courses: Object.fromEntries(coursesNames.map(n => [n, { u: 'ok', cov: 'little', mat: 'lots' }])),
+      hobbies: {},
+      load: 'ok',
+      goal: _plShGoal,
+      priority: null
+    },
+    coursesLastWeek: coursesNames,
+    activeHobbies: S.hobbies || [],
+    pendingPlan: null
+  };
+  // Navigate to weekly review page and generate
+  showPage('weekly-review', null);
+  updateBottomNav('weekly-review');
+  document.getElementById('wr-msgs').innerHTML = '';
+  document.getElementById('wr-choices').innerHTML = '';
+  document.getElementById('wr-choices').classList.add('hidden');
+  document.getElementById('wr-result').classList.add('hidden');
+  _wrProg(0);
+  _wrMsg(`🎉 מצוין ${S.userName}! בונה לוז לשבוע הראשון שלך...\nקורסים: ${coursesNames.join(', ')}`);
+  setTimeout(() => _wrGenerate(), 800);
 }
 
 function openAddCourseModal() {
@@ -1520,9 +1630,12 @@ function addPlannerCourse() {
 function deletePlannerCourse(id) {
   const course = (S.courses || []).find(c => c.id === id);
   if (!course) return;
-  if (!confirm(`למחוק את הקורס "${course.name}"? הלוח הנוכחי לא ישתנה.`)) return;
+  if (!confirm(`למחוק את הקורס "${course.name}"? גם המשימות והמבחנים העתידיים ימחקו.`)) return;
   S.courses = S.courses.filter(c => c.id !== id);
-  save(); renderPlannerPage();
+  const today = ld(new Date());
+  S.tasks = S.tasks.filter(t => !(t.course === course.name && !t.done && t.date >= today));
+  S.exams = S.exams.filter(e => e.course !== course.name);
+  save(); renderAll(); renderPlannerPage();
 }
 
 function renderCourseCards() {
@@ -1599,7 +1712,7 @@ function renderHobbyCardsInPlanner() {
       </div>
       <div class="pl-hc-actions">
         <button class="pl-hc-btn" onclick="_hobbyActiveIdx=${idx};showPage('hobby',null)">🤖 מאמן</button>
-        <button class="pl-hc-btn sec" onclick="_hobbyActiveIdx=${idx};showPage('hobby',null)">↗</button>
+        <button class="pl-hc-btn red" onclick="if(confirm('למחוק ${h.name}?')){_deleteHobbyTasks('${h.name}');S.hobbies=S.hobbies.filter(x=>x.id!=='${h.id}');save();renderAll()}" title="מחק תחביב">🗑</button>
       </div>
     </div>`;
   }).join('');
@@ -1663,7 +1776,7 @@ async function generateEmergencySchedule() {
 - השתמש בכל זמן פנוי ברשימה. כל משימה = 90 דקות.
 - שמות משימות (גוון ביניהם): "שינון אקטיבי — ${exam.course}", "פתרון מבחנים ישנים — ${exam.course}", "חזרה מרווחת — ${exam.course}", "שליפה מהזיכרון — ${exam.course}", "סיכום נושאים — ${exam.course}"
 - כל המשימות: priority: "גבוה"
-- שעות חוקיות בלבד: "08:00","09:50","11:40","14:00","15:50","17:40","19:30"
+- שעות חוקיות בלבד: "08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00"
 - תאריכים: ${startDate} עד ${examMinus1} בלבד (לא כולל יום המבחן ${examDate})
 
 JSON בלבד: {"tasks":[{"date":"YYYY-MM-DD","time":"HH:MM","course":"${exam.course}","name":"...","duration":"90 דק'","priority":"גבוה"}]}`;
@@ -1674,7 +1787,7 @@ JSON בלבד: {"tasks":[{"date":"YYYY-MM-DD","time":"HH:MM","course":"${exam.co
     const today = ld(new Date());
     const valid = (parsed.tasks||[]).filter(t => {
       if (!t.date || !t.time) return false;
-      const validTimes = ["08:00","09:50","11:40","14:00","15:50","17:40","19:30"];
+      const validTimes = ["08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00"];
       return validTimes.includes(t.time) && t.date >= today && t.date < examDate;
     }).map(t => ({...t, id:uid(), done:false, missed:false, priority:'גבוה'}));
 
@@ -1936,7 +2049,7 @@ ${crunchLines}
 ${allSlots.text}
 
 חוקי ברזל:
-1. "time" — מתוך בלבד: "08:00","09:50","11:40","14:00","15:50","17:40","19:30"
+1. "time" — מתוך בלבד: "08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00"
 2. "date" — רק תאריכים שמופיעים בזמנים פנויים, לא בחגים
 3. בחלון קראנץ׳ — רק הקורס הרלוונטי, עד 3 ביום
 4. מחוץ לקראנץ׳ — חלק לפי יחס: (שעות × עדיפות) לכל קורס
@@ -1951,7 +2064,7 @@ JSON בלבד — עד 150 משימות:
     const _content2 = await callAI({ messages:[{role:'user',content:prompt}], temperature:0.2, json:true, maxTokens:8000 });
     const parsed = extractJSON(_content2);
 
-    const validTimes = ["08:00","09:50","11:40","14:00","15:50","17:40","19:30"];
+    const validTimes = ["08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00"];
     const courseNames = new Set(courses.map(c=>c.course));
     const slotMap = {};
     (parsed.tasks||[]).forEach(t => {
@@ -2691,7 +2804,13 @@ function showAddAnchorModal(){
   const dr = document.getElementById('anc-day-rows');
   if (dr) dr.innerHTML = '';
   document.querySelectorAll('#anc-days-selector input[type="checkbox"]').forEach(cb => cb.checked = false);
+  // Reset the "forever" checkbox to checked and disable end-date
+  const foreverCb = document.getElementById('anc-forever');
+  if (foreverCb) foreverCb.checked = true;
+  const endDateEl = document.getElementById('anc-end-date');
+  if (endDateEl) { endDateEl.value = ''; endDateEl.disabled = true; endDateEl.style.opacity = '0.35'; }
   document.getElementById('anchor-modal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('anc-name').focus(), 100);
 }
 
 function editAnchor(id) {
@@ -2724,7 +2843,7 @@ function openManualTaskModal(id) {
   document.getElementById('edit-t-name').value = t?.name || '';
   document.getElementById('edit-t-course').value = t?.course || '';
   document.getElementById('edit-t-date').value = t?.date || ld(new Date());
-  document.getElementById('edit-t-time').value = t?.time || '09:50';
+  document.getElementById('edit-t-time').value = t?.time || '09:00';
   document.getElementById('edit-t-dur').value = t?.duration ? parseInt(t.duration) : 90;
   document.getElementById('edit-t-notes').value = t?.notes || '';
   modal.dataset.editId = id || '';
@@ -2789,7 +2908,7 @@ function renderCalendarView() {
   const sow = new Date(now); sow.setDate(now.getDate() - now.getDay() + S.weekOffset * 7);
   const days = ['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ש׳'];
   const daysFull = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
-  const hours = ['08:00','09:50','11:40','14:00','15:50','17:40','19:30'];
+  const hours = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00'];
   // Slot end times for current-time calculation
   const slotMins = [8*60, 9*60+50, 11*60+40, 14*60, 15*60+50, 17*60+40, 19*60+30, 21*60+20];
   const wrap = document.getElementById('calendar-view-wrap');
@@ -3167,7 +3286,7 @@ function scheduleExamCrunch(examId) {
   }
 
   const crunchNames = [`שליפה אקטיבית — ${ex.course}`, `מבחן תרגול — ${ex.course}`, `חזרה אינטנסיבית — ${ex.course}`, `תרגול שאלות — ${ex.course}`];
-  const validTimes = ["08:00","09:50","11:40","14:00","15:50","17:40","19:30"];
+  const validTimes = ["08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00"];
   const newTasks = []; let nameIdx = 0;
   const lines = slotsData.text.split('\n').filter(l => l.trim());
   for (const line of lines) {
@@ -3285,7 +3404,7 @@ function recalcExamFocus(course, perfPct, timePct, daysLeft) {
 (2) הצע שיטות למידה ספציפיות: חזרה מרווחת, שליפה אקטיבית, שילוב נושאים.
 (3) כשאתה ממליץ להוסיף משימות — תאר אותן בבירור ב-reply, ואז כלול אותן ב-actions.add. הסטודנט יראה הצעה ויחליט אם לאשר.
 (4) השתמש אך ורק בזמנים הפנויים — אל תחפוף עם עוגנים קיימים ואל תקבע בעבר.
-(5) שעות תקינות בלבד: 08:00,09:50,11:40,14:00,15:50,17:40,19:30.`};
+(5) שעות תקינות בלבד: 08:00,09:00,10:00,11:00,12:00,13:00,14:00,15:00,16:00,17:00,18:00,19:00,20:00.`};
   chat.innerHTML = `<div class="chat-msg user"><div class="chat-bubble">${msg}</div></div>`;
   document.getElementById('recalc-input').value = msg;
   sendRecalc();
@@ -3307,7 +3426,7 @@ function checkPastDueTasks() {
         chat.innerHTML = `<div class="chat-msg ai"><div class="chat-bubble">${msg}</div></div>`;
         recalcHistory = [{role: 'system', content: `יש ${missedTasks.length} משימות שפוספסו: ${taskJSON}.
 זמנים פנויים היום: ${slotsData.text||'אין'}.
-חוקים: (1) הצע 2-3 אפשרויות קונקרטיות לשיבוץ מחדש. (2) כשהמשתמש בוחר — החזר JSON עם actions.update (id+date+time חדשים). (3) שעות תקינות: 08:00,09:50,11:40,14:00,15:50,17:40,19:30. (4) פורמט: {"reply":"...","actions":{"update":[{"id":"ID","date":"YYYY-MM-DD","time":"HH:MM"}]}}`}];
+חוקים: (1) הצע 2-3 אפשרויות קונקרטיות לשיבוץ מחדש. (2) כשהמשתמש בוחר — החזר JSON עם actions.update (id+date+time חדשים). (3) שעות תקינות: 08:00,09:00,10:00,11:00,12:00,13:00,14:00,15:00,16:00,17:00,18:00,19:00,20:00. (4) פורמט: {"reply":"...","actions":{"update":[{"id":"ID","date":"YYYY-MM-DD","time":"HH:MM"}]}}`}];
     }
 }
 
@@ -3331,7 +3450,7 @@ function openRecalcForCollision(anchor, tasks) {
 זמנים פנויים: ${slotsData.text || 'אין זמנים פנויים זמינים'}.
 היום: ${today}.
 
-חוקים: (1) הצג לסטודנט 2-3 אפשרויות קונקרטיות: לדחוס לסוף שבוע, לפרוס על הימים הקרובים, לדלג על חלק. (2) כשהסטודנט בוחר — החזר JSON עם actions.add לשיבוץ מחדש. (3) השתמש רק בשעות: 08:00,09:50,11:40,14:00,15:50,17:40,19:30. (4) אל תשבץ בזמן עוגנים אחרים. (5) פורמט: {"reply":"...","actions":{"add":[...]}}`
+חוקים: (1) הצג לסטודנט 2-3 אפשרויות קונקרטיות: לדחוס לסוף שבוע, לפרוס על הימים הקרובים, לדלג על חלק. (2) כשהסטודנט בוחר — החזר JSON עם actions.add לשיבוץ מחדש. (3) השתמש רק בשעות: 08:00,09:00,10:00,11:00,12:00,13:00,14:00,15:00,16:00,17:00,18:00,19:00,20:00. (4) אל תשבץ בזמן עוגנים אחרים. (5) פורמט: {"reply":"...","actions":{"add":[...]}}`
     }];
 }
 
@@ -3399,7 +3518,7 @@ function openRecalc(mode = 'schedule') {
         sub.textContent = 'ניתוח פערים ואסטרטגיית למידה לקראת המבחן.';
         btn.style.background = 'linear-gradient(135deg, #16c98d, #38ef7d)';
         recalcHistory = [{role: 'system', content: `אתה יועץ אקדמי מומחה לקורסים. תפקידך לנתח את הפער בין הזמן שעבר לבין ההתקדמות בפועל, ולהציע אסטרטגיה ספציפית.
-חוקים: (1) נתח את הפער בין timePct לבין perfPct. (2) המלץ על שיטות למידה ספציפיות: חזרה מרווחת, שליפה אקטיבית, שילוב נושאים. (3) אם צריך לסדר מחדש — החזר JSON עם actions.update/add בשעות תקינות בלבד: 08:00,09:50,11:40,14:00,15:50,17:40,19:30. (4) היה ישיר — אמור אם הקצב מספיק או לא. (5) החזר JSON: {"reply":"...","actions":{...}}`}];
+חוקים: (1) נתח את הפער בין timePct לבין perfPct. (2) המלץ על שיטות למידה ספציפיות: חזרה מרווחת, שליפה אקטיבית, שילוב נושאים. (3) אם צריך לסדר מחדש — החזר JSON עם actions.update/add בשעות תקינות בלבד: 08:00,09:00,10:00,11:00,12:00,13:00,14:00,15:00,16:00,17:00,18:00,19:00,20:00. (4) היה ישיר — אמור אם הקצב מספיק או לא. (5) החזר JSON: {"reply":"...","actions":{...}}`}];
     } else if (mode === 'morning' || mode === 'collision') {
         header.style.background = 'linear-gradient(135deg, #f5a623, #ff7b7b)';
         title.textContent = '⚡ מנהל לוח זמנים';
@@ -3407,7 +3526,7 @@ function openRecalc(mode = 'schedule') {
         btn.style.background = 'linear-gradient(135deg, #f5a623, #ff7b7b)';
         if (!recalcHistory.length) {
             recalcHistory = [{role: 'system', content: `אתה מנהל לוח זמנים מדויק. תפקידך לפתור התנגשויות ולסדר משימות שנפלו.
-חוקים: (1) השתמש רק בשעות: 08:00,09:50,11:40,14:00,15:50,17:40,19:30. (2) אל תקבע בעבר. (3) החזר JSON: {"reply":"...","actions":{"add":[...],"update":[{"id":"ID","date":"YYYY-MM-DD","time":"HH:MM"}]}}. (4) הסבר מה שינית ולמה.`}];
+חוקים: (1) השתמש רק בשעות: 08:00,09:00,10:00,11:00,12:00,13:00,14:00,15:00,16:00,17:00,18:00,19:00,20:00. (2) אל תקבע בעבר. (3) החזר JSON: {"reply":"...","actions":{"add":[...],"update":[{"id":"ID","date":"YYYY-MM-DD","time":"HH:MM"}]}}. (4) הסבר מה שינית ולמה.`}];
         }
     } else if (mode === 'capacity') {
         header.style.background = 'linear-gradient(135deg, #f59e0b, #ef4444)';
@@ -3464,7 +3583,7 @@ ${examLines}
 🗓️ זמנים פנויים (30 ימים): ${freeSlots30.text||'אין'}
 
 חוקי ברזל:
-(1) שעות תקינות בלבד: 08:00, 09:50, 11:40, 14:00, 15:50, 17:40, 19:30
+(1) שעות תקינות בלבד: 08:00, 09:00, 10:00, 11:00, 12:00, 13:00, 14:00, 15:00, 16:00, 17:00, 18:00, 19:00, 20:00
 (2) אל תקבע לפני ${S.wakeTime} ואחרי ${S.sleepTime}. אל תקבע בעבר (לפני ${todayStr}).
 (3) לשאלת מידע (ללא שינוי): {"reply":"...","actions":{}}
 (4) לשינוי לו"ז: {"reply":"הסבר מה שינית","actions":{"add":[...],"delete":["ID"],"update":[{"id":"ID","date":"YYYY-MM-DD","time":"HH:MM"}]}}
@@ -3797,7 +3916,7 @@ function hpConfirmAddTasks() {
   const hobby = (S.hobbies || [])[_hobbyActiveIdx];
   if (!hobby?._pendingTasks) return;
   const today = new Date(); const n = hobby._pendingTasks.length;
-  const times = ['09:00','14:00','17:00','19:30','21:00'];
+  const times = ['09:00','14:00','17:00','19:00','21:00'];
   hobby._pendingTasks.forEach((t, i) => {
     const d = new Date(today);
     d.setDate(today.getDate() + Math.ceil((i+1)*7/n));
@@ -3848,10 +3967,16 @@ ${slotsData.text}
 function hpDeleteHobby() {
   const hobby = (S.hobbies||[])[_hobbyActiveIdx];
   if (!hobby||!confirm(`מחוק "${hobby.name}" ואת כל האימונים העתידיים?`)) return;
-  S.tasks = S.tasks.filter(t=>!(t.course===hobby.name&&!t.done));
+  _deleteHobbyTasks(hobby.name);
   S.hobbies.splice(_hobbyActiveIdx,1);
   _hobbyActiveIdx = 0;
   save(); renderAll(); renderHobbyPage();
+}
+
+function _deleteHobbyTasks(hobbyName) {
+  const today = ld(new Date());
+  // Remove all future undone tasks for this hobby (strict equality + trim)
+  S.tasks = S.tasks.filter(t => !(t.course === hobbyName && !t.done && t.date >= today));
 }
 
 // ══════════════════════════════════════════
@@ -4034,6 +4159,7 @@ ${slots.text||'אין זמנים פנויים'}
     if (!parsed.tasks?.length) throw new Error('ריק');
     const validTasks = parsed.tasks.filter(t => {
       if (!t.date || !t.time) return false;
+      if (t.date < range.start || t.date > range.end) return false;
       const dur = parseInt((t.duration||String(taskDuration)).match(/\d+/)?.[0]||taskDuration);
       return isTimeInFreeWindow(t.date, t.time, dur);
     });
@@ -4239,21 +4365,21 @@ function _buildSchedulingRules(profile, answers) {
   else if (load === 'light') rules.push('😴 שבוע קל: המשתמש מסוגל ליותר — ניתן להוסיף');
 
   // ── 3. PEAK SLOTS ──
-  let peakSlots = ['09:50','11:40'];
-  let offPeakSlots = ['14:00','15:50'];
+  let peakSlots = ['10:00','11:00'];
+  let offPeakSlots = ['14:00','15:00'];
   if (p.focus_time) {
     if (p.focus_time.match(/בוקר|06|07|08/)) {
-      peakSlots = ['08:00','09:50','11:40']; offPeakSlots = ['14:00','15:50','17:40'];
-      rules.push('🌅 פיק: 08:00–11:40 → קורסים קשים/עדיפים | 14:00+ → חזרות וחומר קל');
+      peakSlots = ['08:00','09:00','10:00']; offPeakSlots = ['14:00','15:00','16:00'];
+      rules.push('🌅 פיק: 08:00–10:00 → קורסים קשים/עדיפים | 14:00+ → חזרות וחומר קל');
     } else if (p.focus_time.match(/צהריים|10|11|12/)) {
-      peakSlots = ['11:40','14:00','15:50']; offPeakSlots = ['08:00','17:40','19:30'];
-      rules.push('☀️ פיק: 11:40–15:50 → קורסים קשים | בוקר ו-17:40+ → חזרות');
+      peakSlots = ['11:00','12:00','13:00']; offPeakSlots = ['08:00','17:00','18:00'];
+      rules.push('☀️ פיק: 11:00–13:00 → קורסים קשים | בוקר ו-17:00+ → חזרות');
     } else if (p.focus_time.match(/אחה"צ|14|15|16/)) {
-      peakSlots = ['14:00','15:50','17:40']; offPeakSlots = ['08:00','09:50','19:30'];
-      rules.push('🌤 פיק: 14:00–17:40 → קורסים קשים | בוקר → חזרות וחומר קל');
+      peakSlots = ['14:00','15:00','16:00']; offPeakSlots = ['08:00','09:00','19:00'];
+      rules.push('🌤 פיק: 14:00–16:00 → קורסים קשים | בוקר → חזרות וחומר קל');
     } else if (p.focus_time.match(/ערב|17|18|19|20/)) {
-      peakSlots = ['17:40','19:30']; offPeakSlots = ['08:00','09:50','14:00'];
-      rules.push('🌙 פיק: 17:40–19:30 → קורסים קשים | בוקר → חומר קל בלבד');
+      peakSlots = ['18:00','19:00']; offPeakSlots = ['08:00','09:00','14:00'];
+      rules.push('🌙 פיק: 18:00–19:00 → קורסים קשים | בוקר → חומר קל בלבד');
     }
   }
 
@@ -4499,7 +4625,7 @@ async function handleMagicInput() {
 - שאלות/ייעוץ/הסבר: {"type":"chat","reply":"HTML עשיר בעברית (2-4 משפטים)"}
 - הוסף עוגן: {"type":"anchor","name":"...","day":N,"start":"HH:MM","end":"HH:MM","travelMin":0} (day: 0=ראשון...6=שבת)
 - הוסף מבחן: {"type":"exam","course":"...","date":"YYYY-MM-DD"}
-- הוסף משימה: {"type":"task","name":"...","course":"...","date":"YYYY-MM-DD","time":"HH:MM"} (time מתוך: 08:00,09:50,11:40,14:00,15:50,17:40,19:30)
+- הוסף משימה: {"type":"task","name":"...","course":"...","date":"YYYY-MM-DD","time":"HH:MM"} (time מתוך: 08:00,09:00,10:00,11:00,12:00,13:00,14:00,15:00,16:00,17:00,18:00,19:00,20:00)
 - המר "מחר"/"מחרתיים"/"ביום X" לתאריכים מדויקים
 - "מ-2 עד 4" = 14:00 עד 16:00`;
 
@@ -4550,8 +4676,8 @@ async function handleMagicInput() {
         assistantHistory.push({role:'assistant', content: msg});
       }
     } else if (parsed.type === 'task') {
-      const validTimes = ["08:00","09:50","11:40","14:00","15:50","17:40","19:30"];
-      const taskTime = validTimes.includes(parsed.time) ? parsed.time : '09:50';
+      const validTimes = ["08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00"];
+      const taskTime = validTimes.includes(parsed.time) ? parsed.time : '09:00';
       const newTask = {id:uid(), name:parsed.name||'משימה', course:parsed.course||'', date:parsed.date||todayStr, time:taskTime, duration:"90 דק'", priority:'בינוני', done:false, missed:false};
       S.tasks.push(newTask); save(); renderAll();
       const confirmMsg = `✅ משימה "<b>${newTask.name}</b>" נוספה ל-${newTask.date} בשעה ${taskTime}.`;
