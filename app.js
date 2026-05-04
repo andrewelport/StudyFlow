@@ -133,13 +133,15 @@ db.auth.onAuthStateChange((event, session) => {
 });
 
 
-let S={apiKey:'',userName:'',institution:'',wakeTime:'08:00',sleepTime:'22:00',anchors:[],profile:{},tasks:[],exams:[],weekOffset:0,pendingPlan:[],points:0,streak:0,lastStudyDate:'',theme:'light'};
+let S={apiKey:'',userName:'',institution:'',wakeTime:'08:00',sleepTime:'22:00',anchors:[],profile:{},tasks:[],exams:[],courses:[],weekOffset:0,pendingPlan:[],points:0,streak:0,lastStudyDate:'',theme:'light',weeklyReview:{lastReviewDate:null,history:[]},hobbies:[]};
 let selectedOpt=null, missedTaskId=null;
 let currentChatMode = 'general';
 let recalcHistory = [];
 let currentTutorTask = null;
 let tutorHistory = [];
 let isGridView = false;
+let _wr = null;
+let _wrForceRebuild = false;
 let schedViewDay = null;
 let _swipeController = null;
 let selectedMonthDay = null;
@@ -147,17 +149,20 @@ let schedViewMode = 'timeline';
 let pendingRecalcActions = null;
 let psychHistory = [];
 let assistantHistory = [];
+let _emergencyPlan = null;
+let hobbyHistory = [];
+let _hobbyOnboarding = false;
 let countdownInterval = null;
 let calMonth = new Date().getMonth();
 let calYear = new Date().getFullYear();
 
 const PROFILE_QS=[
-  {id:'focus_time',q:'באיזו שעה אתה הכי ממוקד?',opts:['בוקר  06–10','צהריים  10–14','אחה"צ  14–18','ערב  18–23']},
-  {id:'focus_span',q:'כמה זמן אתה מצליח להתרכז ברצף?',opts:['15–25 דקות','30–45 דקות','60–75 דקות','90+ דקות']},
-  {id:'style',q:'מה שיטת הלמידה שמתאימה לך?',opts:['בלוקים ארוכים','משימות קצרות','חזרה לפני חדש','קריאה ואז תרגול']},
-  {id:'exam_fear',q:'מה הכי מאתגר אותך לפני מבחן?',opts:['לא לסיים ללמוד','לא להבין לעומק','לשכוח ברגע האמת','טעויות בחישובים']},
-  {id:'env',q:'איפה אתה לומד הכי טוב?',opts:['שקט מוחלט','עם מוזיקה','קפה / רעש רקע','עם חברים']},
-  {id:'breaks',q:'מה מחזיר אותך לריכוז בהפסקות?',opts:['טלפון ורשתות','תזוזה / מתיחות','קפה / נשנוש','מנוחה לעיניים']}
+  {id:'focus_time', icon:'⏰', q:'באיזו שעה אתה הכי ממוקד?', opts:['🌅 בוקר 06–10','☀️ צהריים 10–14','🌤 אחה"צ 14–18','🌙 ערב 18–23']},
+  {id:'focus_span', icon:'🧠', q:'כמה זמן אתה מצליח להתרכז ברצף?', opts:['⚡ עד 25 דקות','🎯 30–45 דקות','💪 60–75 דקות','🏆 90+ דקות']},
+  {id:'style',      icon:'📖', q:'מה שיטת הלמידה שמתאימה לך?', opts:['📝 קריאה וסיכום','🔧 פתרון תרגילים','🎧 האזנה / וידאו','👥 הסבר לאחרים']},
+  {id:'exam_fear',  icon:'💡', q:'מה הכי מאתגר אותך לפני מבחן?', opts:['⏰ לא לסיים ללמוד','🤔 לא להבין לעומק','😰 לשכוח בלחץ','❓ שאלות מפתיעות']},
+  {id:'env',        icon:'📍', q:'איפה אתה לומד הכי טוב?', opts:['📚 ספרייה / שקט','🏠 בית / חדר שלי','☕ קפה / רעש רקע','🌍 לא משנה לי']},
+  {id:'breaks',     icon:'☕', q:'מה מחזיר אותך לריכוז בהפסקות?', opts:['📱 טלפון / רשתות','🤸 תזוזה / מתיחות','🍪 קפה / נשנוש','👁️ מנוחה לעיניים']}
 ];
 let profileAnswers={};
 
@@ -394,11 +399,16 @@ const save = () => {
 
 function renderAll() {
   renderTodayTasks();
-  if (document.getElementById('page-schedule').classList.contains('active')) renderSchedule();
-  if (document.getElementById('page-exams').classList.contains('active')) renderExams();
-  if (document.getElementById('page-anchors').classList.contains('active')) renderAnchorsList();
-  if (document.getElementById('page-progress').classList.contains('active')) renderProgress();
-  if (document.getElementById('page-calendar').classList.contains('active')) renderMonthCalendar();
+  if (document.getElementById('page-schedule')?.classList.contains('active')) renderSchedule();
+  if (document.getElementById('page-exams')?.classList.contains('active')) renderExams();
+  if (document.getElementById('page-anchors')?.classList.contains('active')) renderAnchorsList();
+  if (document.getElementById('page-progress')?.classList.contains('active')) renderProgress();
+  if (document.getElementById('page-calendar')?.classList.contains('active')) renderMonthCalendar();
+  if (document.getElementById('page-hobby')?.classList.contains('active')) renderHobbyPage();
+  if (document.getElementById('page-planner')?.classList.contains('active')) renderPlannerPage();
+  if (document.getElementById('page-weekly-review')?.classList.contains('active')) renderWeeklyReview();
+  if (!document.getElementById('time-chart-modal')?.classList.contains('hidden')) renderTimeChart();
+  renderWRSidebarCard();
   updateHeaderStats();
 }
 
@@ -551,7 +561,22 @@ function openSettings() {
   const keyEl = document.getElementById('settings-api-key');
   if (keyEl) keyEl.value = S.apiKey || '';
   const keyStatus = document.getElementById('api-key-status');
-  if (keyStatus) keyStatus.textContent = S.apiKey ? `מפתח שמור: ${S.apiKey.slice(0,7)}...` : 'לא הוגדר';
+  if (keyStatus) {
+    keyStatus.textContent = S.apiKey ? `✅ מפתח שמור: ${S.apiKey.slice(0,7)}...` : '⚠️ לא הוגדר — AI לא יעבוד';
+    keyStatus.style.color = S.apiKey ? 'var(--green)' : '#f59e0b';
+  }
+  const banner = document.getElementById('api-managed-banner');
+  if (banner) {
+    if (S.apiKey) {
+      banner.style.display = 'none';
+    } else {
+      banner.style.display = '';
+      banner.style.background = 'var(--orange-light, #fff7ed)';
+      banner.style.border = '1px solid #f59e0b';
+      banner.style.color = '#b45309';
+      banner.textContent = '⚠️ נדרש מפתח API כדי שה-AI יפעל — הכנס למטה';
+    }
+  }
   const lbl = document.getElementById('theme-btn-label');
   if (lbl) lbl.textContent = S.theme === 'dark' ? '☀️ מצב יום' : '🌙 מצב לילה';
   // Open AI section if no key configured so user can find where to enter it
@@ -643,6 +668,16 @@ function addAnchorRow(){
         </div>
       </div>
     </div>
+    <div class="ab-section" style="margin-top:0.1rem">
+      <label class="ab-label">בתוקף עד</label>
+      <div style="display:flex;align-items:center;gap:0.6rem">
+        <input type="date" class="ob-anchor-end ab-time-inp" style="flex:1;opacity:0.35" disabled />
+        <label style="display:flex;align-items:center;gap:0.3rem;font-size:0.78rem;font-weight:700;color:var(--text);white-space:nowrap;cursor:pointer">
+          <input type="checkbox" class="ob-anchor-forever" checked onchange="const d=this.closest('.ab-section').querySelector('input[type=date]');d.disabled=this.checked;d.style.opacity=this.checked?'0.35':'1'" />
+          תמיד
+        </label>
+      </div>
+    </div>
     <div class="ob-per-day-wrap"></div>`;
   document.getElementById('anchor-builder').appendChild(row);
 }
@@ -701,21 +736,24 @@ function collectAnchors(){
         end = times[1]?.value || defaultEnd;
       }
       if (start >= end) return;
-      results.push({ id: uid(), name, day: d, start, end, travelMin, color });
+      const foreverCb = row.querySelector('.ob-anchor-forever');
+      const endDate = (!foreverCb || foreverCb.checked) ? null : (row.querySelector('.ob-anchor-end')?.value || null);
+      results.push({ id: uid(), name, day: d, start, end, travelMin, color, endDate });
     });
   });
   return results;
 }
 function renderProfileQs(){
   document.getElementById('profile-q-wrap').innerHTML = PROFILE_QS.map((q, idx) => `
-    <div class="pq-block">
-      <div class="pq-header">
-        <span class="pq-num">${String(idx+1).padStart(2,'0')}</span>
-        <span class="pq-q">${q.q}</span>
+    <div class="pq-card">
+      <div class="pq-card-top">
+        <span class="pq-card-icon">${q.icon}</span>
+        <span class="pq-card-num">${idx+1} / ${PROFILE_QS.length}</span>
       </div>
+      <div class="pq-card-q">${q.q}</div>
       <div class="pq-opts" id="opts-${q.id}">
         ${q.opts.map(opt => `<div class="pq-opt" onclick="selectProfileOpt(this,'${q.id}')">${opt}</div>`).join('')}
-        <div class="pq-opt pq-other" onclick="selectProfileOpt(this,'${q.id}',true)" style="grid-column:1/-1">אחר — הכנס בעצמך</div>
+        <div class="pq-opt pq-other" onclick="selectProfileOpt(this,'${q.id}',true)" style="grid-column:1/-1">✏️ אחר — הכנס בעצמך</div>
       </div>
       <input type="text" id="other-${q.id}" placeholder="כתוב כאן..." class="pq-other-inp" style="display:none" oninput="profileAnswers['${q.id}']=this.value.trim()">
     </div>
@@ -779,24 +817,31 @@ function showPage(name,btn){
   if(name==='exams')renderExams();
   if(name==='anchors')renderAnchorsList();
   if(name==='progress') renderProgress();
+  if(name==='planner') renderPlannerPage();
   if(name==='calendar') renderMonthCalendar();
+  if(name==='hobby') renderHobbyPage();
+  if(name==='weekly-review') renderWeeklyReview();
   updateBottomNav(name);
   closeSidebar();
 }
 
 function updateBottomNav(name) {
-  const map = {today:'bn-today',planner:'bn-planner',schedule:'bn-schedule',exams:'bn-exams',progress:'bn-progress'};
+  const map = {today:'bn-today',planner:'bn-planner',schedule:'bn-schedule',exams:'bn-exams',progress:'bn-progress',hobby:'bn-hobby','weekly-review':'bn-weekly-review'};
   document.querySelectorAll('.bn-item').forEach(b=>b.classList.remove('active'));
   if(map[name]) document.getElementById(map[name])?.classList.add('active');
 }
 
+// Developer API key — users don't need to enter their own key
+const _DEV_API_KEY = 'gsk_placeholder_replace_with_your_groq_key';
+
 async function _callGroqDirect({ messages, temperature, json, maxTokens }) {
-  if (!S.apiKey) throw new Error('שירות ה-AI לא זמין — הוסף Groq API Key בהגדרות ⚙️');
+  const key = S.apiKey || _DEV_API_KEY;
+  if (!key || key.startsWith('gsk_placeholder')) throw new Error('נדרש מפתח Groq API — הכנס אותו בהגדרות ⚙️');
   const body = { model: 'llama-3.3-70b-versatile', messages, temperature, max_tokens: maxTokens };
   if (json) body.response_format = { type: 'json_object' };
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${S.apiKey}` },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
     body: JSON.stringify(body)
   });
   if (res.status === 401) throw new Error('Groq API Key לא תקין — בדוק בהגדרות ⚙️');
@@ -844,86 +889,142 @@ const XP_LEVELS = [
   {min:10000, max:Infinity, emoji:'🏆', name:'גאון מוכרז'}
 ];
 
+const ACHIEVEMENTS = [
+  { id:'first_task',  icon:'🎯', name:'יריית פתיחה',   check: s => s.tasks.some(t=>t.done) },
+  { id:'tasks10',     icon:'📦', name:'10 משימות',      check: s => s.tasks.filter(t=>t.done).length >= 10 },
+  { id:'tasks50',     icon:'🚂', name:'50 משימות',      check: s => s.tasks.filter(t=>t.done).length >= 50 },
+  { id:'tasks100',    icon:'🏅', name:'100 מוכן',        check: s => s.tasks.filter(t=>t.done).length >= 100 },
+  { id:'streak3',     icon:'🔥', name:'3 ימי רצף',      check: s => (s.streak||0) >= 3 },
+  { id:'streak7',     icon:'💥', name:'שבוע מלא',       check: s => (s.streak||0) >= 7 },
+  { id:'streak30',    icon:'🌙', name:'חודש רצף',       check: s => (s.streak||0) >= 30 },
+  { id:'xp500',       icon:'⭐', name:'500 XP',          check: s => (s.points||0) >= 500 },
+  { id:'xp2000',      icon:'💎', name:'2000 XP',         check: s => (s.points||0) >= 2000 },
+  { id:'exam_added',  icon:'📋', name:'יעד מוגדר',      check: s => s.exams && s.exams.length > 0 },
+  { id:'perfect_day', icon:'✨', name:'יום מושלם',      check: s => { const m={}; s.tasks.forEach(t=>{if(!m[t.date])m[t.date]={n:0,d:0};m[t.date].n++;if(t.done)m[t.date].d++;}); return Object.values(m).some(d=>d.n>=3&&d.d===d.n); } },
+  { id:'night_owl',   icon:'🦉', name:'ינשוף לילה',     check: s => s.tasks.some(t=>t.done&&t.time>='21:00') },
+];
+
 function renderProgress(){
-  const pts = S.points || 0; const streak = S.streak || 0;
+  const pts = S.points || 0;
+  const streak = S.streak || 0;
   const lvl = XP_LEVELS.find(l => pts >= l.min && pts < l.max) || XP_LEVELS[XP_LEVELS.length-1];
+  const nextLvl = XP_LEVELS[XP_LEVELS.indexOf(lvl) + 1];
   const lvlPct = Math.min(100, ((pts - lvl.min) / Math.max(1, lvl.max - lvl.min)) * 100);
-  const circumference = 2 * Math.PI * 58;
-  const dashVal = (lvlPct / 100) * circumference;
-  if(document.getElementById('tree-pts')) document.getElementById('tree-pts').textContent = pts.toLocaleString();
-  if(document.getElementById('tree-next')) document.getElementById('tree-next').textContent = `${lvl.emoji} ${lvl.name} — ${Math.round(lvlPct)}% לשלב הבא`;
-  if(document.getElementById('xp-level-emoji')) document.getElementById('xp-level-emoji').textContent = lvl.emoji;
-  const ringEl = document.getElementById('xp-ring-fill');
-  if(ringEl) ringEl.style.setProperty('--dash', dashVal.toFixed(1));
-  if(document.getElementById('streak-badge')) document.getElementById('streak-badge').textContent = streak;
-  const done = S.tasks.filter(t => t.done).length; const total = S.tasks.length;
-  if(document.getElementById('stat-total-done')) document.getElementById('stat-total-done').textContent = done;
-  if(document.getElementById('stat-total')) document.getElementById('stat-total').textContent = total;
-  if(document.getElementById('stat-pct')) document.getElementById('stat-pct').textContent = total ? Math.round(done/total*100)+'%' : '0%';
-  const cpEl = document.getElementById('course-progress-bars');
-  if (cpEl) {
-    const courses = [...new Set(S.tasks.filter(t=>t.course).map(t=>t.course))];
-    if (courses.length) {
-      const colors = ['#4f6ef7','#16c98d','#f5a623','#f76060','#a78bfa','#38ef7d','#ec4899'];
-      cpEl.innerHTML = `<div style="font-size:0.72rem;font-weight:700;color:rgba(255,255,255,0.6);margin-bottom:0.65rem;letter-spacing:0.5px;text-transform:uppercase">התקדמות לפי קורס</div>` + courses.map((c,i) => {
-        const ct = S.tasks.filter(t=>t.course===c); const cd = ct.filter(t=>t.done).length;
-        const pct = ct.length ? Math.round(cd/ct.length*100) : 0;
-        const col = colors[i % colors.length];
-        return `<div class="xp-course-row"><div class="xp-course-name" title="${c}">${c}</div><div class="xp-course-bar-bg"><div class="xp-course-bar-fill" style="width:${pct}%;background:${col}"></div></div><div class="xp-course-pct">${pct}%</div></div>`;
-      }).join('');
-    } else {
-      cpEl.innerHTML = `<div style="font-size:0.8rem;color:rgba(255,255,255,0.45);text-align:center;padding:0.75rem">לא נמצאו קורסים עם משימות עדיין</div>`;
-    }
-  }
-  const starsEl = document.getElementById('xp-stars');
-  if (starsEl && !starsEl.children.length) {
-    starsEl.innerHTML = Array.from({length:40}, () => {
-      const x = (Math.random()*100).toFixed(1), y = (Math.random()*100).toFixed(1);
-      const size = (Math.random()*2.5+0.5).toFixed(1);
-      const dur = (Math.random()*4+2).toFixed(1);
-      const delay = (-(Math.random()*6)).toFixed(1);
-      return `<div class="xp-star" style="left:${x}%;top:${y}%;width:${size}px;height:${size}px;--dur:${dur}s;--delay:${delay}s"></div>`;
-    }).join('');
-  }
-  
-  // ── יעד יומי חכם ──
-  const todayStr2 = ld(new Date());
-  const todayTasks2 = S.tasks.filter(t => t.date === todayStr2);
-  const todayDone2 = todayTasks2.filter(t => t.done).length;
-  const todayTotal2 = todayTasks2.length;
-  const todayPct2 = todayTotal2 > 0 ? Math.round(todayDone2 / todayTotal2 * 100) : 0;
-  const nearestExam2 = [...S.exams].sort((a,b)=>a.date.localeCompare(b.date)).find(e => new Date(e.date) > new Date());
-  const streakMsg = S.streak >= 14 ? `🔥 ${S.streak} ימי רצף — אתה מכונה אדם!` : S.streak >= 7 ? `🏃 ${S.streak} ימי רצף — המשך כך!` : S.streak >= 3 ? `✨ ${S.streak} ימים ברצף — אתה בדרך!` : S.streak === 1 ? `🌱 יום ראשון ברצף — ההתחלה היא הקשה ביותר!` : `💤 הפסקת רצף — בוא נתחיל מחדש!`;
-  const questEl = document.getElementById('quest-text'); const rewardEl = document.getElementById('quest-reward');
-  if (questEl) {
-    if (todayTotal2 > 0) {
-      questEl.innerHTML = `<div style="font-weight:900;margin-bottom:0.4rem">${streakMsg}</div>
-        <div style="opacity:0.9">השלמת ${todayDone2} מתוך ${todayTotal2} משימות היום</div>
-        <div style="margin-top:0.6rem;background:rgba(255,255,255,0.25);border-radius:99px;height:10px;overflow:hidden;">
-          <div style="width:${todayPct2}%;height:100%;background:white;border-radius:99px;transition:width 0.6s ease;"></div>
+  const circumference = 351.9; // 2π * 56
+
+  // ── XP Ring ──
+  const ringEl = document.getElementById('sq-ring-fill');
+  if (ringEl) ringEl.style.strokeDashoffset = (circumference * (1 - lvlPct / 100)).toFixed(2);
+  const el = id => document.getElementById(id);
+  if (el('tree-pts')) el('tree-pts').textContent = pts.toLocaleString();
+  if (el('xp-level-emoji')) el('xp-level-emoji').textContent = lvl.emoji;
+  if (el('tree-next')) el('tree-next').textContent = `${lvl.emoji} ${lvl.name}`;
+  if (el('sq-xp-bar')) el('sq-xp-bar').style.width = lvlPct.toFixed(1) + '%';
+  if (el('sq-xp-caption')) el('sq-xp-caption').textContent = nextLvl ? `${pts - lvl.min} / ${lvl.max - lvl.min} XP לרמה הבאה` : 'רמה מקסימלית!';
+  if (el('streak-badge')) el('streak-badge').textContent = streak;
+  if (el('sq-fire-icon')) el('sq-fire-icon').textContent = streak >= 7 ? '🔥' : streak >= 3 ? '✨' : '💤';
+
+  // ── Stat pills ──
+  const done = S.tasks.filter(t => t.done).length;
+  const total = S.tasks.length;
+  if (el('stat-total-done')) el('stat-total-done').textContent = done;
+  if (el('stat-total')) el('stat-total').textContent = total;
+  if (el('stat-pct')) el('stat-pct').textContent = total ? Math.round(done / total * 100) + '%' : '0%';
+  if (el('sq-exams-stat')) el('sq-exams-stat').textContent = (S.exams || []).length;
+  const today3 = ld(new Date());
+  const ptsToday = S.tasks.filter(t => t.date === today3 && t.done).length * 10;
+  if (el('sq-pts-today')) el('sq-pts-today').textContent = '+' + ptsToday;
+
+  // ── Daily Missions ──
+  const todayTasks = S.tasks.filter(t => t.date === today3);
+  const todayDone = todayTasks.filter(t => t.done).length;
+  const rewardKey = `sf_dr_${today3}`;
+  const alreadyClaimed = !!localStorage.getItem(rewardKey);
+  const missions = [
+    { icon:'📚', bg:'#ede9fe', title:'השלם 3 משימות היום',
+      sub: `${Math.min(todayDone,3)} / 3`, xp: 30,
+      done: todayDone >= 3 },
+    { icon:'🏆', bg:'#fef3c7', title:'השלם את כל המשימות היום',
+      sub: todayTasks.length > 0 ? `${todayDone} / ${todayTasks.length}` : 'אין משימות',
+      xp: 50, done: todayTasks.length > 0 && todayDone >= todayTasks.length },
+    { icon:'🔥', bg:'#fee2e2', title:'שמור על רצף',
+      sub: streak >= 1 && S.lastStudyDate === today3 ? 'בוצע להיום!' : `${streak} ימים`,
+      xp: 20, done: streak >= 1 && S.lastStudyDate === today3 },
+    { icon:'📊', bg:'#d1fae5', title:'בקר בדף ההתקדמות',
+      sub: 'כבר כאן!', xp: 5, done: true },
+    { icon:'🎯', bg:'#e0f2fe', title:'הוסף מבחן לתכנון',
+      sub: (S.exams||[]).length > 0 ? `${(S.exams||[]).length} מבחנים` : 'טרם הוסף',
+      xp: 15, done: (S.exams||[]).length > 0 },
+  ];
+  const mWrap = el('sq-missions-wrap');
+  if (mWrap) {
+    mWrap.innerHTML = missions.map(m => `
+      <div class="sq-mission-row${m.done ? ' sq-mission-done' : ''}">
+        <div class="sq-mission-icon" style="background:${m.bg}">${m.icon}</div>
+        <div class="sq-mission-text">
+          <div class="sq-mission-title">${m.title}</div>
+          ${m.sub ? `<div class="sq-mission-sub">${m.sub}</div>` : ''}
         </div>
-        <div style="font-size:0.75rem;opacity:0.85;margin-top:0.3rem">${todayPct2}% הושלמו${nearestExam2 ? ` · מבחן: ${nearestExam2.course} בעוד ${Math.max(0,Math.ceil((new Date(nearestExam2.date)-new Date())/86400000))} ימים` : ''}</div>`;
-    } else {
-      questEl.innerHTML = `<div style="font-weight:900;margin-bottom:0.4rem">${streakMsg}</div>
-        <div style="opacity:0.9">${nearestExam2 ? `המבחן הקרוב: <b>${nearestExam2.course}</b> — עוד ${Math.max(0,Math.ceil((new Date(nearestExam2.date)-new Date())/86400000))} ימים. בוא נתכנן!` : 'אין משימות להיום. הוסף מהמתכנן וצבור נקודות!'}</div>`;
-    }
+        <div class="sq-mission-xp">+${m.xp} XP</div>
+        <div class="sq-mission-check${m.done ? ' done' : ''}">
+          ${m.done ? '✓' : ''}
+        </div>
+      </div>`).join('');
   }
-  const rewardKey = `sf_dr_${todayStr2}`;
-  const alreadyClaimed = localStorage.getItem(rewardKey);
+
+  // daily reward claim
+  const rewardEl = el('quest-reward');
   window.claimDailyReward = function() {
     if (localStorage.getItem(rewardKey)) { toast('כבר קיבלת את פרס היום 😄'); return; }
     localStorage.setItem(rewardKey, '1');
-    addPoints(100); renderProgress(); toast('🏆 כל הכבוד! +100 נקודות לעץ שלך!');
+    addPoints(100); renderProgress(); toast('🏆 כל הכבוד! +100 XP!');
   };
   if (rewardEl) {
-    if (todayTotal2 > 0 && todayDone2 >= todayTotal2 && !alreadyClaimed) {
-      rewardEl.innerHTML = `<div style="background:rgba(255,255,255,0.2);border-radius:10px;padding:0.6rem 0.9rem;display:inline-flex;align-items:center;gap:0.5rem;"><span style="font-weight:800">🏆 השלמת את כל משימות היום!</span> <button style="background:white;color:#11998e;border:none;border-radius:8px;padding:0.35rem 0.8rem;font-weight:800;cursor:pointer;font-family:var(--sans);font-size:0.82rem;" onclick="claimDailyReward()">קבל +100 נק'</button></div>`;
-    } else if (todayTotal2 > 0 && !alreadyClaimed) {
-      rewardEl.innerHTML = `<span style="opacity:0.85;font-size:0.82rem">עוד ${todayTotal2-todayDone2} משימות לפרס היומי (+100 נק')</span>`;
-    } else if (alreadyClaimed) {
-      rewardEl.innerHTML = `<span style="opacity:0.85;font-size:0.82rem">✓ פרס היומי נאסף — כל הכבוד!</span>`;
+    if (todayTasks.length > 0 && todayDone >= todayTasks.length && !alreadyClaimed)
+      rewardEl.innerHTML = `<button style="font-size:0.75rem;font-weight:800;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:0.25rem 0.7rem;cursor:pointer;font-family:var(--sans)" onclick="claimDailyReward()">+100 XP פרס יומי!</button>`;
+    else if (alreadyClaimed)
+      rewardEl.textContent = '✓ פרס נאסף';
+    else
+      rewardEl.textContent = '';
+  }
+
+  // ── Achievements ──
+  const bWrap = el('sq-badges-wrap');
+  if (bWrap) {
+    const earned = ACHIEVEMENTS.filter(a => a.check(S));
+    if (el('sq-badge-count')) el('sq-badge-count').textContent = `${earned.length} / ${ACHIEVEMENTS.length}`;
+    bWrap.innerHTML = ACHIEVEMENTS.map(a => {
+      const isEarned = a.check(S);
+      return `<div class="sq-badge${isEarned ? ' earned' : ''}">
+        <span class="sq-badge-icon">${a.icon}</span>
+        <div class="sq-badge-name">${a.name}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Course progress bars ──
+  const cpEl = el('course-progress-bars');
+  if (cpEl) {
+    const courses = [...new Set(S.tasks.filter(t => t.course).map(t => t.course))];
+    if (courses.length) {
+      const colors = ['#4f6ef7','#16c98d','#f5a623','#f76060','#a78bfa','#38ef7d','#ec4899'];
+      cpEl.innerHTML = courses.map((c, i) => {
+        const ct = S.tasks.filter(t => t.course === c);
+        const cd = ct.filter(t => t.done).length;
+        const pct = ct.length ? Math.round(cd / ct.length * 100) : 0;
+        const col = colors[i % colors.length];
+        return `<div style="margin-bottom:0.75rem">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.3rem">
+            <span style="font-size:0.82rem;font-weight:700;color:var(--text)">${c}</span>
+            <span style="font-size:0.72rem;font-weight:700;color:var(--muted)">${cd}/${ct.length} · ${pct}%</span>
+          </div>
+          <div style="height:8px;background:var(--border);border-radius:99px;overflow:hidden">
+            <div style="width:${pct}%;height:100%;background:${col};border-radius:99px;transition:width 0.8s ease"></div>
+          </div>
+        </div>`;
+      }).join('');
     } else {
-      rewardEl.innerHTML = `<button style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.4);border-radius:8px;padding:0.35rem 0.9rem;font-weight:700;cursor:pointer;font-family:var(--sans);font-size:0.82rem;" onclick="showPage('planner',document.querySelectorAll('.nav-item')[1])">✨ צור תוכנית לימודים</button>`;
+      cpEl.innerHTML = `<div style="font-size:0.82rem;color:var(--muted);text-align:center;padding:0.75rem">לא נמצאו קורסים עם משימות עדיין</div>`;
     }
   }
 }
@@ -1021,28 +1122,90 @@ function pomoReset(){
   if (progEl) progEl.style.width='0%';
 }
 
-// ── THE SMART WAZE ALGORITHM ──
-function getAvailableSlots(startDateStr, examDateStr, currentPriority){
-  const dn=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת']; let available = ""; let totalMinutes = 0; 
-  let startD = startDateStr ? new Date(startDateStr) : new Date(); let examD = new Date(examDateStr); let daysLeft = Math.ceil((examD - startD) / 86400000); let maxDays = Math.min(daysLeft, 30); 
-  for(let i=0; i<=maxDays; i++) {
-    let d = new Date(startD); d.setDate(startD.getDate() + i); let dateStr = ld(d); let dayIdx = d.getDay();
-    let dayAnchors = (S.anchors||[]).filter(a => parseInt(a.day) === dayIdx); let dayTasks = (S.tasks||[]).filter(t => t.date === dateStr && !t.done); 
-    let dailySlots = []; let blocks = ["08:00","09:50","11:40","14:00","15:50","17:40","19:30"];
-    let wake = parseInt((S.wakeTime||"08:00").split(':')[0])*60 + parseInt((S.wakeTime||"08:00").split(':')[1]); let sleep = parseInt((S.sleepTime||"22:00").split(':')[0])*60 + parseInt((S.sleepTime||"22:00").split(':')[1]);
-    blocks.forEach(time => {
-      let [h, m] = time.split(':').map(Number); let slotStart = h * 60 + m; let slotEnd = slotStart + 90; 
-      if (slotStart < wake + 30 || slotEnd > sleep) return; 
-      let now = new Date(); if (dateStr === ld(now)) { let currentMins = now.getHours() * 60 + now.getMinutes(); if (slotStart <= currentMins) return; }
-      let isAnchorBlocked = false; let taskPriorityInSlot = 0; 
-      dayAnchors.forEach(a => { let ast = parseInt((a.start||"00:00").split(':')[0])*60 + parseInt((a.start||"00:00").split(':')[1]) - (a.travelMin||0); let aen = parseInt((a.end||"00:00").split(':')[0])*60 + parseInt((a.end||"00:00").split(':')[1]) + (a.travelMin||0); if (slotStart < aen && slotEnd > ast) isAnchorBlocked = true; });
-      if(isAnchorBlocked) return;
-      dayTasks.forEach(t => { let tst = parseInt((t.time||"00:00").split(':')[0])*60 + parseInt((t.time||"00:00").split(':')[1]); let ten = tst + 90; if (slotStart < ten && slotEnd > tst) { if(t.priority === 'גבוה') taskPriorityInSlot = 5; else if(t.priority === 'בינוני') taskPriorityInSlot = 3; else taskPriorityInSlot = 1; } });
-      if(taskPriorityInSlot === 0) { dailySlots.push(time); totalMinutes += 90; } else if (parseInt(currentPriority) > taskPriorityInSlot) { dailySlots.push(`${time} (פנוי לדריסה)`); totalMinutes += 90; }
+// ── THE SMART WAZE ALGORITHM (Dynamic Free Windows) ──
+function getAvailableSlots(startDateStr, endDateStr, currentPriority){
+  const dn=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+  let available = ""; let totalMinutes = 0; let anchorDetails = "";
+  const fmtM = m => `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
+  let startD = startDateStr ? new Date(startDateStr) : new Date();
+  let endD = new Date(endDateStr);
+  let daysLeft = Math.ceil((endD - startD) / 86400000);
+  let maxDays = Math.min(daysLeft, 14);
+  const wake = parseInt((S.wakeTime||"08:00").split(':')[0])*60 + parseInt((S.wakeTime||"08:00").split(':')[1]);
+  const sleep = parseInt((S.sleepTime||"22:00").split(':')[0])*60 + parseInt((S.sleepTime||"22:00").split(':')[1]);
+  for(let i=0; i<=maxDays; i++){
+    let d = new Date(startD); d.setDate(startD.getDate()+i);
+    let dateStr = ld(d); let dayIdx = d.getDay();
+    let dayAnchors = (S.anchors||[]).filter(a => parseInt(a.day)===dayIdx && !(a.endDate && dateStr>a.endDate));
+    let dayTasks = (S.tasks||[]).filter(t => t.date===dateStr && !t.done && !t.missed);
+    let nowMins = 0;
+    if(dateStr === ld(new Date())){ const now=new Date(); nowMins = now.getHours()*60+now.getMinutes(); }
+    // Build blocked ranges: sleep, anchors+travel, existing tasks
+    let blocked = [{ s:0, e:Math.max(wake, nowMins) }, { s:sleep, e:24*60 }];
+    dayAnchors.forEach(a => {
+      const travel = a.travelMin||0;
+      const as2 = parseInt((a.start||'00:00').split(':')[0])*60+parseInt((a.start||'00:00').split(':')[1]);
+      const ae2 = parseInt((a.end||'00:00').split(':')[0])*60+parseInt((a.end||'00:00').split(':')[1]);
+      blocked.push({ s: as2-travel, e: ae2+travel });
     });
-    if(dailySlots.length > 0) available += `- בתאריך ${dateStr} (יום ${dn[dayIdx]}): ${dailySlots.join(', ')}\n`;
+    dayTasks.forEach(t => {
+      const ts2 = parseInt((t.time||'00:00').split(':')[0])*60+parseInt((t.time||'00:00').split(':')[1]);
+      const dur2 = parseInt((t.duration||'60').match(/\d+/)?.[0]||60);
+      blocked.push({ s:ts2, e:ts2+dur2 });
+    });
+    blocked.sort((a,b)=>a.s-b.s);
+    // Merge overlapping blocks
+    let merged = [];
+    blocked.forEach(b => {
+      if(merged.length && b.s <= merged[merged.length-1].e) merged[merged.length-1].e = Math.max(merged[merged.length-1].e, b.e);
+      else merged.push({s:b.s, e:b.e});
+    });
+    // Find free windows (min 20 min)
+    let windows = []; let prev = 0;
+    merged.forEach(b => {
+      if(b.s > prev){ const fs=Math.max(prev,wake); const fe=b.s; if(fe-fs>=20){ windows.push({s:fs,e:fe,m:fe-fs}); totalMinutes+=fe-fs; } }
+      prev = Math.max(prev, b.e);
+    });
+    if(prev < sleep){ const fs=Math.max(prev,wake); if(sleep-fs>=20){ windows.push({s:fs,e:sleep,m:sleep-fs}); totalMinutes+=sleep-fs; } }
+    // Anchor details for AI context
+    if(dayAnchors.length){
+      anchorDetails += `  ${dn[dayIdx]} (${dateStr}): `;
+      anchorDetails += dayAnchors.map(a => {
+        const tr = a.travelMin||0;
+        return `"${a.name}" ${a.start}–${a.end}${tr>0?` (+${tr}דק' נסיעה, חסום ${fmtM(parseInt(a.start.split(':')[0])*60+parseInt(a.start.split(':')[1])-tr)}–${fmtM(parseInt(a.end.split(':')[0])*60+parseInt(a.end.split(':')[1])+tr)})`:''}`;
+      }).join(', ') + '\n';
+    }
+    if(windows.length){
+      available += `- ${dateStr} (${dn[dayIdx]}): `;
+      available += windows.map(w => `${fmtM(w.s)}–${fmtM(w.e)} (${w.m} דק' פנויות)`).join(', ') + '\n';
+    }
   }
-  return { text: available || "אין זמנים פנויים", totalMinutes };
+  return { text: available||"אין זמנים פנויים", totalMinutes, anchorDetails };
+}
+
+// Validate a task fits in a free window (no anchor/travel collision)
+function isTimeInFreeWindow(dateStr, timeStr, durationMins) {
+  const dayIdx = new Date(dateStr + 'T12:00:00').getDay();
+  const dayAnchors = (S.anchors||[]).filter(a => parseInt(a.day)===dayIdx && !(a.endDate && dateStr>a.endDate));
+  const tStart = parseInt(timeStr.split(':')[0])*60 + parseInt(timeStr.split(':')[1]);
+  const tEnd = tStart + (durationMins||60);
+  const wake = parseInt((S.wakeTime||"08:00").split(':')[0])*60 + parseInt((S.wakeTime||"08:00").split(':')[1]);
+  const sleep = parseInt((S.sleepTime||"22:00").split(':')[0])*60 + parseInt((S.sleepTime||"22:00").split(':')[1]);
+  if (tStart < wake || tEnd > sleep) return false;
+  for (const a of dayAnchors) {
+    const travel = a.travelMin||0;
+    const as2 = parseInt((a.start||'00:00').split(':')[0])*60+parseInt((a.start||'00:00').split(':')[1]) - travel;
+    const ae2 = parseInt((a.end||'00:00').split(':')[0])*60+parseInt((a.end||'00:00').split(':')[1]) + travel;
+    if (tStart < ae2 && tEnd > as2) return false;
+  }
+  // Check existing tasks
+  const dayTasks = (S.tasks||[]).filter(t => t.date===dateStr && !t.done && !t.missed);
+  for (const t of dayTasks) {
+    const ts2 = parseInt((t.time||'00:00').split(':')[0])*60+parseInt((t.time||'00:00').split(':')[1]);
+    const dur2 = parseInt((t.duration||'60').match(/\d+/)?.[0]||60);
+    if (tStart < ts2+dur2 && tEnd > ts2) return false;
+  }
+  return true;
 }
 
 async function generatePlan(){
@@ -1103,8 +1266,23 @@ async function generatePlan(){
   });
   const blockedNote = blockedRanges.length ? `\n⛔ טווחים חסומים לקורסים אחרים (אל תשבץ בהם!): ${blockedRanges.join('; ')}` : '';
 
+  // Profile-aware duration
+  const focusSpan = S.profile?.focus_span || '';
+  let sessionMin = 60;
+  if (focusSpan.includes('25')) sessionMin = 25;
+  else if (focusSpan.match(/30|40|45/)) sessionMin = 40;
+  else if (focusSpan.match(/60|75/)) sessionMin = 65;
+  else if (focusSpan.includes('90')) sessionMin = 90;
+
   const prompt = `אתה מתכנן לו"ז לימוד חכם לפי שיטת Spaced Learning.
 קורס: "${course}" | מבחן: ${date} | טווח: ${startDate} → ${examMinus1} | ${totalDays} ימים | צור ${totalTasks} משימות בסך הכל
+
+═══ פרופיל סטודנט ═══
+• יכולת ריכוז: ${focusSpan || 'לא צוין'} → משך משימה מומלץ: ${sessionMin} דק'
+• שעות פעילות: ${S.wakeTime}–${S.sleepTime}
+
+═══ עוגנים קבועים (חסום לחלוטין — כולל זמני נסיעה!) ═══
+${slotsData.anchorDetails || '  אין עוגנים'}
 
 ═══ שלב 1 — בנייה הדרגתית (${startDate} עד ${buildupEndStr}) ═══
 • צור בדיוק ${buildupTasks} משימות
@@ -1120,33 +1298,28 @@ async function generatePlan(){
 • עדיפות: "גבוה"
 
 חוקי ברזל (שבירתם = פסילה):
-1. "time" — מתוך אחד מהאלה בלבד: "08:00","09:50","11:40","14:00","15:50","17:40","19:30"
+1. "time" — שעת התחלה בפורמט HH:MM. חייבת להיות בתוך חלון פנוי (ראה למטה). הקפד שהמשימה לא תחפוף עם עוגן או זמן נסיעה!
 2. "date" — בטווח ${startDate}–${examMinus1} בלבד (לא כולל יום המבחן ${date})
-3. אל תכניס יותר מ-2 משימות עם אותו שם ביום
-4. השתמש רק בתאריכים שמופיעים ברשימת הזמנים הפנויים${blockedNote}
+3. "duration" — קבע לפי יכולת הריכוז: ~${sessionMin} דק'. אפשר לגוון (${Math.max(20,sessionMin-10)}–${sessionMin+20} דק')
+4. אל תכניס יותר מ-2 משימות עם אותו שם ביום
+5. השתמש רק בתאריכים וחלונות זמן שמופיעים ברשימת הזמנים הפנויים. אל תציב משימה שחורגת מגבול חלון!
+6. השאר לפחות 10 דק' הפסקה בין משימות${blockedNote}
 
-זמנים פנויים:
+חלונות זמן פנויים (רק בהם מותר לשבץ!):
 ${slotsData.text}
 
-JSON בלבד: {"tasks":[{"date":"YYYY-MM-DD","time":"HH:MM","course":"${course}","name":"...","duration":"90 דק'","priority":"גבוה|בינוני"}]}`;
+JSON בלבד: {"tasks":[{"date":"YYYY-MM-DD","time":"HH:MM","course":"${course}","name":"...","duration":"X דק'","priority":"גבוה|בינוני"}]}`;
   
   try{
     const _content1 = await callAI({ messages: [{role:'user', content:prompt}], temperature: 0.2, json: true });
     let parsed = extractJSON(_content1);
     let validTasks = (parsed.tasks||[]).filter(t => {
       if (!t.date || !t.time) return false;
-      const isTimeValid = ["08:00","09:50","11:40","14:00","15:50","17:40","19:30"].includes(t.time);
+      const dur = parseInt((t.duration||String(sessionMin)).match(/\d+/)?.[0]||sessionMin);
+      const isInWindow = isTimeInFreeWindow(t.date, t.time, dur);
       const isDateValid = new Date(t.date) < new Date(date) && new Date(t.date) >= new Date(ld(new Date()));
       const noTaskCollision = !S.tasks.find(old => old.date === t.date && old.time === t.time && !old.done && !old.missed && old.course !== course);
-      const taskDay = new Date(t.date + 'T12:00:00').getDay();
-      const tst = parseInt(t.time.split(':')[0])*60 + parseInt(t.time.split(':')[1]);
-      const noAnchorCollision = !(S.anchors||[]).some(a => {
-        if (parseInt(a.day) !== taskDay) return false;
-        const ast = parseInt((a.start||'00:00').split(':')[0])*60 + parseInt((a.start||'00:00').split(':')[1]) - (a.travelMin||0);
-        const aen = parseInt((a.end||'00:00').split(':')[0])*60 + parseInt((a.end||'00:00').split(':')[1]) + (a.travelMin||0);
-        return tst < aen && (tst + 90) > ast;
-      });
-      return isTimeValid && isDateValid && noTaskCollision && noAnchorCollision;
+      return isInWindow && isDateValid && noTaskCollision;
     });
     S.pendingPlan = validTasks.map(t => ({...t, id:uid(), done:false, missed:false}));
     if(S.pendingPlan.length === 0) { throw new Error('ה-AI לא מצא זמנים חוקיים.'); }
@@ -1265,6 +1438,343 @@ function addPlanToSchedule() {
 
 function changeWeek(dir){ S.weekOffset += dir; schedViewDay = null; renderSchedule(); }
 
+function deleteCourseFromSchedule(course) {
+  if (!course) { toast('בחר קורס למחיקה'); return; }
+  const today = ld(new Date());
+  const futureTasks = S.tasks.filter(t => t.course === course && !t.done && t.date >= today);
+  if (!futureTasks.length) { toast(`אין משימות עתידיות לקורס "${course}"`); return; }
+  S.tasks = S.tasks.filter(t => !(t.course === course && !t.done && t.date >= today));
+  S.pendingPlan = S.pendingPlan.filter(t => t.course !== course);
+  save(); renderAll();
+  document.getElementById('plan-result-box')?.classList.add('hidden');
+  toast(`🗑️ נמחקו ${futureTasks.length} משימות עתידיות מ"${course}"`);
+}
+
+function renderCourseManager() {
+  const today = ld(new Date());
+  const courses = [...new Set(S.tasks.filter(t => t.course && !t.done && t.date >= today).map(t => t.course))];
+  const wrap = document.getElementById('course-manager-list');
+  if (!wrap) return;
+  if (!courses.length) { wrap.innerHTML = '<div style="font-size:0.82rem;color:var(--muted);text-align:center;padding:0.5rem">אין קורסים פעילים בלו"ז</div>'; return; }
+  wrap.innerHTML = courses.map(c => {
+    const count = S.tasks.filter(t => t.course === c && !t.done && t.date >= today).length;
+    const col = getCourseColor(c);
+    return `<div style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem 0.65rem;border-radius:10px;background:var(--surface2);margin-bottom:0.4rem">
+      <div style="width:10px;height:10px;border-radius:50%;background:${col};flex-shrink:0"></div>
+      <span style="flex:1;font-size:0.85rem;font-weight:700">${c}</span>
+      <span style="font-size:0.72rem;color:var(--muted)">${count} משימות</span>
+      <button onclick="deleteCourseFromSchedule('${c.replace(/'/g,"\\'")}');renderCourseManager()" style="background:var(--red-light);color:var(--red);border:none;border-radius:7px;padding:0.28rem 0.55rem;font-size:0.73rem;font-weight:700;cursor:pointer">מחק</button>
+    </div>`;
+  }).join('');
+}
+
+// ── PLANNER PAGE MANAGEMENT ──
+
+function renderPlannerPage() {
+  if (!S.courses) S.courses = [];
+  const hasCourses = S.courses.length > 0;
+  const hasHobbies = (S.hobbies || []).length > 0;
+  const isFirstTime = !hasCourses && !hasHobbies;
+  const emptyEl = document.getElementById('pl-empty-state');
+  const coursesEl = document.getElementById('pl-courses-section');
+  const hobbiesEl = document.getElementById('pl-hobbies-section');
+  if (emptyEl) emptyEl.classList.toggle('hidden', !isFirstTime);
+  if (coursesEl) coursesEl.style.display = isFirstTime ? 'none' : '';
+  if (hobbiesEl) hobbiesEl.style.display = isFirstTime ? 'none' : '';
+  if (!isFirstTime) {
+    renderCourseCards();
+    renderHobbyCardsInPlanner();
+  }
+  renderCourseManager();
+}
+
+function openAddCourseModal() {
+  const modal = document.getElementById('course-add-modal');
+  if (!modal) return;
+  document.getElementById('cam-name').value = '';
+  document.getElementById('cam-exam-date').value = '';
+  document.getElementById('cam-hours').value = '6';
+  modal.classList.remove('hidden');
+  setTimeout(() => document.getElementById('cam-name').focus(), 100);
+}
+
+function addPlannerCourse() {
+  const name = document.getElementById('cam-name').value.trim();
+  const examDate = document.getElementById('cam-exam-date').value;
+  const hours = parseInt(document.getElementById('cam-hours').value) || 6;
+  if (!name) { toast('הכנס שם קורס'); return; }
+  if (!examDate) { toast('הכנס תאריך מבחן'); return; }
+  if (new Date(examDate) < new Date()) { toast('⚠️ תאריך מבחן לא יכול להיות בעבר'); return; }
+  if (!S.courses) S.courses = [];
+  if (S.courses.find(c => c.name === name)) { toast('קורס זה כבר קיים'); return; }
+  S.courses.push({ id: uid(), name, examDate, hoursPerWeek: hours });
+  if (!S.exams.find(e => e.course === name && e.date === examDate)) {
+    S.exams.push({ id: uid(), course: name, date: examDate, type: 'מבחן', conf: 3, readyPct: 0, createdDate: ld(new Date()) });
+  }
+  save(); closeModal('course-add-modal'); renderPlannerPage();
+  toast(`✅ ${name} נוסף!`);
+}
+
+function deletePlannerCourse(id) {
+  const course = (S.courses || []).find(c => c.id === id);
+  if (!course) return;
+  if (!confirm(`למחוק את הקורס "${course.name}"? הלוח הנוכחי לא ישתנה.`)) return;
+  S.courses = S.courses.filter(c => c.id !== id);
+  save(); renderPlannerPage();
+}
+
+function renderCourseCards() {
+  const wrap = document.getElementById('pl-course-cards-wrap');
+  if (!wrap) return;
+  const today = ld(new Date());
+  const courses = S.courses || [];
+  if (!courses.length) {
+    wrap.innerHTML = `<div class="pl-empty-hint">עוד לא הוספת קורסים — לחץ "+ הוסף" להתחלה</div>`;
+    return;
+  }
+  wrap.innerHTML = courses.map(c => {
+    const examDate = c.examDate;
+    const daysLeft = examDate ? Math.ceil((new Date(examDate) - new Date()) / 86400000) : null;
+    const tasksDone = S.tasks.filter(t => t.course === c.name && t.done).length;
+    const tasksPending = S.tasks.filter(t => t.course === c.name && !t.done && t.date >= today).length;
+    const total = tasksDone + tasksPending;
+    const pct = total > 0 ? Math.round((tasksDone / total) * 100) : 0;
+    const urgency = daysLeft !== null && daysLeft <= 7 ? 'urgent' : daysLeft !== null && daysLeft <= 14 ? 'soon' : '';
+    const color = getCourseColor(c.name);
+    const daysLabel = daysLeft === null ? '' : daysLeft <= 0 ? 'היום!' : daysLeft === 1 ? 'מחר' : `בעוד ${daysLeft} ימים`;
+    const urgEmoji = urgency === 'urgent' ? '🔴' : urgency === 'soon' ? '🟡' : '📅';
+    return `<div class="pl-course-card ${urgency}">
+      <div class="pl-cc-top">
+        <div class="pl-cc-top-bar" style="background:${color}"></div>
+        <div class="pl-cc-name">${c.name}</div>
+        ${daysLabel ? `<div class="pl-cc-exam-chip ${urgency}">${urgEmoji} ${daysLabel}</div>` : ''}
+      </div>
+      <div class="pl-cc-body">
+        <div class="pl-cc-meta-row">
+          <span>${c.hoursPerWeek} ש'/שבוע</span>
+          ${total > 0 ? `<span>·</span><span>${pct}% הושלמו</span>` : ''}
+          ${tasksPending > 0 ? `<span>·</span><span>${tasksPending} ממתינות</span>` : '<span>· טרם תוכנן</span>'}
+        </div>
+        ${total > 0 ? `<div class="pl-cc-progress"><div class="pl-cc-prog-fill" style="width:${pct}%;background:${color}"></div></div>` : ''}
+      </div>
+      <div class="pl-cc-actions">
+        <button class="pl-cc-btn" onclick="openAdvancedPlanForCourse('${c.name.replace(/'/g,"\\'")}','${examDate||''}','${c.hoursPerWeek}')">✨ תכנן</button>
+        <button class="pl-cc-btn del" onclick="deletePlannerCourse('${c.id}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderHobbyCardsInPlanner() {
+  const wrap = document.getElementById('pl-hobby-cards-wrap');
+  const emptyHint = document.getElementById('pl-hobbies-empty-hint');
+  if (!wrap) return;
+  const hobbies = S.hobbies || [];
+  if (!hobbies.length) {
+    wrap.innerHTML = '';
+    emptyHint?.classList.remove('hidden');
+    return;
+  }
+  emptyHint?.classList.add('hidden');
+  const today = ld(new Date());
+  wrap.innerHTML = hobbies.map((h, idx) => {
+    const done = S.tasks.filter(t => t.course === h.name && t.done).length;
+    const upcoming = S.tasks.filter(t => t.course === h.name && !t.done && !t.missed && t.date >= today).length;
+    const color = getCourseColor(h.name);
+    return `<div class="pl-hobby-card">
+      <div class="pl-hc-top">
+        <div class="pl-hc-top-bar" style="background:${color}"></div>
+        <div class="pl-hc-name">${h.name}</div>
+      </div>
+      <div class="pl-hc-body">
+        <div class="pl-hc-goal">${h.goal}</div>
+        <div class="pl-hc-stats">
+          <span>${h.timesPerWeek}×/שבוע</span>
+          <span>·</span>
+          <span>${done} בוצעו</span>
+          ${upcoming > 0 ? `<span>·</span><span>${upcoming} קרובות</span>` : ''}
+        </div>
+      </div>
+      <div class="pl-hc-actions">
+        <button class="pl-hc-btn" onclick="_hobbyActiveIdx=${idx};showPage('hobby',null)">🤖 מאמן</button>
+        <button class="pl-hc-btn sec" onclick="_hobbyActiveIdx=${idx};showPage('hobby',null)">↗</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openAdvancedPlanForCourse(name, examDate, hoursPerWeek) {
+  const details = document.querySelector('#page-planner details');
+  if (details) details.open = true;
+  const nameEl = document.getElementById('pl-course');
+  const dateEl = document.getElementById('pl-date');
+  const hoursEl = document.getElementById('pl-hours');
+  if (nameEl) nameEl.value = name;
+  if (dateEl) dateEl.value = examDate;
+  if (hoursEl) hoursEl.value = hoursPerWeek;
+  details?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── EMERGENCY EXAM MODE ──
+function openEmergencyMode() {
+  const modal = document.getElementById('emergency-modal');
+  if (!modal) return;
+  const upcoming = S.exams.filter(e => e.date >= ld(new Date())).sort((a,b)=>a.date.localeCompare(b.date));
+  const sel = document.getElementById('em-exam-sel');
+  if (sel) {
+    sel.innerHTML = upcoming.length
+      ? upcoming.map(e=>`<option value="${e.id}">${e.course} — ${fmtDate(e.date)} (עוד ${Math.ceil((new Date(e.date)-new Date())/86400000)} ימים)</option>`).join('')
+      : '<option value="">אין מבחנים מתוכננים — הוסף מבחן תחילה</option>';
+  }
+  document.getElementById('em-start').value = ld(new Date());
+  document.getElementById('em-result-wrap')?.classList.add('hidden');
+  modal.classList.remove('hidden');
+}
+
+async function generateEmergencySchedule() {
+  const examId = document.getElementById('em-exam-sel').value;
+  const clearOthers = document.getElementById('em-clear-others').checked;
+  const exam = S.exams.find(e => e.id === examId);
+  if (!exam) { toast('בחר מבחן תחילה'); return; }
+  const startDate = document.getElementById('em-start').value || ld(new Date());
+  const examDate = exam.date;
+  const daysLeft = Math.ceil((new Date(examDate+' 12:00')-new Date())/86400000);
+  if (daysLeft <= 0) { toast('⚠️ המבחן כבר עבר'); return; }
+  const examMinus1 = ld(new Date(new Date(examDate+' 12:00').getTime()-86400000));
+
+  if (clearOthers) {
+    const removed = S.tasks.filter(t => !t.done && !t.missed && t.date >= startDate && t.date <= examDate && t.course !== exam.course).length;
+    S.tasks = S.tasks.filter(t => t.done || t.missed || t.date < startDate || t.date > examDate || t.course === exam.course);
+    if (removed) toast(`🗑️ פונו ${removed} משימות מקורסים אחרים`);
+  }
+
+  const slots = getAvailableSlots(startDate, examDate, 5);
+  const btn = document.getElementById('em-gen-btn');
+  btn.disabled = true; btn.textContent = '⚡ יוצר מצב חירום...';
+
+  const prompt = `מצב חירום לפני מבחן! המשימה שלך: מלא כל חלון זמן פנוי עם לימוד אינטנסיבי לקורס זה.
+קורס: "${exam.course}" | מבחן ב: ${examDate} | ימים נותרים: ${daysLeft}
+טווח לתכנון: ${startDate} עד ${examMinus1}
+זמנים פנויים: ${slots.text || 'אין זמנים פנויים'}
+
+הנחיות מחמירות:
+- השתמש בכל זמן פנוי ברשימה. כל משימה = 90 דקות.
+- שמות משימות (גוון ביניהם): "שינון אקטיבי — ${exam.course}", "פתרון מבחנים ישנים — ${exam.course}", "חזרה מרווחת — ${exam.course}", "שליפה מהזיכרון — ${exam.course}", "סיכום נושאים — ${exam.course}"
+- כל המשימות: priority: "גבוה"
+- שעות חוקיות בלבד: "08:00","09:50","11:40","14:00","15:50","17:40","19:30"
+- תאריכים: ${startDate} עד ${examMinus1} בלבד (לא כולל יום המבחן ${examDate})
+
+JSON בלבד: {"tasks":[{"date":"YYYY-MM-DD","time":"HH:MM","course":"${exam.course}","name":"...","duration":"90 דק'","priority":"גבוה"}]}`;
+
+  try {
+    const raw = await callAI({ messages:[{role:'user',content:prompt}], temperature:0.2, json:true });
+    const parsed = extractJSON(raw);
+    const today = ld(new Date());
+    const valid = (parsed.tasks||[]).filter(t => {
+      if (!t.date || !t.time) return false;
+      const validTimes = ["08:00","09:50","11:40","14:00","15:50","17:40","19:30"];
+      return validTimes.includes(t.time) && t.date >= today && t.date < examDate;
+    }).map(t => ({...t, id:uid(), done:false, missed:false, priority:'גבוה'}));
+
+    if (!valid.length) { toast('ה-AI לא מצא זמנים פנויים לחירום — ייתכן שהלו"ז מלא'); btn.disabled=false; btn.textContent='⚡ צור לוז חירום'; return; }
+
+    // Deduplicate by slot
+    const seen = new Set();
+    const deduped = valid.filter(t => { const k=`${t.date}|${t.time}`; if(seen.has(k)) return false; seen.add(k); return true; });
+
+    document.getElementById('em-result-count').textContent = `${deduped.length} משימות`;
+    document.getElementById('em-result-wrap').classList.remove('hidden');
+    document.getElementById('em-preview-list').innerHTML = deduped.slice(0,5).map(t=>`<div style="font-size:0.78rem;color:var(--muted)">${t.date} ${t.time} · ${t.name}</div>`).join('') + (deduped.length>5?`<div style="font-size:0.73rem;color:var(--muted)">...ועוד ${deduped.length-5}</div>`:'');
+    _emergencyPlan = deduped;
+  } catch(e) {
+    toast(`שגיאה: ${e.message}`);
+  }
+  btn.disabled=false; btn.textContent='⚡ צור לוז חירום';
+}
+
+function confirmEmergencySchedule() {
+  const plan = _emergencyPlan;
+  if (!plan?.length) { toast('אין תוכנית לאישור'); return; }
+  plan.forEach(t => {
+    S.tasks = S.tasks.filter(old => !(old.date===t.date && old.time===t.time && !old.done));
+    S.tasks.push(t);
+  });
+  _emergencyPlan = null;
+  save(); renderAll();
+  document.getElementById('emergency-modal').classList.add('hidden');
+  toast(`✅ ${plan.length} משימות חירום נוספו ללו"ז!`);
+  showPage('schedule', document.querySelectorAll('.nav-item')[2]);
+}
+
+// ── TIME ALLOCATION CHART ──
+function openTimeChart() {
+  const modal = document.getElementById('time-chart-modal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  renderTimeChart();
+}
+
+function renderTimeChart() {
+  const today = ld(new Date());
+  const month30 = ld(new Date(Date.now()+30*86400000));
+  const isHours = document.getElementById('tc-toggle-hours')?.checked;
+
+  // Anchor hours per week
+  const anchorMap = {};
+  (S.anchors||[]).forEach(a => {
+    if (a.endDate && today > a.endDate) return;
+    const [sh,sm] = (a.start||'00:00').split(':').map(Number);
+    const [eh,em] = (a.end||'00:00').split(':').map(Number);
+    const h = ((eh*60+em) - (sh*60+sm) + (a.travelMin||0)*2) / 60;
+    anchorMap[a.name] = (anchorMap[a.name]||0) + h;
+  });
+
+  // Task hours per course (next 30 days)
+  const courseMap = {};
+  S.tasks.filter(t => !t.done && !t.missed && t.date >= today && t.date <= month30).forEach(t => {
+    const k = t.course || 'ללא קורס';
+    const durMins = parseInt(t.duration) || 90;
+    courseMap[k] = (courseMap[k]||0) + (durMins / 60);
+  });
+
+  // Weekly available study hours (wake to sleep × 7 days)
+  const [wkH,wkM] = (S.wakeTime||'08:00').split(':').map(Number);
+  const [slH,slM] = (S.sleepTime||'22:00').split(':').map(Number);
+  const weeklyAvailH = ((slH*60+slM) - (wkH*60+wkM)) / 60 * 7;
+  const anchorTotalH = Object.values(anchorMap).reduce((s,h)=>s+h, 0);
+  const taskWeeklyH = Object.values(courseMap).reduce((s,h)=>s+h, 0) / 4.3; // 30 days ÷ 4.3 weeks
+  const freeH = Math.max(0, weeklyAvailH - anchorTotalH - taskWeeklyH);
+
+  const items = [
+    ...Object.entries(anchorMap).map(([name,h]) => ({ name, hours:h, type:'anchor', color:(S.anchors.find(a=>a.name===name)?.color||'#94a3b8') })),
+    ...Object.entries(courseMap).map(([name,h]) => ({ name, hours:h/4.3, type:'course', color:getCourseColor(name) })),
+    ...(freeH > 0 ? [{ name: 'זמן פנוי', hours: freeH, type: 'free', color: '#cbd5e1' }] : [])
+  ].sort((a,b)=>b.hours-a.hours);
+
+  const total = items.reduce((s,i)=>s+i.hours, 0);
+  if (!total) { document.getElementById('tc-chart-wrap').innerHTML = '<div style="text-align:center;color:var(--muted);padding:2rem;font-size:0.85rem">אין נתונים להצגה — הוסף עוגנים ומשימות</div>'; return; }
+
+  const rows = items.map(it => {
+    const pct = Math.round((it.hours/total)*100);
+    const display = isHours ? `${it.hours.toFixed(1)} שע'` : `${pct}%`;
+    const typeLabel = it.type === 'anchor' ? '⚓' : '📚';
+    return `<div class="tc-row">
+      <div class="tc-row-label">
+        <span class="tc-row-type">${typeLabel}</span>
+        <span class="tc-row-name">${it.name}</span>
+        <span class="tc-row-val">${display}</span>
+      </div>
+      <div class="tc-bar-wrap">
+        <div class="tc-bar" style="width:${pct}%;background:${it.color}"></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const totalDisplay = isHours ? `${total.toFixed(1)} שע'/שבוע מתוך ${weeklyAvailH.toFixed(0)} זמינות` : `${items.filter(i=>i.type!=='free').length} פעילויות + זמן פנוי`;
+  document.getElementById('tc-total-label').textContent = totalDisplay;
+  document.getElementById('tc-chart-wrap').innerHTML = rows;
+}
+
 // ══════════════════════════════════════════════
 // SEMESTER PLANNER
 // ══════════════════════════════════════════════
@@ -1272,13 +1782,10 @@ const COURSE_PALETTE = ['#4f6ef7','#16c98d','#f5a623','#8b5cf6','#f76060','#06b6
 let semCourseCount = 0;
 
 function setPlannerMode(mode) {
-  document.getElementById('planner-single-section').classList.toggle('hidden', mode !== 'single');
-  document.getElementById('planner-semester-section').classList.toggle('hidden', mode !== 'semester');
-  document.getElementById('mode-btn-single').classList.toggle('active', mode === 'single');
-  document.getElementById('mode-btn-semester').classList.toggle('active', mode === 'semester');
-  document.getElementById('planner-sub').textContent = mode === 'single'
-    ? 'ה-AI חותך מתמטית את העבודה והמשימות הקיימות, ומשבץ תוכנית אופטימלית לקורס.'
-    : 'תכנון סמסטר שלם — הזן את כל הקורסים ו-AI יבנה לוח זמנים אופטימלי תוך שמירה על עוגנים, חגים וחלונות קראנץ׳.';
+  document.getElementById('planner-single-section')?.classList.toggle('hidden', mode !== 'single');
+  document.getElementById('planner-semester-section')?.classList.toggle('hidden', mode !== 'semester');
+  document.getElementById('mode-btn-single')?.classList.toggle('active', mode === 'single');
+  document.getElementById('mode-btn-semester')?.classList.toggle('active', mode === 'semester');
   if (mode === 'semester' && !document.querySelector('.semester-course-card')) addSemesterCourse();
 }
 
@@ -1815,10 +2322,13 @@ function _initDaySwipe() {
     const dx = e.changedTouches[0].clientX - tx;
     const dy = e.changedTouches[0].clientY - ty;
     if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-      const sow = new Date(); sow.setDate(new Date().getDate() - new Date().getDay() + S.weekOffset * 7);
+      const now = new Date(); now.setHours(12,0,0,0);
+      const sow = new Date(now); sow.setDate(now.getDate() - now.getDay() + S.weekOffset * 7);
       const eow = new Date(sow); eow.setDate(sow.getDate() + 6);
       const s = ld(sow), eStr = ld(eow);
-      const cur = new Date((schedViewDay || s) + 'T12:00:00');
+      // Validate schedViewDay is within the displayed week, otherwise start from first day
+      const safeDay = (schedViewDay && schedViewDay >= s && schedViewDay <= eStr) ? schedViewDay : s;
+      const cur = new Date(safeDay + 'T12:00:00');
       if (dx > 0) { cur.setDate(cur.getDate() - 1); if (ld(cur) < s) { S.weekOffset--; schedViewDay = null; renderSchedule(); return; } }
       else { cur.setDate(cur.getDate() + 1); if (ld(cur) > eStr) { S.weekOffset++; schedViewDay = null; renderSchedule(); return; } }
       selectScheduleDay(ld(cur));
@@ -1917,7 +2427,21 @@ function deleteTask(id){ S.tasks=S.tasks.filter(t=>String(t.id)!==String(id)); s
 function missTask(id){ missedTaskId=id; const t=S.tasks.find(t=>String(t.id)===String(id)); document.getElementById('missed-task-name').textContent=`משימה: "${t?.name||''}"`; document.getElementById('missed-modal').classList.remove('hidden'); }
 function confirmMissed(){ if(!missedTaskId)return; const t=S.tasks.find(t=>String(t.id)===String(missedTaskId)); if(t){t.missed=true;t.done=false;t.missedReason=selectedOpt||'לא צוין';} save(); closeModal('missed-modal'); renderAll(); }
 
+function _checkWeeklyReviewBanner() {
+  const banner = document.getElementById('wr-banner');
+  if (!banner) return;
+  const hasCourses = (S.courses || []).length > 0;
+  if (hasCourses && _needsWeeklyReview()) {
+    const msg = document.getElementById('wr-banner-msg');
+    if (msg) msg.textContent = _isFirstWeek() ? '🎉 בנה את הלוז הראשון שלך!' : (new Date().getDay() === 6 ? 'שבת שלום! זמן לסכם את השבוע' : 'זמן לתכנן את השבוע — 3 דקות');
+    banner.classList.remove('hidden');
+  } else {
+    banner.classList.add('hidden');
+  }
+}
+
 function renderTodayTasks(){
+  _checkWeeklyReviewBanner();
   const today = ld(new Date()); const dayIdx = new Date().getDay();
   let tt = S.tasks.filter(t => t.date === today);
   document.getElementById('sc-tasks').textContent = tt.length;
@@ -2513,6 +3037,9 @@ function saveAnchorManual(){
   const end = document.getElementById('anc-end').value||'16:00';
   const travelMin = Math.max(0, Math.min(180, parseInt(document.getElementById('anc-travel').value)||0));
   const color = document.getElementById('anc-color').value||'#4f6ef7';
+  const ancForever = document.getElementById('anc-forever')?.checked !== false;
+  const ancEndDate = document.getElementById('anc-end-date')?.value || null;
+  const endDate = ancForever ? null : ancEndDate;
   const dn = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
   const isRecurring = document.getElementById('anc-recurring')?.checked;
   if(!Array.isArray(S.anchors)) S.anchors=[];
@@ -2525,7 +3052,7 @@ function saveAnchorManual(){
     if (start >= end) { toast('⚠️ שעת ההתחלה חייבת להיות לפני שעת הסיום'); return; }
     const [sh, sm] = start.split(':').map(Number); const [eh, em] = end.split(':').map(Number);
     if ((eh*60+em)-(sh*60+sm) > 16*60) { toast('⚠️ משמרת לא יכולה להיות יותר מ-16 שעות'); return; }
-    const updatedAnchor = { ...S.anchors[idx], name, day, start, end, travelMin, color };
+    const updatedAnchor = { ...S.anchors[idx], name, day, start, end, travelMin, color, endDate };
     const ast2 = sh*60+sm - travelMin; const aen2 = eh*60+em + travelMin;
     let collidedTasks = [];
     S.tasks = S.tasks.filter(t => {
@@ -2554,7 +3081,7 @@ function saveAnchorManual(){
       if (ds >= de){ toast(`⚠️ יום ${dn[d]}: שעת ההתחלה לפני הסיום`); return; }
       const [sh,sm]=ds.split(':').map(Number); const [eh,em]=de.split(':').map(Number);
       if((eh*60+em)-(sh*60+sm) > 16*60){ toast(`⚠️ יום ${dn[d]}: משמרת מעל 16 שעות`); return; }
-      newAnchors.push({ id:uid(), name, day:d, start:ds, end:de, travelMin, color });
+      newAnchors.push({ id:uid(), name, day:d, start:ds, end:de, travelMin, color, endDate });
     }
     S.anchors.push(...newAnchors);
     let allCollided = [];
@@ -2915,23 +3442,33 @@ function openRecalc(mode = 'schedule') {
         const capacityPct = freeSlots30.totalMinutes > 0
           ? Math.round((pendingTasks.length*90 / freeSlots30.totalMinutes)*100)
           : 0;
-        chat.innerHTML = `<div class="chat-msg ai"><div class="chat-bubble">היי! יש לי תמונה גלובלית מלאה של הלו"ז שלך — <b>${pendingTasks.length} משימות קרובות</b>, ${S.anchors.length} עוגנים קבועים, תפוסת לו"ז: <b>~${Math.min(capacityPct,100)}%</b>.<br>מה נרצה לשנות, להוסיף, או להזיז?</div></div>`;
-        recalcHistory = [{role:'system', content:`אתה מנהל לוח זמנים חכם ברמת Enterprise עם "ראייה גלובלית" מלאה.
+        const dn2=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+        const anchorLines = (S.anchors||[]).map(a=>`  • ${a.name}: יום ${dn2[a.day]}, ${a.start}–${a.end}${a.travelMin>0?` (נסיעה ${a.travelMin} דק')`:''}${a.endDate?` (בתוקף עד ${a.endDate})`:''}${!(a.endDate&&todayStr>a.endDate)?'':' [פג תוקף]'}`).join('\n') || '  אין';
+        const taskLines = pendingTasks.slice(0,30).map(t=>`  • [${t.id}] ${t.date} ${t.time||''} | ${t.course||'ללא קורס'} | ${t.name}`).join('\n') || '  אין';
+        const examLines = S.exams.filter(e=>e.date>=todayStr).map(e=>`  • ${e.course}: ${e.date} (עוד ${Math.ceil((new Date(e.date)-new Date())/86400000)} ימים)`).join('\n') || '  אין';
+        chat.innerHTML = `<div class="chat-msg ai"><div class="chat-bubble">היי! יש לי תמונה גלובלית של הלו"ז שלך — <b>${pendingTasks.length} משימות קרובות</b>, ${S.anchors.length} עוגנים, תפוסה: <b>~${Math.min(capacityPct,100)}%</b>.<br>שאל אותי על הלו"ז, בקש שינויים, הוספות, או שאל "מתי יש לי X?"</div></div>`;
+        recalcHistory = [{role:'system', content:`אתה מנהל לו"ז AI חכם לסטודנט ${S.userName||''} עם ראייה גלובלית מלאה.
 
-לו"ז נוכחי (משימות פתוחות): ${JSON.stringify(pendingTasks)}.
-עוגנים קבועים (לעולם לא לחפוף): ${anchorSummary}.
-מבחנים: ${S.exams.map(e=>`${e.course}: ${e.date}`).join(', ')||'אין'}.
-זמנים פנויים (30 ימים): ${freeSlots30.text||'אין'}.
-היום: ${todayStr}. קימה: ${S.wakeTime}. שינה: ${S.sleepTime}.
-תפוסת לו"ז נוכחית: ~${Math.min(capacityPct,100)}%.
+📋 עוגנים קבועים (אסור לחפוף):
+${anchorLines}
 
-חוקי ה-AI הגלובלי:
-(1) שעות תקינות בלבד: 08:00,09:50,11:40,14:00,15:50,17:40,19:30.
-(2) אל תקבע לפני ${S.wakeTime} ואחרי ${S.sleepTime}. אל תקבע בעבר.
-(3) לפני הוספת שגרה חוזרת (ספורט/שפה/כושר/חברים) — סרוק קונפליקטים תחילה ודווח.
-(4) אם הלו"ז מלא, אל תדרוס — הצע פשרה: "השמט X כדי לפנות מקום", "צמצם ל-Y פעמים/שבוע", "דחה Z לשבוע הבא".
-(5) כשמוסיפים שגרה חוזרת, בדוק קיבולת ואז הצע תוכנית מאוזנת ומציאותית.
-(6) תמיד החזר JSON: {"reply":"הסבר מה שינית ולמה","actions":{"add":[...],"delete":["ID"],"update":[{"id":"ID","date":"YYYY-MM-DD","time":"HH:MM"}]}}.`}];
+📅 משימות פתוחות (${pendingTasks.length}):
+${taskLines}
+
+📝 מבחנים:
+${examLines}
+
+⏰ היום: ${todayStr} | קימה: ${S.wakeTime} | שינה: ${S.sleepTime} | תפוסה: ~${Math.min(capacityPct,100)}%
+🗓️ זמנים פנויים (30 ימים): ${freeSlots30.text||'אין'}
+
+חוקי ברזל:
+(1) שעות תקינות בלבד: 08:00, 09:50, 11:40, 14:00, 15:50, 17:40, 19:30
+(2) אל תקבע לפני ${S.wakeTime} ואחרי ${S.sleepTime}. אל תקבע בעבר (לפני ${todayStr}).
+(3) לשאלת מידע (ללא שינוי): {"reply":"...","actions":{}}
+(4) לשינוי לו"ז: {"reply":"הסבר מה שינית","actions":{"add":[...],"delete":["ID"],"update":[{"id":"ID","date":"YYYY-MM-DD","time":"HH:MM"}]}}
+(5) אם שאלה רגשית/נפשית → reply: "לתמיכה נפשית, פתח את בוט הפסיכולוג 🧠 דרך התפריט" ו-actions: {}
+(6) לפני הוספת שגרה חוזרת — בדוק קונפליקטים תחילה, הצע פשרה אם הלו"ז מלא
+(7) כשמוסיפים משימות חדשות — השתמש ב-ID אקראי חדש, לא בקיים`}];
     }
 }
 function closeRecalc() { document.getElementById('recalc-overlay').classList.add('hidden'); renderAll(); }
@@ -2997,6 +3534,824 @@ async function sendPsych() {
         document.getElementById('psych-loading')?.remove();
         chat.innerHTML += `<div class="chat-msg ai"><div class="chat-bubble" style="color:var(--red)">שגיאה: ${e.message}</div></div>`;
     }
+}
+
+// ══════════════════════════════════════════
+// HOBBY / PERSONAL GOALS — FULL PAGE
+// ══════════════════════════════════════════
+
+let _hobbyActiveIdx = 0;
+
+function openHobbyPlanner() { showPage('hobby', null); }
+
+function renderHobbyPage() {
+  if (!S.hobbies) S.hobbies = [];
+  const hobbies = S.hobbies;
+  const elEmpty = document.getElementById('hp-empty');
+  const elSetup = document.getElementById('hp-setup');
+  const elMain  = document.getElementById('hp-main');
+  if (!elEmpty) return;
+
+  if (hobbies.length === 0) {
+    elEmpty.classList.remove('hidden');
+    elSetup.classList.add('hidden');
+    elMain.classList.add('hidden');
+    return;
+  }
+  elEmpty.classList.add('hidden');
+  elSetup.classList.add('hidden');
+  elMain.classList.remove('hidden');
+  if (_hobbyActiveIdx >= hobbies.length) _hobbyActiveIdx = 0;
+  _hpRenderTabs();
+  _hpRenderHobby(_hobbyActiveIdx);
+}
+
+function _hpShowSetup() {
+  document.getElementById('hp-empty').classList.add('hidden');
+  document.getElementById('hp-setup').classList.remove('hidden');
+  document.getElementById('hp-main').classList.add('hidden');
+  document.getElementById('hp-setup-name').value = '';
+  document.getElementById('hp-setup-goal').value = '';
+}
+
+function _hpShowEmpty() {
+  if ((S.hobbies || []).length === 0) {
+    document.getElementById('hp-empty').classList.remove('hidden');
+    document.getElementById('hp-setup').classList.add('hidden');
+  } else {
+    renderHobbyPage();
+  }
+}
+
+function hpCreateHobby() {
+  const name = document.getElementById('hp-setup-name').value.trim();
+  const goal = document.getElementById('hp-setup-goal').value.trim();
+  const timesPerWeek = parseInt(document.getElementById('hp-setup-freq').value);
+  const dur = parseInt(document.getElementById('hp-setup-dur').value);
+  if (!name) { toast('הכנס שם לתחביב/מטרה'); return; }
+  if (!goal) { toast('הכנס מטרה ברורה'); return; }
+  if (!S.hobbies) S.hobbies = [];
+  S.hobbies.push({ id: uid(), name, goal, timesPerWeek, sessionDuration: dur,
+    createdDate: ld(new Date()), lastCheckIn: null, history: [] });
+  _hobbyActiveIdx = S.hobbies.length - 1;
+  save();
+  renderHobbyPage();
+  setTimeout(() => _hpStartCoach(_hobbyActiveIdx), 300);
+}
+
+function _hpRenderTabs() {
+  const wrap = document.getElementById('hp-tabs');
+  if (!wrap) return;
+  wrap.innerHTML = (S.hobbies || []).map((h, i) =>
+    `<button class="hp-tab${i===_hobbyActiveIdx?' active':''}" onclick="_hpSelectTab(${i})">${h.name}</button>`
+  ).join('') + `<button class="hp-tab hp-tab-new" onclick="_hpShowSetup()">+ חדשה</button>`;
+}
+
+function _hpSelectTab(idx) {
+  _hobbyActiveIdx = idx;
+  _hpRenderTabs();
+  _hpRenderHobby(idx);
+}
+
+function _hpRenderHobby(idx) {
+  const hobby = (S.hobbies || [])[idx];
+  if (!hobby) return;
+  const done = S.tasks.filter(t => t.course === hobby.name && t.done).length;
+  const upcoming = S.tasks
+    .filter(t => t.course === hobby.name && !t.done && !t.missed && t.date >= ld(new Date()))
+    .sort((a,b) => a.date.localeCompare(b.date) || (a.time||'').localeCompare(b.time||''));
+
+  // Hero stats
+  const el = id => document.getElementById(id);
+  if (el('hp-hero-name')) el('hp-hero-name').textContent = hobby.name;
+  if (el('hp-hero-goal')) el('hp-hero-goal').textContent = hobby.goal;
+  if (el('hp-sessions-count')) el('hp-sessions-count').textContent = done;
+  if (el('hp-freq-count')) el('hp-freq-count').textContent = hobby.timesPerWeek + ' פעמים/שבוע';
+  if (el('hp-next-date')) {
+    el('hp-next-date').textContent = upcoming[0]
+      ? upcoming[0].date + (upcoming[0].time ? ' · ' + upcoming[0].time : '')
+      : 'לא מתוכנן';
+  }
+
+  _hpRenderTrack(hobby, done);
+
+  // Upcoming list
+  const upList = el('hp-upcoming-list');
+  if (upList) {
+    upList.innerHTML = upcoming.length === 0
+      ? `<div style="font-size:0.82rem;color:var(--muted);text-align:center;padding:0.5rem 0">לחץ "מצא לי זמן" כדי לתזמן אימונים</div>`
+      : upcoming.slice(0,5).map(t => {
+          const days = Math.ceil((new Date(t.date) - new Date()) / 86400000);
+          const badge = days === 0 ? 'היום!' : days === 1 ? 'מחר' : `עוד ${days}י`;
+          return `<div class="hp-session-row">
+            <div class="hp-session-dot" style="background:${getCourseColor(hobby.name)}"></div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:0.84rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.name}</div>
+              <div style="font-size:0.7rem;color:var(--muted)">${t.date}${t.time?' · '+t.time:''} · ${t.duration||hobby.sessionDuration+' דק\''}</div>
+            </div>
+            <span style="font-size:0.72rem;font-weight:800;color:var(--accent);white-space:nowrap">${badge}</span>
+          </div>`;
+        }).join('');
+  }
+
+  // Chat — only re-render if switching hobbies
+  const chat = el('hp-chat');
+  if (chat && chat.dataset.hobbyId !== hobby.id) {
+    chat.dataset.hobbyId = hobby.id;
+    chat.innerHTML = (hobby.history || []).filter(m => m.role !== 'system').map(m =>
+      `<div class="chat-msg ${m.role==='user'?'user':'ai'}"><div class="chat-bubble">${m.content.replace(/\n/g,'<br>')}</div></div>`
+    ).join('');
+
+    if (!hobby.history || hobby.history.length === 0) {
+      _hpStartCoach(idx);
+    } else {
+      const daysSince = hobby.lastCheckIn
+        ? Math.floor((Date.now() - new Date(hobby.lastCheckIn).getTime()) / 86400000) : 999;
+      if (daysSince >= 6) {
+        const doneWeek = S.tasks.filter(t => {
+          const dAgo = Math.floor((Date.now() - new Date(t.date+'T12:00:00').getTime()) / 86400000);
+          return t.course === hobby.name && t.done && dAgo <= 7;
+        }).length;
+        const ci = `שבוע עבר — עשית ${doneWeek} מתוך ${hobby.timesPerWeek} אימונים. איך הרגשת? מה הלך טוב ומה היה קשה?`;
+        chat.innerHTML += `<div class="chat-msg ai"><div class="chat-bubble">${ci}</div></div>`;
+        hobby.history.push({ role: 'assistant', content: ci });
+        hobby.lastCheckIn = ld(new Date());
+        save();
+      }
+    }
+    chat.scrollTop = chat.scrollHeight;
+  }
+}
+
+function _hpRenderTrack(hobby, done) {
+  const wrap = document.getElementById('hp-track');
+  if (!wrap) return;
+  const spw = hobby.timesPerWeek || 3;
+  const ms = [
+    { icon:'🌱', label:'התחלה',      req:0 },
+    { icon:'⚡', label:'שבוע ראשון', req:spw },
+    { icon:'🔥', label:'חודש ראשון', req:Math.round(spw*4) },
+    { icon:'💪', label:'עוצמה',      req:Math.round(spw*8) },
+    { icon:'⭐', label:'מתקדם',      req:Math.round(spw*12) },
+    { icon:'🏆', label:hobby.goal||'המטרה', req:Math.round(spw*16) },
+  ];
+  const total = ms[ms.length-1].req || 1;
+  const pct = Math.min(100, (done / total) * 100);
+  const currentMs = [...ms].reverse().find(m => done >= m.req) || ms[0];
+
+  wrap.innerHTML = `
+    <div style="margin-bottom:0.5rem;font-size:0.8rem;font-weight:700;color:var(--accent)">
+      ${currentMs.icon} ${currentMs.label} · ${done}/${total} אימונים · ${pct.toFixed(0)}%
+    </div>
+    <div class="hp-track-outer">
+      <div class="hp-track-line">
+        <div class="hp-track-fill" style="width:${pct.toFixed(1)}%"></div>
+      </div>
+      <div class="hp-track-dots">
+        ${ms.map((m,i) => {
+          const mPct = total > 0 ? (m.req/total)*100 : (i/(ms.length-1))*100;
+          const reached = done >= m.req;
+          const isCur = reached && (i===ms.length-1 || done < ms[i+1].req);
+          return `<div class="hp-ms${reached?' reached':''}${isCur?' current':''}" style="left:${mPct.toFixed(1)}%">
+            <div class="hp-ms-bubble">${m.icon}</div>
+            <div class="hp-ms-txt">${m.label}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+}
+
+async function _hpStartCoach(idx) {
+  const hobby = (S.hobbies || [])[idx];
+  const chat = document.getElementById('hp-chat');
+  if (!chat || !hobby) return;
+  hobby.history = hobby.history || [];
+
+  const sys = `אתה מאמן אישי נלהב לתחביבים ומטרות אישיות. שמך "מאמן".
+סטודנט: ${S.userName}. מטרה: "${hobby.name}" — ${hobby.goal}.
+תדירות: ${hobby.timesPerWeek} פעמים בשבוע. כל אימון: ${hobby.sessionDuration} דקות.
+פרופיל: ${JSON.stringify(S.profile||{})}.
+חוקים: (1) שאל שאלה אחת על רמת ניסיון ואז בנה תוכנית ספציפית (2) בצ'ק-אין שבועי — נתח, שבח, עדכן תוכנית (3) כשמציע אימונים — החזר JSON בסוף: {"tasks":[{"name":"...","duration":30},...]} (4) עברית חמה, עד 120 מילה.`;
+  const opener = `היי ${S.userName}! מעולה שהחלטת לעבוד על "${hobby.name}" 💪\nלפני שנבנה תוכנית — מה הרמה שלך כרגע? מתחיל לגמרי, יש קצת ניסיון, או כבר מתרגל?`;
+
+  hobby.history.push({ role:'system', content:sys });
+  hobby.history.push({ role:'assistant', content:opener });
+  hobby.lastCheckIn = ld(new Date());
+  save();
+  chat.innerHTML += `<div class="chat-msg ai"><div class="chat-bubble">${opener.replace(/\n/g,'<br>')}</div></div>`;
+  chat.scrollTop = chat.scrollHeight;
+}
+
+async function sendHobbyPageMessage() {
+  const inp = document.getElementById('hp-input');
+  const msg = inp?.value?.trim();
+  if (!msg) return;
+  inp.value = '';
+  const hobby = (S.hobbies || [])[_hobbyActiveIdx];
+  if (!hobby) return;
+
+  const chat = document.getElementById('hp-chat');
+  chat.innerHTML += `<div class="chat-msg user"><div class="chat-bubble">${msg}</div></div><div class="chat-msg ai" id="hp-loading"><div class="chat-bubble"><span class="ai-thinking">המאמן חושב...</span></div></div>`;
+  chat.scrollTop = chat.scrollHeight;
+
+  hobby.history = hobby.history || [];
+  hobby.history.push({ role:'user', content:msg });
+  if (hobby.history.length > 24) hobby.history = [hobby.history[0], ...hobby.history.slice(-22)];
+
+  try {
+    const ans = await callAI({ messages: hobby.history, temperature: 0.72 });
+    hobby.history.push({ role:'assistant', content:ans });
+    hobby.lastCheckIn = ld(new Date());
+    save();
+    document.getElementById('hp-loading')?.remove();
+
+    let display = ans;
+    let pendingTasks = null;
+    try {
+      const m = ans.match(/\{[\s\S]*?"tasks"\s*:\s*\[[\s\S]*?\]\s*\}/);
+      if (m) { const p = JSON.parse(m[0]); if (p.tasks?.length) { pendingTasks = p.tasks; display = ans.replace(m[0],'').trim(); } }
+    } catch(_) {}
+
+    chat.innerHTML += `<div class="chat-msg ai"><div class="chat-bubble">${display.replace(/\n/g,'<br>')}</div></div>`;
+
+    if (pendingTasks) {
+      hobby._pendingTasks = pendingTasks;
+      save();
+      chat.innerHTML += `<div class="chat-msg ai"><div class="chat-bubble hp-task-suggest">
+        <div style="font-weight:700;color:var(--accent);margin-bottom:0.4rem">המאמן מציע ${pendingTasks.length} אימונים:</div>
+        ${pendingTasks.map(t=>`<div style="font-size:0.82rem">• ${t.name} (${t.duration||hobby.sessionDuration} דק')</div>`).join('')}
+        <button class="hp-add-btn" onclick="hpConfirmAddTasks()">📅 הוסף ללו"ז שלי</button>
+      </div></div>`;
+    }
+    chat.scrollTop = chat.scrollHeight;
+    _hpRenderHobby(_hobbyActiveIdx);
+  } catch(e) {
+    document.getElementById('hp-loading')?.remove();
+    chat.innerHTML += `<div class="chat-msg ai"><div class="chat-bubble" style="color:var(--red)">שגיאה: ${e.message}</div></div>`;
+  }
+}
+
+function hpConfirmAddTasks() {
+  const hobby = (S.hobbies || [])[_hobbyActiveIdx];
+  if (!hobby?._pendingTasks) return;
+  const today = new Date(); const n = hobby._pendingTasks.length;
+  const times = ['09:00','14:00','17:00','19:30','21:00'];
+  hobby._pendingTasks.forEach((t, i) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() + Math.ceil((i+1)*7/n));
+    if (d.getDay()===6) d.setDate(d.getDate()+1);
+    S.tasks.push({ id:uid(), name:t.name, course:hobby.name, date:ld(d), time:times[i%times.length],
+      duration:`${t.duration||hobby.sessionDuration} דק'`, priority:'בינוני', done:false, missed:false });
+  });
+  const added = n; hobby._pendingTasks = null;
+  save(); renderAll(); _hpRenderHobby(_hobbyActiveIdx);
+  toast(`✅ נוספו ${added} אימוני "${hobby.name}" ללו"ז!`);
+}
+
+async function findHobbySlots() {
+  const hobby = (S.hobbies || [])[_hobbyActiveIdx];
+  if (!hobby) return;
+  const btn = document.getElementById('hp-find-btn');
+  if (btn) { btn.disabled=true; btn.textContent='מחפש...'; }
+
+  const endDate = new Date(); endDate.setDate(endDate.getDate()+14);
+  const slotsData = getAvailableSlots(ld(new Date()), ld(endDate), '3');
+  const done = S.tasks.filter(t=>t.course===hobby.name&&t.done).length;
+
+  const prompt = `תזמן אימוני "${hobby.name}" (מטרה: ${hobby.goal}).
+${hobby.timesPerWeek} פעמים בשבוע, כל אימון ${hobby.sessionDuration} דק'. אימונים שהושלמו: ${done}.
+זמנים פנויים:
+${slotsData.text}
+בחר ${hobby.timesPerWeek*2} חריצים מהרשימה (עדיף אחה"צ/ערב, לא שישי/שבת בלילה).
+החזר JSON בלבד: {"tasks":[{"name":"אימון ${hobby.name}","date":"YYYY-MM-DD","time":"HH:MM","duration":${hobby.sessionDuration}}]}`;
+
+  try {
+    const ans = await callAI({ messages:[{role:'user',content:prompt}], temperature:0.2, json:true });
+    const parsed = JSON.parse(ans.match(/\{[\s\S]*\}/)[0]);
+    if (!parsed.tasks?.length) throw new Error('empty');
+    parsed.tasks.forEach(t => {
+      S.tasks.push({ id:uid(), name:t.name||`אימון ${hobby.name}`, course:hobby.name,
+        date:t.date, time:t.time, duration:`${t.duration||hobby.sessionDuration} דק'`,
+        priority:'בינוני', done:false, missed:false });
+    });
+    save(); renderAll(); _hpRenderHobby(_hobbyActiveIdx);
+    toast(`✅ נוספו ${parsed.tasks.length} אימונים בזמנים הפנויים!`);
+  } catch(e) {
+    toast('לא מצאתי זמנים מתאימים — נסה שוב או הוסף ידנית');
+  } finally {
+    if (btn) { btn.disabled=false; btn.textContent='📅 מצא לי זמן בלוז'; }
+  }
+}
+
+function hpDeleteHobby() {
+  const hobby = (S.hobbies||[])[_hobbyActiveIdx];
+  if (!hobby||!confirm(`מחוק "${hobby.name}" ואת כל האימונים העתידיים?`)) return;
+  S.tasks = S.tasks.filter(t=>!(t.course===hobby.name&&!t.done));
+  S.hobbies.splice(_hobbyActiveIdx,1);
+  _hobbyActiveIdx = 0;
+  save(); renderAll(); renderHobbyPage();
+}
+
+// ══════════════════════════════════════════
+// WEEKLY REVIEW — סיכום שבועי
+// ══════════════════════════════════════════
+
+function _weekStart(offset) {
+  const d = new Date(); d.setHours(12,0,0,0);
+  d.setDate(d.getDate() - d.getDay() + (offset||0)*7);
+  return ld(d);
+}
+
+function _needsWeeklyReview() {
+  if (!(S.courses || []).length) return false; // No courses set up — send to planner first
+  const wr = S.weeklyReview || {};
+  return !wr.lastReviewDate || wr.lastReviewDate < _weekStart(0);
+}
+
+function _isFirstWeek() {
+  return !(S.weeklyReview || {}).lastReviewDate;
+}
+
+function renderWRSidebarCard() {
+  const card = document.getElementById('wr-sidebar-card');
+  const statusEl = document.getElementById('wrs-status');
+  const subEl = document.getElementById('wrs-sub');
+  const btnEl = document.getElementById('wrs-btn');
+  const badgeEl = document.getElementById('wrs-badge');
+  if (!card) return;
+
+  const hasCourses = (S.courses || []).length > 0;
+
+  if (!hasCourses) {
+    // No courses — direct to planner
+    card.onclick = () => { showPage('planner', null); updateBottomNav('planner'); closeSidebar(); };
+    if (btnEl) { btnEl.textContent = '▶ הגדר קורסים'; btnEl.onclick = (e) => { e.stopPropagation(); showPage('planner', null); updateBottomNav('planner'); closeSidebar(); }; }
+    if (statusEl) statusEl.textContent = 'הגדר קורסים תחילה';
+    if (subEl) subEl.textContent = 'כדי לבנות לוז יש להוסיף קורסים במתכנן';
+    if (badgeEl) badgeEl.textContent = '';
+    card.classList.remove('wrs-done');
+    return;
+  }
+
+  card.onclick = () => { showPage('weekly-review', null); updateBottomNav('weekly-review'); closeSidebar(); };
+
+  if (_isFirstWeek()) {
+    // First time — no lastReviewDate yet
+    if (statusEl) statusEl.textContent = 'בנה לוז לשבוע הראשון';
+    if (subEl) subEl.textContent = 'לחץ לתכנון השבוע שלך';
+    if (btnEl) { btnEl.textContent = '▶ בנה לוז ראשון'; btnEl.onclick = (e) => { e.stopPropagation(); showPage('weekly-review', null); updateBottomNav('weekly-review'); closeSidebar(); }; }
+    if (badgeEl) badgeEl.textContent = 'חדש';
+    card.classList.remove('wrs-done');
+  } else if (_needsWeeklyReview()) {
+    // Needs review this week
+    if (statusEl) statusEl.textContent = 'זמן לסיכום שבועי';
+    if (subEl) subEl.textContent = '3 דקות שמשנות את השבוע הבא';
+    if (btnEl) { btnEl.textContent = '▶ בנה לוז עכשיו'; btnEl.onclick = (e) => { e.stopPropagation(); showPage('weekly-review', null); updateBottomNav('weekly-review'); closeSidebar(); }; }
+    if (badgeEl) badgeEl.textContent = '!';
+    card.classList.remove('wrs-done');
+  } else {
+    // Done this week
+    const range = _wrGetTargetRange();
+    if (statusEl) statusEl.textContent = `הלוז מכסה עד ${range.end}`;
+    if (subEl) subEl.textContent = 'לחץ לבניה מחדש';
+    if (btnEl) { btnEl.textContent = '🔄 בנה מחדש'; btnEl.onclick = (e) => { e.stopPropagation(); _wrForceRebuild = true; showPage('weekly-review', null); updateBottomNav('weekly-review'); closeSidebar(); }; }
+    if (badgeEl) badgeEl.textContent = '✓';
+    card.classList.add('wrs-done');
+  }
+}
+
+function _wrGetTargetRange() {
+  const now = new Date();
+  const today = ld(now);
+  const dow = now.getDay();
+  if (dow === 6) {
+    const nextSun = new Date(now); nextSun.setDate(now.getDate() + 1);
+    const nextSat = new Date(now); nextSat.setDate(now.getDate() + 7);
+    return { start: ld(nextSun), end: ld(nextSat), label: 'שבוע הבא' };
+  } else {
+    const thisSat = new Date(now); thisSat.setDate(now.getDate() + (6 - dow));
+    return { start: today, end: ld(thisSat), label: dow === 0 ? 'שבוע זה' : 'שארית השבוע' };
+  }
+}
+
+function renderWeeklyReview() {
+  const doneEl = document.getElementById('wr-done');
+  const activeEl = document.getElementById('wr-active');
+  if (!doneEl || !activeEl) return;
+  if (!_wrForceRebuild && !_needsWeeklyReview()) {
+    const range = _wrGetTargetRange();
+    const nd = document.getElementById('wr-range-end');
+    if (nd) nd.textContent = range.end;
+    doneEl.classList.remove('hidden');
+    activeEl.classList.add('hidden');
+    renderWRSidebarCard();
+    return;
+  }
+  _wrForceRebuild = false;
+  doneEl.classList.add('hidden');
+  activeEl.classList.remove('hidden');
+  _wrInit();
+}
+
+async function _wrGenerate() {
+  _wrMsg('⏳ מייצר תוכנית מותאמת אישית...');
+  _wrProg((_wr.qs.length||1) + 1);
+
+  const today = ld(new Date());
+  const range = _wrGetTargetRange();
+  const slots = getAvailableSlots(range.start, range.end, '3');
+
+  const exams = (S.exams||[]).filter(e=>e.date>=today)
+    .sort((a,b)=>a.date.localeCompare(b.date)).slice(0,6)
+    .map(e=>({ c:e.course, d:e.date, days:Math.ceil((new Date(e.date)-new Date())/86400000) }));
+
+  const { rules, taskDuration, tMin, tMax } = _buildSchedulingRules(S.profile, _wr.answers);
+  const courseAdj = _buildCourseAdjustments(_wr.answers);
+  const courseConfig = (S.courses||[]).map(c=>`${c.name}: ${c.hoursPerWeek}ש'/שבוע`).join(', ') || _wr.coursesLastWeek.join(', ') || 'לא הוגדרו';
+  const hobbyLines = Object.entries(_wr.answers.hobbies).map(([h,v])=>`${h}: ${v==='none'?'דלג השבוע':v==='partial'?'פגישה אחת':'שמור תדירות'}`).join(', ') || 'אין';
+  const priorityNote = _wr.answers.priority && _wr.answers.priority !== 'balanced'
+    ? `קדם ביותר שעות ושעות פיק: ${_wr.answers.priority}` : 'איזון שווה בין כל הקורסים';
+
+  const urgentExam = exams.find(e => e.days <= 5);
+  const urgentNote = urgentExam
+    ? `🚨 מבחן דחוף: ${urgentExam.c} בעוד ${urgentExam.days} ימים — הקצה 60% מהזמן הפנוי ללמידה שלו בלבד!`
+    : '';
+
+  const matInfo = Object.entries(_wr.answers.courses||{}).map(([c,a]) => {
+    if (a.mat === 'lots')   return `${c}: נשאר הרבה חומר — יש לתת יותר זמן`;
+    if (a.mat === 'some')   return `${c}: נשאר חלק — קצב רגיל`;
+    if (a.mat === 'little') return `${c}: כמעט סיים — חזרות בלבד`;
+    return null;
+  }).filter(Boolean).join('\n') || 'אין מידע';
+
+  const prompt = `אתה מתכנן לו"ז שבועי אישי. תפקידך ליצור לו"ז שמותאם בדיוק לסטודנט הזה — לא תבנית גנרית.
+
+━━━ פרופיל סטודנט ━━━
+שם: ${S.userName} | שעות פעילות: ${S.wakeTime}–${S.sleepTime}
+קורסים: ${courseConfig}
+תחביבים: ${hobbyLines}
+עדיפות שבוע זה: ${priorityNote}
+${urgentNote}
+
+━━━ כללים מבוססי פרופיל ותשובות הסטודנט ━━━
+${rules.map((r,i)=>`${i+1}. ${r}`).join('\n')}
+
+━━━ התאמות לפי ביצועי שבוע שעבר ━━━
+${courseAdj}
+
+━━━ כמה חומר נשאר בכל קורס ━━━
+${matInfo}
+
+━━━ מבחנים קרובים ━━━
+${exams.map(e=>`${e.c}: ${e.days} ימים (${e.d})`).join(' | ')||'אין'}
+מבחן בפחות מ-5 ימים → 60% מהזמן לקורס הזה
+
+━━━ עוגנים חסומים (כולל זמני נסיעה — אסור בהחלט לשבץ כאן!) ━━━
+${slots.anchorDetails || 'אין עוגנים'}
+
+━━━ חלונות זמן פנויים (${range.label}: ${range.start}–${range.end}) ━━━
+שים לב: הזמנים הפנויים כבר מחושבים אחרי הוצאת עוגנים ונסיעות!
+${slots.text||'אין זמנים פנויים'}
+
+━━━ הנחיות ביצוע ━━━
+• שבץ משימות רק בתוך חלונות הזמן הפנויים למעלה — לא מחוצה להם!
+• משך כל משימה: ${Math.max(20,taskDuration-15)}–${taskDuration+20} דק' (לא חייב אחיד — התאם לקורס)
+• השאר לפחות 10 דק' הפסקה בין משימות
+• ${tMin}–${tMax} משימות ביום מקסימום
+• גוון שמות (לא "לימוד — X" שוב ושוב)
+• לא יותר מ-2 משימות לאותו קורס ביום
+• פזר על כל הימים
+
+החזר JSON בלבד:
+{"tasks":[{"date":"YYYY-MM-DD","time":"HH:MM","course":"שם","name":"שם משימה","duration":"X דק'","priority":"גבוה|בינוני|נמוך"},...]}
+`;
+
+  try {
+    const ans = await callAI({ messages:[{role:'user',content:prompt}], temperature:0.3, json:true });
+    const parsed = JSON.parse(ans.match(/\{[\s\S]*\}/)[0]);
+    if (!parsed.tasks?.length) throw new Error('ריק');
+    const validTasks = parsed.tasks.filter(t => {
+      if (!t.date || !t.time) return false;
+      const dur = parseInt((t.duration||String(taskDuration)).match(/\d+/)?.[0]||taskDuration);
+      return isTimeInFreeWindow(t.date, t.time, dur);
+    });
+    if (!validTasks.length) throw new Error('כל המשימות חופפות עם עוגנים — נסה שוב');
+    const removed = parsed.tasks.length - validTasks.length;
+    if (removed > 0) _wrMsg(`⚠️ ${removed} משימות הוסרו כי חפפו עם עוגנים`);
+    _wr.pendingPlan = validTasks;
+    _wrShowPreview(validTasks);
+  } catch(e) {
+    _wrMsg(`שגיאה: ${e.message}. <button class="wr-btn-inline" onclick="_wrGenerate()">נסה שוב</button>`);
+  }
+}
+
+function _wrInit() {
+  const today = ld(new Date());
+  const hobbyNames = new Set((S.hobbies||[]).map(h=>h.name));
+  const firstWeek = _isFirstWeek();
+
+  // Source of truth: only courses defined in the AI planner (S.courses)
+  const coursesLastWeek = [...new Set(
+    (S.courses || []).map(c => c.name).filter(n => n && !hobbyNames.has(n))
+  )];
+  const activeHobbies = S.hobbies || [];
+
+  // Build question queue
+  const qs = [];
+  if (!firstWeek) {
+    // Only ask "last week" questions for returning users
+    coursesLastWeek.forEach(c => {
+      qs.push({ type:'course_u', c });
+      qs.push({ type:'course_cov', c });
+      qs.push({ type:'course_mat', c });
+    });
+    activeHobbies.forEach(h => qs.push({ type:'hobby', h }));
+    qs.push({ type:'load' });
+  }
+  qs.push({ type:'goal' });
+  if (coursesLastWeek.length + activeHobbies.length > 1)
+    qs.push({ type:'priority', items:[...coursesLastWeek, ...activeHobbies.map(h=>h.name)] });
+
+  _wr = { qs, qi: 0, answers: { courses:{}, hobbies:{}, load:null, goal:null, priority:null },
+    coursesLastWeek, activeHobbies, pendingPlan: null };
+
+  document.getElementById('wr-msgs').innerHTML = '';
+  document.getElementById('wr-choices').innerHTML = '';
+  document.getElementById('wr-choices').classList.add('hidden');
+  document.getElementById('wr-result').classList.add('hidden');
+  _wrProg(0);
+
+  const range = _wrGetTargetRange();
+  if (firstWeek) {
+    _wrMsg(`שלום ${S.userName}! 🎉\nברוך הבא — נבנה יחד את לוז השבוע הראשון שלך (${range.start} – ${range.end}).\nכמה שאלות קצרות ומתחילים!`);
+  } else {
+    const lastWS = _weekStart(-1); const thisWS = _weekStart(0);
+    const doneCount = S.tasks.filter(t => t.date >= lastWS && t.date < thisWS && t.done).length;
+    const totalCount = S.tasks.filter(t => t.date >= lastWS && t.date < thisWS).length;
+    _wrMsg(totalCount > 0
+      ? `שלום ${S.userName}! 🌅\nהשבוע שעבר: ${doneCount}/${totalCount} משימות הושלמו.\nנבנה תוכנית ל${range.label} (${range.start} – ${range.end}).`
+      : `שלום ${S.userName}! 🌅\nזמן לתכנן את ${range.label} (${range.start} – ${range.end}).`
+    );
+  }
+  setTimeout(() => _wrNext(), 700);
+}
+
+function _wrProg(done) {
+  const total = (_wr?.qs?.length || 1) + 1;
+  const pct = Math.min(100, (done / total) * 100);
+  const bar = document.getElementById('wr-prog-bar');
+  if (bar) bar.style.width = pct.toFixed(0) + '%';
+}
+
+function _wrMsg(text, isUser) {
+  const el = document.getElementById('wr-msgs');
+  if (!el) return;
+  const div = document.createElement('div');
+  div.className = isUser ? 'wr-msg wr-msg-user' : 'wr-msg wr-msg-ai';
+  div.innerHTML = text.replace(/\n/g,'<br>');
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+function _wrChoices(opts, multi = false) {
+  const wrap = document.getElementById('wr-choices');
+  if (!wrap) return;
+  wrap.classList.remove('hidden');
+  if (multi) {
+    wrap.innerHTML = opts.map(o =>
+      `<button class="wr-btn wr-btn-multi" data-v="${o.v}" onclick="_wrToggleMulti(this)">${o.l}</button>`
+    ).join('') +
+      `<button class="wr-btn wr-btn-confirm" onclick="_wrConfirmMulti()" style="margin-top:0.4rem;background:var(--accent);color:white;font-weight:800">✓ אשר בחירה</button>`;
+  } else {
+    wrap.innerHTML = opts.map(o =>
+      `<button class="wr-btn" onclick="_wrAnswer('${o.v}','${o.l.replace(/'/g,"")}')">${o.l}</button>`
+    ).join('');
+  }
+}
+
+function _wrToggleMulti(btn) {
+  btn.classList.toggle('sel');
+}
+
+function _wrConfirmMulti() {
+  const wrap = document.getElementById('wr-choices');
+  const selected = [...wrap.querySelectorAll('.wr-btn-multi.sel')].map(b => b.dataset.v);
+  if (!selected.length) { toast('בחר לפחות פריט אחד'); return; }
+  const label = selected.join(', ');
+  wrap.querySelectorAll('button').forEach(b=>b.disabled=true);
+  _wrMsg(label, true);
+  wrap.classList.add('hidden');
+  const q = _wr.qs[_wr.qi];
+  if (q.type === 'priority') _wr.answers.priority = selected.join(', ');
+  _wr.qi++;
+  _wrProg(_wr.qi + 1);
+  setTimeout(() => _wrNext(), 350);
+}
+
+function _wrAnswer(v, l) {
+  document.getElementById('wr-choices').querySelectorAll('button').forEach(b=>b.disabled=true);
+  _wrMsg(l, true);
+  document.getElementById('wr-choices').classList.add('hidden');
+
+  const q = _wr.qs[_wr.qi];
+  if (q.type === 'course_u')   { if(!_wr.answers.courses[q.c])_wr.answers.courses[q.c]={}; _wr.answers.courses[q.c].u=v; }
+  if (q.type === 'course_cov') { if(!_wr.answers.courses[q.c])_wr.answers.courses[q.c]={}; _wr.answers.courses[q.c].cov=v; }
+  if (q.type === 'course_mat') { if(!_wr.answers.courses[q.c])_wr.answers.courses[q.c]={}; _wr.answers.courses[q.c].mat=v; }
+  if (q.type === 'hobby')      { _wr.answers.hobbies[q.h.name]=v; }
+  if (q.type === 'load')       { _wr.answers.load=v; }
+  if (q.type === 'goal')       { _wr.answers.goal=v; }
+  if (q.type === 'priority')   { _wr.answers.priority=v; }
+
+  _wr.qi++;
+  _wrProg(_wr.qi + 1);
+  setTimeout(() => _wrNext(), 350);
+}
+
+function _wrNext() {
+  if (_wr.qi >= _wr.qs.length) { _wrGenerate(); return; }
+  const q = _wr.qs[_wr.qi];
+
+  if (q.type === 'course_u') {
+    _wrMsg(`📚 <b>${q.c}</b> — איך היה החומר השבוע?`);
+    _wrChoices([{v:'good',l:'✅ הבנתי טוב'},{v:'ok',l:'😐 בסדר'},{v:'hard',l:'❌ קשה לי'}]);
+  } else if (q.type === 'course_cov') {
+    _wrMsg(`כמה מהחומר של <b>${q.c}</b> הספקת לכסות שבוע שעבר?`);
+    _wrChoices([{v:'all',l:'📗 הכל'},{v:'some',l:'📙 כחצי'},{v:'little',l:'📕 מעט'}]);
+  } else if (q.type === 'course_mat') {
+    _wrMsg(`🗂 כמה חומר עוד <b>נשאר</b> לך ב-<b>${q.c}</b> עד המבחן?`);
+    _wrChoices([{v:'lots',l:'📚 הרבה — עוד לא כיסיתי הרבה'},{v:'some',l:'📗 בינוני — נשאר חלק'},{v:'little',l:'✅ מעט — כמעט סיימתי'}]);
+  } else if (q.type === 'hobby') {
+    const planned = q.h.timesPerWeek||3;
+    _wrMsg(`🎯 <b>${q.h.name}</b> — הגעת ל-${planned} פגישות השבוע?`);
+    _wrChoices([{v:'all',l:`✅ כולן (${planned})`},{v:'partial',l:'😐 חלקן'},{v:'none',l:'❌ לא הצלחתי'}]);
+  } else if (q.type === 'load') {
+    _wrMsg('⚖️ איך היה העומס השבוע שעבר?\n(זה ישפיע על התאמת הזמן לכל קורס)');
+    _wrChoices([{v:'heavy',l:'😤 כבד מדי'},{v:'ok',l:'😊 מאוזן'},{v:'light',l:'😴 קל'}]);
+  } else if (q.type === 'goal') {
+    const span = S.profile?.focus_span || '';
+    const canDouble = span.includes('25') || span.includes('40') || span.includes('30') || span.includes('45');
+    const doubleNote = canDouble ? '\nבמצב מקסימום: 2 בלוקים + 10 דק\' מנוחה ביניהם' : '';
+    _wrMsg(`💪 כמה אתה רוצה ללמוד השבוע הקרוב?${doubleNote}`);
+    _wrChoices([
+      {v:'min', l:'🎯 מינימום — רק מה שחייב'},
+      {v:'ok',  l:'📚 בינוני — קצב רגוע'},
+      {v:'max', l:'🔥 מקסימום — ניצול מלא'}
+    ]);
+  } else if (q.type === 'priority') {
+    _wrMsg('🎯 מה הכי חשוב לשבוע הקרוב? (אפשר לבחור כמה)');
+    _wrChoices([...q.items.slice(0,5).map(n=>({v:n,l:n})),{v:'balanced',l:'⚖️ איזון שווה'}], true);
+  }
+}
+
+function _buildSchedulingRules(profile, answers) {
+  const p = profile || {};
+  const load = answers.load;
+  const goal = answers.goal;
+  const rules = [];
+
+  // ── 1. SESSION LENGTH ──
+  let sessionMins = 60;
+  if (p.focus_span) {
+    if      (p.focus_span.includes('25'))                                      sessionMins = 25;
+    else if (p.focus_span.match(/30|40|45/))                                   sessionMins = 40;
+    else if (p.focus_span.match(/60|75/))                                      sessionMins = 65;
+    else if (p.focus_span.includes('90'))                                      sessionMins = 90;
+  }
+  // Double-block only for short spans + non-min goal (2×block + 10min break fits in one 90-min slot)
+  const canDouble = sessionMins <= 45;
+  let taskDuration = sessionMins;
+  if (canDouble && goal === 'max') taskDuration = sessionMins * 2 + 10;
+  else if (canDouble && goal === 'ok') taskDuration = sessionMins * 2 + 10;
+  const durationDesc = (canDouble && goal !== 'min')
+    ? `${taskDuration} דק' (2×${sessionMins} + 10 מנוחה)` : `${taskDuration} דק'`;
+  rules.push(`⏱ משך כל משימה: ${durationDesc}`);
+
+  // ── 2. TASKS PER DAY — concrete numbers ──
+  let tMin = 1, tMax = 2;
+  if      (goal === 'max' && load !== 'heavy') { tMin = 2; tMax = 3; }
+  else if (goal === 'ok'  && load !== 'heavy') { tMin = 1; tMax = 2; }
+  else if (goal === 'min' || load === 'heavy') { tMin = 0; tMax = 1; }
+  if (load === 'light' && goal !== 'min') tMax = Math.min(tMax + 1, 4);
+  rules.push(`📊 כמות ביום: ${tMin}–${tMax} משימות לימוד (לא יותר מ-${tMax}!)`);
+  if (load === 'heavy') rules.push('⚡ שבוע כבד: הפסקה של חלון אחד לפחות בין משימות באותו יום');
+  else if (load === 'light') rules.push('😴 שבוע קל: המשתמש מסוגל ליותר — ניתן להוסיף');
+
+  // ── 3. PEAK SLOTS ──
+  let peakSlots = ['09:50','11:40'];
+  let offPeakSlots = ['14:00','15:50'];
+  if (p.focus_time) {
+    if (p.focus_time.match(/בוקר|06|07|08/)) {
+      peakSlots = ['08:00','09:50','11:40']; offPeakSlots = ['14:00','15:50','17:40'];
+      rules.push('🌅 פיק: 08:00–11:40 → קורסים קשים/עדיפים | 14:00+ → חזרות וחומר קל');
+    } else if (p.focus_time.match(/צהריים|10|11|12/)) {
+      peakSlots = ['11:40','14:00','15:50']; offPeakSlots = ['08:00','17:40','19:30'];
+      rules.push('☀️ פיק: 11:40–15:50 → קורסים קשים | בוקר ו-17:40+ → חזרות');
+    } else if (p.focus_time.match(/אחה"צ|14|15|16/)) {
+      peakSlots = ['14:00','15:50','17:40']; offPeakSlots = ['08:00','09:50','19:30'];
+      rules.push('🌤 פיק: 14:00–17:40 → קורסים קשים | בוקר → חזרות וחומר קל');
+    } else if (p.focus_time.match(/ערב|17|18|19|20/)) {
+      peakSlots = ['17:40','19:30']; offPeakSlots = ['08:00','09:50','14:00'];
+      rules.push('🌙 פיק: 17:40–19:30 → קורסים קשים | בוקר → חומר קל בלבד');
+    }
+  }
+
+  // ── 4. LEARNING STYLE → task types ──
+  let taskTypes = ['לימוד — [קורס]','חזרה — [קורס]'];
+  if (p.style) {
+    if (p.style.match(/תרגיל|פתרון|🔧/)) {
+      taskTypes = ['פתרון תרגילים — [קורס]','תרגול שאלות — [קורס]','חזרה על תרגילים — [קורס]'];
+      rules.push('📝 שמות: "פתרון תרגילים / תרגול שאלות / חזרה על תרגילים"');
+    } else if (p.style.match(/קריאה|סיכום|📝/)) {
+      taskTypes = ['קריאה וסיכום — [קורס]','עיון בחומר — [קורס]','סיכום פרק — [קורס]'];
+      rules.push('📖 שמות: "קריאה וסיכום / עיון בחומר / סיכום פרק"');
+    } else if (p.style.match(/האזנה|וידאו|🎧/)) {
+      taskTypes = ['צפייה בהרצאה — [קורס]','האזנה וסיכום — [קורס]','סיכום הרצאה — [קורס]'];
+      rules.push('🎧 שמות: "צפייה בהרצאה / האזנה וסיכום / סיכום הרצאה"');
+    } else if (p.style.match(/הסבר|👥/)) {
+      taskTypes = ['הסבר לעצמי — [קורס]','שאלות עצמיות — [קורס]','הרצאה עצמית — [קורס]'];
+      rules.push('👥 שמות: "הסבר לעצמי / שאלות עצמיות / הרצאה עצמית"');
+    }
+  }
+
+  // ── 5. EXAM FEAR → extra task types ──
+  if (p.exam_fear) {
+    if (p.exam_fear.match(/לשכוח|לחץ|😰/)) {
+      taskTypes.push('חזרה מרווחת — [קורס]');
+      rules.push('🔁 חשש שכחה: כל 2 משימות רגילות → הוסף "חזרה מרווחת — [קורס]"');
+    } else if (p.exam_fear.match(/לסיים|⏰/)) {
+      rules.push('📋 חשש לא לסיים: כסה חומר ליניארית (פרק 1→2→3), לא לדלג לחזרות לפני שסיימת החומר');
+    } else if (p.exam_fear.match(/מפתיע|שאלות|❓/)) {
+      taskTypes.push('פתרון מבחנים ישנים — [קורס]');
+      rules.push('❓ חשש שאלות מפתיעות: כל 3 משימות → "פתרון מבחנים ישנים — [קורס]"');
+    } else if (p.exam_fear.match(/להבין|🤔/)) {
+      taskTypes.push('הסבר בקול — [קורס]');
+      rules.push('🧠 חשש הבנה: לקורסים קשים הוסף "הסבר בקול — [קורס]" פעם בשבוע');
+    }
+  }
+
+  return { rules, taskDuration, tMin, tMax, peakSlots, offPeakSlots, taskTypes };
+}
+
+function _buildCourseAdjustments(answers) {
+  return Object.entries(answers.courses || {}).map(([c, a]) => {
+    const u = a.u; const cov = a.cov; const mat = a.mat;
+    let line = '';
+    if      (u === 'hard'  && cov === 'little') line = `🚨 ${c}: 3-4 משימות השבוע, שים בשעות פיק, התחל מבסיסים`;
+    else if (u === 'hard'  && cov === 'some')   line = `⚠️ ${c}: +40% משימות, חזרה על מה שלא ברור, שעות פיק`;
+    else if (u === 'hard'  && cov === 'all')    line = `🔁 ${c}: חומר מכוסה אבל קשה — חזרות ותרגול בלבד`;
+    else if (u === 'ok'    && cov === 'little') line = `📚 ${c}: כסה פרקים חסרים תחילה, +20% משימות`;
+    else if (u === 'ok'    && cov === 'some')   line = `📊 ${c}: קצב רגיל`;
+    else if (u === 'ok'    && cov === 'all')    line = `✅ ${c}: מכוסה — חזרות תחזוקה בלבד, -10% משימות`;
+    else if (u === 'good'  && cov === 'little') line = `📖 ${c}: מרגיש טוב אך לא כיסה — כסה חומר חדש, לא חזרות`;
+    else if (u === 'good'  && cov === 'some')   line = `👍 ${c}: מסתדר — -20% משימות`;
+    else if (u === 'good'  && cov === 'all')    line = `🏆 ${c}: שולט — 1-2 משימות תחזוקה בלבד`;
+    if (!line) return null;
+    if (mat === 'lots')   line += ' | חומר שנשאר: הרבה → לחץ על כיסוי חומר חדש';
+    else if (mat === 'little') line += ' | חומר שנשאר: מעט → עבור לחזרות ותרגול';
+    return `• ${line}`;
+  }).filter(Boolean).join('\n') || '• תכנון סטנדרטי';
+}
+
+function _wrShowPreview(tasks) {
+  const prev = document.getElementById('wr-preview');
+  if (!prev) return;
+  const days = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+  const byDate = {};
+  tasks.forEach(t => { if(!byDate[t.date]) byDate[t.date]=[]; byDate[t.date].push(t); });
+  prev.innerHTML = Object.entries(byDate).sort(([a],[b])=>a.localeCompare(b)).map(([date,ts]) => {
+    const dow = days[new Date(date+'T12:00').getDay()];
+    return `<div class="wr-day-group">
+      <div class="wr-day-label">${dow} · ${date}</div>
+      ${ts.map(t=>`<div class="wr-task-row">
+        <span class="wr-task-time">${t.time}</span>
+        <span class="wr-task-name">${t.name}</span>
+        <span class="wr-task-course">${t.course}</span>
+        <span class="wr-task-dur">${t.duration}</span>
+      </div>`).join('')}
+    </div>`;
+  }).join('');
+  document.getElementById('wr-result').classList.remove('hidden');
+  document.getElementById('wr-result').scrollIntoView({behavior:'smooth'});
+}
+
+function confirmWeeklyPlan() {
+  try {
+  if (!_wr?.pendingPlan?.length) { toast('לא נמצאה תוכנית לאישור'); return; }
+  const range = _wrGetTargetRange();
+  const today = ld(new Date());
+  // Remove undone tasks only within the target range
+  S.tasks = S.tasks.filter(t => !(t.date >= range.start && t.date <= range.end && !t.done && !t.missed));
+  // Add new plan
+  _wr.pendingPlan.forEach(t => S.tasks.push({...t, id:uid(), done:false, missed:false}));
+  // Record review
+  if (!S.weeklyReview) S.weeklyReview = { lastReviewDate:null, history:[] };
+  S.weeklyReview.lastReviewDate = today;
+  S.weeklyReview.history = [...(S.weeklyReview.history||[]).slice(-10),
+    { date:today, answers:_wr.answers, added:_wr.pendingPlan.length }];
+  save(); renderAll();
+  toast(`✅ ${range.label} תוכנן! ${_wr.pendingPlan.length} משימות נוספו ללו"ז`);
+  renderWeeklyReview();
+  } catch(e) { toast('שגיאה: ' + e.message); console.error('confirmWeeklyPlan error:', e); }
 }
 
 async function sendRecalc() {
