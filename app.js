@@ -45,14 +45,32 @@ function authSetLoading(loading) {
 
 // ── AUTH ACTIONS ──
 async function checkAuth() {
-  const { data: { session } } = await db.auth.getSession();
-  if (session) {
-    currentUser = session.user;
-    document.getElementById('auth-overlay').style.display = 'none';
-    return true;
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (session) {
+      currentUser = session.user;
+      document.getElementById('auth-overlay').style.display = 'none';
+      return true;
+    }
+    document.getElementById('auth-overlay').style.display = '';
+    return false;
+  } catch (e) {
+    // Network failure — check for cached session in localStorage
+    const cached = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+    if (cached) {
+      try {
+        const tok = JSON.parse(localStorage.getItem(cached));
+        if (tok?.user) {
+          currentUser = tok.user;
+          document.getElementById('auth-overlay').style.display = 'none';
+          return true;
+        }
+      } catch (_) {}
+    }
+    document.getElementById('auth-overlay').style.display = '';
+    authSetMsg('אין חיבור לאינטרנט. בדוק את החיבור ונסה שוב.', true);
+    return false;
   }
-  document.getElementById('auth-overlay').style.display = '';
-  return false;
 }
 
 async function signInWithGoogle() {
@@ -359,6 +377,40 @@ async function loadFromCloud() {
 
 let _syncTimer = null;
 
+// ── DATA MAINTENANCE ──
+
+function _validateStreak() {
+  const yesterday = ld(new Date(Date.now() - 86400000));
+  if (S.lastStudyDate && S.lastStudyDate < yesterday && S.streak > 0) {
+    S.streak = 0;
+    // Don't touch lastStudyDate — user hasn't studied today yet
+    save();
+  }
+}
+
+function _pruneOldData() {
+  const today = ld(new Date());
+  if (localStorage.getItem('sf_last_prune') === today) return;
+  localStorage.setItem('sf_last_prune', today);
+
+  const d60 = ld(new Date(Date.now() - 60 * 86400000));
+  const d30 = ld(new Date(Date.now() - 30 * 86400000));
+
+  // Accumulate done count before pruning so badge thresholds survive
+  const pruningDone = S.tasks.filter(t => t.done && t.date < d60).length;
+  if (pruningDone > 0) S.doneTaskCount = (S.doneTaskCount || 0) + pruningDone;
+
+  const before = S.tasks.length;
+  S.tasks = S.tasks.filter(t => {
+    if (!t.done && !t.missed) return true;    // future/pending: always keep
+    if (t.done)   return t.date >= d60;        // done: keep 60 days
+    if (t.missed) return t.date >= d30;        // missed: keep 30 days
+    return true;
+  });
+
+  if (S.tasks.length < before) save();
+}
+
 // ── INIT & ONBOARDING ──
 window.onload = async () => {
   const hasSession = await checkAuth();
@@ -379,6 +431,9 @@ window.onload = async () => {
   if (cloudLoaded) {
     localStorage.setItem(userKey, JSON.stringify(S));
   }
+
+  _validateStreak();
+  _pruneOldData();
 
   document.body.setAttribute('data-theme', S.theme || 'light');
   if (S.userName) { initApp(); return; }
@@ -499,18 +554,17 @@ function resetSettings() { confirmReset(); }
 // ── SIDEBAR TOGGLE ──
 function _setBodyLock(locked) {
   if (locked) {
-    document.body.dataset.scrollY = window.scrollY;
-    document.body.style.overflow = 'hidden';
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${window.scrollY}px`;
-    document.body.style.width = '100%';
+    const y = window.scrollY;
+    document.body.dataset.scrollY = y;
+    // Set top inline FIRST — before the class adds position:fixed — so iOS Safari
+    // never paints a frame with position:fixed but top:0 (which causes the flash).
+    document.body.style.top = `-${y}px`;
+    document.body.classList.add('scroll-locked');
   } else {
-    const scrollY = parseInt(document.body.dataset.scrollY || '0');
-    document.body.style.overflow = '';
-    document.body.style.position = '';
+    const y = parseInt(document.body.dataset.scrollY || '0');
+    document.body.classList.remove('scroll-locked');
     document.body.style.top = '';
-    document.body.style.width = '';
-    window.scrollTo(0, scrollY);
+    window.scrollTo(0, y);
   }
 }
 
@@ -614,6 +668,8 @@ function obNext(step){
     S.institution=document.getElementById('inp-inst').value.trim();
     S.wakeTime=document.getElementById('inp-wake').value;
     S.sleepTime=document.getElementById('inp-sleep').value;
+    const inpKey = (document.getElementById('inp-apikey')?.value || '').replace(/\s+/g,'');
+    if (inpKey && !inpKey.startsWith('gsk_placeholder')) S.apiKey = inpKey;
   }
   if(step===2){
     // Warn if any anchor row has no days selected (it will be silently skipped)
@@ -857,32 +913,54 @@ async function _callGroqDirect({ messages, temperature, json, maxTokens }) {
   if (res.status === 429) throw new Error('חריגת מגבלת API — נסה שוב בעוד דקה');
   if (!res.ok) throw new Error(`שגיאת שרת (${res.status})`);
   const d = await res.json();
-  if (d.error) throw new Error(d.error.message || 'שגיאה ב-AI');
+  if (d.error) throw new Error(typeof d.error === 'string' ? d.error : (d.error.message || 'שגיאה ב-AI'));
   return d.choices[0].message.content;
 }
 
-async function callAI({ messages, temperature = 0.7, json = false, maxTokens = 4096 }) {
-  try {
-    const res = await fetch('/api/groq-proxy', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages, temperature, json, maxTokens })
-    });
-    if (res.status === 429) throw new Error('חריגת מגבלת AI — נסה שוב בעוד דקה');
-    if (res.status === 500) {
-      const d = await res.json().catch(() => ({}));
-      if (d.error && d.error.includes('GROQ_API_KEY')) throw new Error('GROQ_API_KEY לא מוגדר בשרת — הגדר אותו ב-Vercel Environment Variables');
+async function _retryOn429(fn, maxRetries = 2) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      const isRateLimit = e.message?.includes('חריגת');
+      if (isRateLimit && attempt < maxRetries) {
+        await new Promise(r => setTimeout(r, (attempt + 1) * 2000)); // 2s, 4s
+        continue;
+      }
+      throw e;
     }
-    if (res.ok) {
-      const d = await res.json();
-      if (d.error) throw new Error(d.error.message || 'שגיאה ב-AI');
-      return d.choices[0].message.content;
-    }
-    // 404 = proxy not deployed at this path, fall through to personal key
-  } catch (e) {
-    if (e.message && (e.message.includes('חריגת') || e.message.includes('GROQ_API_KEY'))) throw e;
   }
-  return await _callGroqDirect({ messages, temperature, json, maxTokens });
+}
+
+async function callAI({ messages, temperature = 0.7, json = false, maxTokens = 4096 }) {
+  // Personal key set → skip proxy entirely (avoids 3-5s 404 wait on GitHub Pages)
+  if (S.apiKey && !S.apiKey.startsWith('gsk_placeholder')) {
+    return await _retryOn429(() => _callGroqDirect({ messages, temperature, json, maxTokens }));
+  }
+  return await _retryOn429(async () => {
+    try {
+      const res = await fetch('/api/groq-proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages, temperature, json, maxTokens })
+      });
+      if (res.status === 429) throw new Error('חריגת מגבלת AI — נסה שוב בעוד דקה');
+      if (res.status === 401) throw new Error('מפתח API לא תקין — עדכן בהגדרות ⚙️');
+      if (res.status === 500) {
+        const d = await res.json().catch(() => ({}));
+        if (d.error && d.error.includes('GROQ_API_KEY')) throw new Error('GROQ_API_KEY לא מוגדר בשרת — הגדר אותו ב-Vercel Environment Variables');
+      }
+      if (res.ok) {
+        const d = await res.json();
+        if (d.error) throw new Error(typeof d.error === 'string' ? d.error : (d.error.message || 'שגיאה ב-AI'));
+        return d.choices[0].message.content;
+      }
+      // 404 = proxy not deployed, fall through to direct
+    } catch (e) {
+      if (e.message && (e.message.includes('חריגת') || e.message.includes('GROQ_API_KEY') || e.message.includes('לא תקין'))) throw e;
+    }
+    return await _callGroqDirect({ messages, temperature, json, maxTokens });
+  });
 }
 
 async function gemini(prompt) {
@@ -902,9 +980,9 @@ const XP_LEVELS = [
 
 const ACHIEVEMENTS = [
   { id:'first_task',  icon:'🎯', name:'יריית פתיחה',   check: s => s.tasks.some(t=>t.done) },
-  { id:'tasks10',     icon:'📦', name:'10 משימות',      check: s => s.tasks.filter(t=>t.done).length >= 10 },
-  { id:'tasks50',     icon:'🚂', name:'50 משימות',      check: s => s.tasks.filter(t=>t.done).length >= 50 },
-  { id:'tasks100',    icon:'🏅', name:'100 מוכן',        check: s => s.tasks.filter(t=>t.done).length >= 100 },
+  { id:'tasks10',     icon:'📦', name:'10 משימות',      check: s => (s.doneTaskCount||0) + s.tasks.filter(t=>t.done).length >= 10 },
+  { id:'tasks50',     icon:'🚂', name:'50 משימות',      check: s => (s.doneTaskCount||0) + s.tasks.filter(t=>t.done).length >= 50 },
+  { id:'tasks100',    icon:'🏅', name:'100 מוכן',        check: s => (s.doneTaskCount||0) + s.tasks.filter(t=>t.done).length >= 100 },
   { id:'streak3',     icon:'🔥', name:'3 ימי רצף',      check: s => (s.streak||0) >= 3 },
   { id:'streak7',     icon:'💥', name:'שבוע מלא',       check: s => (s.streak||0) >= 7 },
   { id:'streak30',    icon:'🌙', name:'חודש רצף',       check: s => (s.streak||0) >= 30 },
@@ -1041,12 +1119,63 @@ function renderProgress(){
 }
 
 function addPoints(n){ S.points = (S.points || 0) + n; updateStreak(); save(); renderTreeMini(); }
-function updateStreak(){ const today = ld(new Date()); const yesterday = ld(new Date(Date.now() - 86400000)); if(S.lastStudyDate === today) return; if(S.lastStudyDate === yesterday){ S.streak = (S.streak||0) + 1; } else { S.streak = 1; } S.lastStudyDate = today; }
+function updateStreak() {
+  const today = ld(new Date());
+  const yesterday = ld(new Date(Date.now() - 86400000));
+  if (S.lastStudyDate === today) return;
+  // Continue streak if studied yesterday, otherwise start fresh at 1
+  S.streak = (S.lastStudyDate === yesterday) ? (S.streak || 0) + 1 : 1;
+  S.lastStudyDate = today;
+}
 function renderTreeMini(){ if(document.getElementById('sc-streak')) document.getElementById('sc-streak').textContent = (S.streak || 0); }
 
 // ── POMODORO ──
 let pomoInterval=null, pomoSeconds=90*60, pomoRunning=false, pomoMode='work'; const POMO_WORK=90*60, POMO_BREAK=20*60;
 function renderPomoTaskSelect() { const select = document.getElementById('pomo-task-select'); if(!select) return; const today = ld(new Date()); const pendingTasks = S.tasks.filter(t => t.date === today && !t.done && !t.missed); select.innerHTML = '<option value="">-- בחר משימה (רשות) --</option>' + pendingTasks.map(t => `<option value="${t.id}">${t.time} | ${t.name}</option>`).join(''); }
+function _pomoSaveSession() {
+  const taskSel = document.getElementById('pomo-task-select');
+  sessionStorage.setItem('pomo-session', JSON.stringify({
+    startWall: Date.now(),
+    secondsAtSave: pomoSeconds,
+    mode: pomoMode,
+    taskId: taskSel ? taskSel.value : '',
+    running: pomoRunning
+  }));
+}
+
+function _pomoRestoreSession() {
+  const raw = sessionStorage.getItem('pomo-session');
+  if (!raw) return;
+  try {
+    const s = JSON.parse(raw);
+    if (!s.running) return;
+    const elapsed = Math.floor((Date.now() - s.startWall) / 1000);
+    const remaining = s.secondsAtSave - elapsed;
+    if (remaining <= 0) {
+      sessionStorage.removeItem('pomo-session');
+      toast('⏰ פגישת הפוקוס הסתיימה בזמן שהמסך היה נעול');
+      return;
+    }
+    pomoMode = s.mode;
+    pomoSeconds = remaining;
+    pomoRunning = false;
+    const displayEl = document.getElementById('pomo-display');
+    const m = String(Math.floor(remaining/60)).padStart(2,'0'), sec = String(remaining%60).padStart(2,'0');
+    if (displayEl) displayEl.textContent = `${m}:${sec}`;
+    // Restore task selection
+    if (s.taskId) {
+      const sel = document.getElementById('pomo-task-select');
+      if (sel) sel.value = s.taskId;
+    }
+    toast('הפוקוס שוחזר — לחץ ▶ להמשיך');
+  } catch (_) {}
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') _pomoRestoreSession();
+  else if (pomoRunning) _pomoSaveSession();
+});
+
 function pomoStart(){
   if(pomoRunning) return;
   pomoRunning = true;
@@ -1060,6 +1189,9 @@ function pomoStart(){
   const taskName = pt ? pt.name : (pomoMode === 'break' ? '☕ הפסקה' : 'מפגש ריכוז');
   const totalSecs = pomoMode === 'work' ? POMO_WORK : POMO_BREAK;
   const elapsed = totalSecs - pomoSeconds;
+
+  // Save session for screen-lock recovery
+  _pomoSaveSession();
 
   // Open Focus Lock overlay
   focusLockOpen(taskName, totalSecs, elapsed, pomoMode === 'work' ? 'work' : 'break');
@@ -1088,6 +1220,7 @@ function pomoStart(){
     if (pomoSeconds <= 0) {
       clearInterval(pomoInterval);
       pomoRunning = false;
+      sessionStorage.removeItem('pomo-session');
 
       if (pomoMode === 'work') {
         FL.sessionsDone++;
@@ -1102,6 +1235,7 @@ function pomoStart(){
         // Transition to break in Focus Lock
         pomoMode = 'break';
         pomoSeconds = POMO_BREAK;
+        _pomoSaveSession();
         focusLockOpen('☕ הפסקה מגיעה לך!', POMO_BREAK, 0, 'break');
         toast('🍅 פוקוס הושלם! +20 נקודות 🎉 קח הפסקה');
         renderPomoTaskSelect();
@@ -1125,6 +1259,7 @@ function pomoPause(){
 function pomoReset(){
   pomoPause();
   focusLockClose();
+  sessionStorage.removeItem('pomo-session');
   pomoMode='work';
   pomoSeconds=POMO_WORK;
   const displayEl = document.getElementById('pomo-display');
@@ -1659,22 +1794,18 @@ function renderCourseCards() {
     const daysLabel = daysLeft === null ? '' : daysLeft <= 0 ? 'היום!' : daysLeft === 1 ? 'מחר' : `בעוד ${daysLeft} ימים`;
     const urgEmoji = urgency === 'urgent' ? '🔴' : urgency === 'soon' ? '🟡' : '📅';
     return `<div class="pl-course-card ${urgency}">
-      <div class="pl-cc-top">
-        <div class="pl-cc-top-bar" style="background:${color}"></div>
-        <div class="pl-cc-name">${c.name}</div>
-        ${daysLabel ? `<div class="pl-cc-exam-chip ${urgency}">${urgEmoji} ${daysLabel}</div>` : ''}
-      </div>
-      <div class="pl-cc-body">
-        <div class="pl-cc-meta-row">
-          <span>${c.hoursPerWeek} ש'/שבוע</span>
-          ${total > 0 ? `<span>·</span><span>${pct}% הושלמו</span>` : ''}
-          ${tasksPending > 0 ? `<span>·</span><span>${tasksPending} ממתינות</span>` : '<span>· טרם תוכנן</span>'}
+      <div class="pl-cc-strip" style="background:${color}"></div>
+      <div class="pl-cc-content">
+        <div class="pl-cc-main-row">
+          <div class="pl-cc-name">${c.name}</div>
+          <button class="pl-cc-del" onclick="deletePlannerCourse('${c.id}')" title="מחק קורס">✕</button>
         </div>
-        ${total > 0 ? `<div class="pl-cc-progress"><div class="pl-cc-prog-fill" style="width:${pct}%;background:${color}"></div></div>` : ''}
-      </div>
-      <div class="pl-cc-actions">
-        <button class="pl-cc-btn" onclick="openAdvancedPlanForCourse('${c.name.replace(/'/g,"\\'")}','${examDate||''}','${c.hoursPerWeek}')">✨ תכנן</button>
-        <button class="pl-cc-btn del" onclick="deletePlannerCourse('${c.id}')">✕</button>
+        <div class="pl-cc-meta">
+          ${daysLabel ? `<span class="pl-cc-exam-chip ${urgency}">${urgEmoji} ${daysLabel}</span>` : ''}
+          <span class="pl-cc-hours">${c.hoursPerWeek} ש'/שבוע</span>
+          ${tasksPending > 0 ? `<span class="pl-cc-pending">${tasksPending} ממתינות</span>` : total > 0 ? `<span class="pl-cc-hours">${pct}% הושלם</span>` : ''}
+        </div>
+        ${total > 0 ? `<div class="pl-cc-prog"><div class="pl-cc-prog-fill" style="width:${pct}%;background:${color}"></div></div>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -1696,23 +1827,21 @@ function renderHobbyCardsInPlanner() {
     const done = S.tasks.filter(t => t.course === h.name && t.done).length;
     const upcoming = S.tasks.filter(t => t.course === h.name && !t.done && !t.missed && t.date >= today).length;
     const color = getCourseColor(h.name);
+    const safeName = h.name.replace(/'/g,"\\'");
     return `<div class="pl-hobby-card">
-      <div class="pl-hc-top">
-        <div class="pl-hc-top-bar" style="background:${color}"></div>
-        <div class="pl-hc-name">${h.name}</div>
-      </div>
-      <div class="pl-hc-body">
-        <div class="pl-hc-goal">${h.goal}</div>
-        <div class="pl-hc-stats">
-          <span>${h.timesPerWeek}×/שבוע</span>
-          <span>·</span>
-          <span>${done} בוצעו</span>
-          ${upcoming > 0 ? `<span>·</span><span>${upcoming} קרובות</span>` : ''}
+      <div class="pl-hc-strip" style="background:${color}"></div>
+      <div class="pl-hc-content">
+        <div class="pl-hc-main-row">
+          <div class="pl-hc-name">${h.name}</div>
+          <button class="pl-hc-coach-btn" onclick="_hobbyActiveIdx=${idx};showPage('hobby',null)">🤖 מאמן</button>
         </div>
-      </div>
-      <div class="pl-hc-actions">
-        <button class="pl-hc-btn" onclick="_hobbyActiveIdx=${idx};showPage('hobby',null)">🤖 מאמן</button>
-        <button class="pl-hc-btn red" onclick="if(confirm('למחוק ${h.name}?')){_deleteHobbyTasks('${h.name}');S.hobbies=S.hobbies.filter(x=>x.id!=='${h.id}');save();renderAll()}" title="מחק תחביב">🗑</button>
+        <div class="pl-hc-meta">
+          <span class="pl-hc-freq">${h.timesPerWeek}×/שבוע</span>
+          ${done > 0 ? `<span class="pl-hc-done">${done} בוצעו</span>` : ''}
+          ${upcoming > 0 ? `<span class="pl-hc-freq">${upcoming} קרובות</span>` : ''}
+          <button class="pl-hc-del" onclick="if(confirm('למחוק ${safeName}?')){_deleteHobbyTasks('${safeName}');S.hobbies=S.hobbies.filter(x=>x.id!=='${h.id}');save();renderAll()}" title="מחק תחביב">✕</button>
+        </div>
+        ${h.goal ? `<div class="pl-hc-goal-tag">${h.goal}</div>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -1736,11 +1865,13 @@ function openEmergencyMode() {
   if (!modal) return;
   const upcoming = S.exams.filter(e => e.date >= ld(new Date())).sort((a,b)=>a.date.localeCompare(b.date));
   const sel = document.getElementById('em-exam-sel');
+  const genBtn = document.getElementById('em-gen-btn');
   if (sel) {
     sel.innerHTML = upcoming.length
       ? upcoming.map(e=>`<option value="${e.id}">${e.course} — ${fmtDate(e.date)} (עוד ${Math.ceil((new Date(e.date)-new Date())/86400000)} ימים)</option>`).join('')
       : '<option value="">אין מבחנים מתוכננים — הוסף מבחן תחילה</option>';
   }
+  if (genBtn) { genBtn.disabled = !upcoming.length; genBtn.style.opacity = upcoming.length ? '' : '0.5'; }
   document.getElementById('em-start').value = ld(new Date());
   document.getElementById('em-result-wrap')?.classList.add('hidden');
   modal.classList.remove('hidden');
@@ -1830,11 +1961,23 @@ function openTimeChart() {
 }
 
 function renderTimeChart() {
-  const today = ld(new Date());
-  const month30 = ld(new Date(Date.now()+30*86400000));
-  const isHours = document.getElementById('tc-toggle-hours')?.checked;
+  const todayD = new Date();
+  const today = ld(todayD);
+  // Full current week: Sunday → Saturday
+  const weekStartD = new Date(todayD);
+  weekStartD.setDate(todayD.getDate() - todayD.getDay()); // back to Sunday
+  const weekStart = ld(weekStartD);
+  const weekEndD = new Date(todayD);
+  weekEndD.setDate(todayD.getDate() + (6 - todayD.getDay())); // forward to Saturday
+  const weekEnd = ld(weekEndD);
 
-  // Anchor hours per week
+  // Weekly available hours (wake to sleep × 7 days) — always based on user settings
+  const [wkH,wkM] = (S.wakeTime||'08:00').split(':').map(Number);
+  const [slH,slM] = (S.sleepTime||'22:00').split(':').map(Number);
+  const dailyAvailH = ((slH*60+slM) - (wkH*60+wkM)) / 60;
+  const weeklyAvailH = dailyAvailH * 7;
+
+  // Anchor hours per week (sum all recurring anchors)
   const anchorMap = {};
   (S.anchors||[]).forEach(a => {
     if (a.endDate && today > a.endDate) return;
@@ -1844,49 +1987,49 @@ function renderTimeChart() {
     anchorMap[a.name] = (anchorMap[a.name]||0) + h;
   });
 
-  // Task hours per course (next 30 days)
+  // Task hours per course — full current week (all tasks, including done, = allocated time)
   const courseMap = {};
-  S.tasks.filter(t => !t.done && !t.missed && t.date >= today && t.date <= month30).forEach(t => {
+  S.tasks.filter(t => t.date >= weekStart && t.date <= weekEnd).forEach(t => {
     const k = t.course || 'ללא קורס';
-    const durMins = parseInt(t.duration) || 90;
+    const durMins = parseInt((t.duration||'90').match(/\d+/)?.[0]||90);
     courseMap[k] = (courseMap[k]||0) + (durMins / 60);
   });
 
-  // Weekly available study hours (wake to sleep × 7 days)
-  const [wkH,wkM] = (S.wakeTime||'08:00').split(':').map(Number);
-  const [slH,slM] = (S.sleepTime||'22:00').split(':').map(Number);
-  const weeklyAvailH = ((slH*60+slM) - (wkH*60+wkM)) / 60 * 7;
   const anchorTotalH = Object.values(anchorMap).reduce((s,h)=>s+h, 0);
-  const taskWeeklyH = Object.values(courseMap).reduce((s,h)=>s+h, 0) / 4.3; // 30 days ÷ 4.3 weeks
-  const freeH = Math.max(0, weeklyAvailH - anchorTotalH - taskWeeklyH);
+  const taskTotalH = Object.values(courseMap).reduce((s,h)=>s+h, 0);
+  const freeH = Math.max(0, weeklyAvailH - anchorTotalH - taskTotalH);
 
   const items = [
     ...Object.entries(anchorMap).map(([name,h]) => ({ name, hours:h, type:'anchor', color:(S.anchors.find(a=>a.name===name)?.color||'#94a3b8') })),
-    ...Object.entries(courseMap).map(([name,h]) => ({ name, hours:h/4.3, type:'course', color:getCourseColor(name) })),
+    ...Object.entries(courseMap).map(([name,h]) => ({ name, hours:h, type:'course', color:getCourseColor(name) })),
     ...(freeH > 0 ? [{ name: 'זמן פנוי', hours: freeH, type: 'free', color: '#cbd5e1' }] : [])
   ].sort((a,b)=>b.hours-a.hours);
 
-  const total = items.reduce((s,i)=>s+i.hours, 0);
-  if (!total) { document.getElementById('tc-chart-wrap').innerHTML = '<div style="text-align:center;color:var(--muted);padding:2rem;font-size:0.85rem">אין נתונים להצגה — הוסף עוגנים ומשימות</div>'; return; }
+  if (!items.filter(i=>i.type!=='free').length) {
+    document.getElementById('tc-chart-wrap').innerHTML = '<div style="text-align:center;color:var(--muted);padding:2rem;font-size:0.85rem">אין נתונים לשבוע זה — הוסף עוגנים ומשימות</div>';
+    document.getElementById('tc-total-label').textContent = `${weeklyAvailH.toFixed(0)} שע' זמינות השבוע`;
+    return;
+  }
 
+  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const rows = items.map(it => {
-    const pct = Math.round((it.hours/total)*100);
-    const display = isHours ? `${it.hours.toFixed(1)} שע'` : `${pct}%`;
-    const typeLabel = it.type === 'anchor' ? '⚓' : '📚';
+    const pct = Math.min(100, Math.round((it.hours / weeklyAvailH) * 100));
+    const display = `${it.hours.toFixed(1)} שע'`;
+    const typeLabel = it.type === 'anchor' ? '⚓' : it.type === 'free' ? '🕓' : '📚';
     return `<div class="tc-row">
       <div class="tc-row-label">
         <span class="tc-row-type">${typeLabel}</span>
-        <span class="tc-row-name">${it.name}</span>
-        <span class="tc-row-val">${display}</span>
+        <span class="tc-row-name">${esc(it.name)}</span>
+        <span class="tc-row-val">${display} · ${pct}%</span>
       </div>
       <div class="tc-bar-wrap">
-        <div class="tc-bar" style="width:${pct}%;background:${it.color}"></div>
+        <div class="tc-bar" style="width:${Math.max(2,pct)}%;background:${esc(it.color)}"></div>
       </div>
     </div>`;
   }).join('');
 
-  const totalDisplay = isHours ? `${total.toFixed(1)} שע'/שבוע מתוך ${weeklyAvailH.toFixed(0)} זמינות` : `${items.filter(i=>i.type!=='free').length} פעילויות + זמן פנוי`;
-  document.getElementById('tc-total-label').textContent = totalDisplay;
+  const busyH = anchorTotalH + taskTotalH;
+  document.getElementById('tc-total-label').textContent = `${busyH.toFixed(1)} / ${weeklyAvailH.toFixed(0)} שע' השבוע (${Math.round(busyH/weeklyAvailH*100)}% תפוסה)`;
   document.getElementById('tc-chart-wrap').innerHTML = rows;
 }
 
@@ -2620,9 +2763,44 @@ function renderTodayTasks(){
   }).join('')}</div>`;
 
   renderPomoTaskSelect();
+  _checkBurnout();
 }
 
-function renderAnchorsList(){ const wrap = document.getElementById('anchors-list-wrap'); if(!Array.isArray(S.anchors) || !S.anchors.length){ wrap.innerHTML = '<div class="empty-state">אין עוגנים מוגדרים</div>'; return; } const dn=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת']; wrap.innerHTML = S.anchors.map(a => `<div class="anchor-card"><div class="anchor-dot" style="background:${a.color||'#4f6ef7'}"></div><div style="flex:1"><div class="anchor-name-d">${a.name}</div><div class="anchor-time-d">יום ${dn[a.day||0]} · ${a.start||'00:00'} – ${a.end||'00:00'} ${a.travelMin > 0 ? `(נסיעה: ${a.travelMin} דק')` : ''}</div></div><button class="btn-sm" onclick="editAnchor('${a.id}')" title="ערוך עוגן" style="margin-left:0.35rem"><svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg></button><button class="btn-sm red" onclick="removeAnchor('${a.id}')"><svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button></div>`).join(''); }
+function _checkBurnout() {
+  const today = ld(new Date());
+  const flagKey = 'burnout-alerted-' + today;
+  if (sessionStorage.getItem(flagKey)) return;
+  const threeDaysAgo = ld(new Date(Date.now() - 3 * 86400000));
+  const recentMissed = S.tasks.filter(t => t.missed && t.date >= threeDaysAgo && t.date < today).length;
+  if (recentMissed >= 3) {
+    sessionStorage.setItem(flagKey, '1');
+    setTimeout(() => {
+      toast('שמתי לב לכמה משימות שפוספסו — איך אתה מרגיש? 🧠');
+      openPsychologist();
+    }, 1200);
+  }
+}
+
+function renderAnchorsList(){
+  const wrap = document.getElementById('anchors-list-wrap');
+  if(!Array.isArray(S.anchors) || !S.anchors.length){ wrap.innerHTML = '<div class="empty-state">אין עוגנים מוגדרים</div>'; return; }
+  const dn=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+  wrap.innerHTML = S.anchors.map(a => {
+    const travelNote = a.travelMin > 0 ? ` · נסיעה ${a.travelMin} דק'` : '';
+    const recNote = a.endDate ? ` · עד ${fmtDate(a.endDate)}` : ' · קבוע';
+    return `<div class="anchor-card">
+      <div class="anchor-card-strip" style="background:${a.color||'#4f6ef7'}"></div>
+      <div class="anchor-card-body">
+        <div class="anchor-name-d">${a.name}</div>
+        <div class="anchor-time-d">יום ${dn[a.day||0]} · ${a.start||'00:00'} – ${a.end||'00:00'}${travelNote}${recNote}</div>
+      </div>
+      <div class="anchor-card-actions">
+        <button class="btn-sm" onclick="editAnchor('${a.id}')" title="ערוך"><svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg></button>
+        <button class="btn-sm red" onclick="removeAnchor('${a.id}')" title="מחק"><svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+      </div>
+    </div>`;
+  }).join('');
+}
 
 // ── MONTHLY CALENDAR ──
 function changeCalMonth(dir) {
@@ -3917,10 +4095,15 @@ function hpConfirmAddTasks() {
   if (!hobby?._pendingTasks) return;
   const today = new Date(); const n = hobby._pendingTasks.length;
   const times = ['09:00','14:00','17:00','19:00','21:00'];
+  // Limit to current week (today → Saturday)
+  const weekEnd = new Date(today);
+  weekEnd.setDate(today.getDate() + (6 - today.getDay()));
+  const remainingDays = Math.max(1, Math.ceil((weekEnd - today) / 86400000));
   hobby._pendingTasks.forEach((t, i) => {
     const d = new Date(today);
-    d.setDate(today.getDate() + Math.ceil((i+1)*7/n));
-    if (d.getDay()===6) d.setDate(d.getDate()+1);
+    const offset = Math.round((i + 0.5) * remainingDays / n);
+    d.setDate(today.getDate() + Math.min(offset, remainingDays));
+    if (d.getDay() === 6) d.setDate(d.getDate() - 1); // skip Saturday
     S.tasks.push({ id:uid(), name:t.name, course:hobby.name, date:ld(d), time:times[i%times.length],
       duration:`${t.duration||hobby.sessionDuration} דק'`, priority:'בינוני', done:false, missed:false });
   });
@@ -3935,15 +4118,17 @@ async function findHobbySlots() {
   const btn = document.getElementById('hp-find-btn');
   if (btn) { btn.disabled=true; btn.textContent='מחפש...'; }
 
-  const endDate = new Date(); endDate.setDate(endDate.getDate()+14);
+  // Limit to current week (today → Saturday)
+  const endDate = new Date();
+  endDate.setDate(endDate.getDate() + (6 - endDate.getDay()));
   const slotsData = getAvailableSlots(ld(new Date()), ld(endDate), '3');
   const done = S.tasks.filter(t=>t.course===hobby.name&&t.done).length;
 
-  const prompt = `תזמן אימוני "${hobby.name}" (מטרה: ${hobby.goal}).
+  const prompt = `תזמן אימוני "${hobby.name}" (מטרה: ${hobby.goal}) לשבוע הנוכחי בלבד.
 ${hobby.timesPerWeek} פעמים בשבוע, כל אימון ${hobby.sessionDuration} דק'. אימונים שהושלמו: ${done}.
-זמנים פנויים:
+זמנים פנויים השבוע:
 ${slotsData.text}
-בחר ${hobby.timesPerWeek*2} חריצים מהרשימה (עדיף אחה"צ/ערב, לא שישי/שבת בלילה).
+בחר עד ${hobby.timesPerWeek} חריצים מהרשימה (עדיף אחה"צ/ערב, לא שישי/שבת בלילה). אל תצא מהתאריכים שניתנו!
 החזר JSON בלבד: {"tasks":[{"name":"אימון ${hobby.name}","date":"YYYY-MM-DD","time":"HH:MM","duration":${hobby.sessionDuration}}]}`;
 
   try {

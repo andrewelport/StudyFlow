@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>StudyFlow 🎓 — ה-Waze של הלימודים</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
@@ -100,7 +100,6 @@
 
     <div class="ob-step active" id="ob-step-1">
       <div class="ob-step-label">שלב 1 / 4 — פרטים בסיסיים</div>
-      <div class="setup-note">ברוך הבא ל-StudyFlow — ה-AI מוכן ממתין לך, אין צורך בשום הגדרה טכנית.</div>
       <div class="form-grid">
         <div class="form-row">
           <label class="field-label">השם שלך *</label>
@@ -110,6 +109,12 @@
           <label class="field-label">מוסד לימודים</label>
           <input type="text" id="inp-inst" placeholder="אוניברסיטת ת&quot;א" />
         </div>
+      </div>
+      <div class="setup-divider"></div>
+      <div class="form-row">
+        <label class="field-label">מפתח Groq API <span style="font-weight:400;color:var(--muted);font-size:0.78rem">(נדרש להפעלת ה-AI)</span></label>
+        <input type="password" id="inp-apikey" placeholder="gsk_..." autocomplete="off" style="font-family:var(--mono)" />
+        <div class="field-hint">חינמי — <b>console.groq.com</b> → API Keys → Create &nbsp;|&nbsp; ניתן להוסיף גם אחרי ההגדרה</div>
       </div>
       <div class="setup-divider"></div>
       <div class="form-grid">
@@ -148,7 +153,7 @@
 
     <div class="ob-step" id="ob-step-3">
       <div class="ob-step-label">שלב 3 / 4 — פרופיל למידה</div>
-      <div class="ob-q" style="font-size:1rem;margin-bottom:0.3rem">6 שאלות להתאמה אישית</div>
+      <div class="ob-q" style="font-size:1rem;margin-bottom:0.3rem">4 שאלות להתאמה אישית</div>
       <div class="ob-sub">ה-AI ישתמש בתשובות כדי לתזמן משימות בהתאם לאופן שבו המוח שלך עובד בצורה הטובה ביותר.</div>
       <div id="profile-q-wrap"></div>
       <button class="btn-primary" onclick="obNext(3)" style="margin-top:1rem">המשך לשלב הבא →</button>
@@ -1221,16 +1226,10 @@
 <!-- TIME CHART MODAL -->
 <div class="modal-overlay hidden" id="time-chart-modal">
   <div class="modal-box" style="max-width:480px">
-    <div class="modal-title">הקצאת זמן שבועית</div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
-      <div style="font-size:0.78rem;color:var(--muted)" id="tc-total-label"></div>
-      <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.8rem;font-weight:700;cursor:pointer">
-        <input type="checkbox" id="tc-toggle-hours" onchange="renderTimeChart()" />
-        הצג בשעות
-      </label>
-    </div>
+    <div class="modal-title">הקצאת זמן — השבוע</div>
+    <div style="font-size:0.8rem;color:var(--muted);font-weight:700;margin-bottom:1rem" id="tc-total-label"></div>
     <div id="tc-chart-wrap"></div>
-    <div style="margin-top:1rem;font-size:0.7rem;color:var(--muted);line-height:1.4">⚓ עוגנים = שעות שבועיות קבועות · 📚 קורסים = משימות פתוחות ב-30 הימים הקרובים</div>
+    <div style="margin-top:1rem;font-size:0.68rem;color:var(--muted);line-height:1.5">⚓ עוגנים קבועים · 📚 משימות לימוד השבוע · 🕓 זמן פנוי · מחושב לפי שעות קימה–שינה</div>
     <button class="btn-cancel" onclick="closeModal('time-chart-modal')" style="width:100%;margin-top:1rem">סגור</button>
   </div>
 </div>
