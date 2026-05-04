@@ -311,31 +311,71 @@
 
       <div class="page" id="page-planner">
         <div class="page-header">
-          <div class="page-title">מתכנן</div>
-          <div class="page-sub">קורסים · מטרות · לוח זמנים</div>
+          <div class="page-title">הקורסים שלי</div>
+          <div class="page-sub">קורסים · תחביבים · סמסטר</div>
         </div>
 
-        <!-- WELCOME STATE (first time, no data) -->
-        <div id="pl-empty-state" class="hidden">
-          <div class="pl-welcome">
-            <div class="pl-welcome-icon-big">🎓</div>
-            <div class="pl-welcome-h">ה-AI שבונה את הסמסטר שלך</div>
-            <div class="pl-welcome-p">הוסף קורסים ומטרות — AI יבנה לוח שבועי חכם, ישאל אותך כל שבוע ויסתגל לפי ההתקדמות שלך</div>
-            <div class="pl-welcome-flow">
-              <div class="pl-wf-step"><span class="pl-wf-n">01</span><span>הגדר קורסים</span></div>
-              <div class="pl-wf-line"></div>
-              <div class="pl-wf-step"><span class="pl-wf-n">02</span><span>הוסף מטרות</span></div>
-              <div class="pl-wf-line"></div>
-              <div class="pl-wf-step"><span class="pl-wf-n">03</span><span>AI בונה שבוע</span></div>
+        <!-- START HERE: First-time setup wizard (shown only when no courses) -->
+        <div id="pl-start-here" class="hidden">
+          <div class="pl-sh-card">
+            <div class="pl-sh-hero">
+              <div class="pl-sh-emoji">🎓</div>
+              <div class="pl-sh-title">כאן מתחילים!</div>
+              <div class="pl-sh-desc">הגדר את הקורסים שלך ו-AI יבנה לוז שבועי מותאם אישית לשבוע הראשון</div>
             </div>
-            <div style="display:flex;gap:0.75rem;flex-wrap:wrap;justify-content:center;margin-top:1.75rem">
-              <button class="pl-welcome-cta-primary" onclick="openAddCourseModal()">📚 הוסף קורס ראשון</button>
-              <button class="pl-welcome-cta-secondary" onclick="showPage('hobby',null);_hpShowSetup()">🎯 הוסף מטרה</button>
+
+            <!-- Section 1: Courses -->
+            <div class="pl-sh-section">
+              <div class="pl-sh-sec-title">📚 הקורסים שלי בסמסטר</div>
+              <div class="pl-sh-courses-header">
+                <span style="font-size:0.72rem;color:var(--muted);font-weight:700">שם הקורס</span>
+                <span style="font-size:0.72rem;color:var(--muted);font-weight:700">תאריך מבחן</span>
+                <span style="font-size:0.72rem;color:var(--muted);font-weight:700">שע׳/שבוע</span>
+                <span></span>
+              </div>
+              <div id="pl-sh-course-rows"></div>
+              <button class="btn-add-anchor" onclick="plShAddCourseRow()" style="margin-top:0.5rem">+ הוסף קורס</button>
             </div>
+
+            <!-- Section 2: Hobbies (optional) -->
+            <div class="pl-sh-section">
+              <div class="pl-sh-sec-title">🎯 תחביבים קבועים <span class="pl-sh-optional">(אופציונלי)</span></div>
+              <div id="pl-sh-hobby-chips" class="pl-sh-chips"></div>
+              <div class="pl-sh-hobby-add">
+                <input type="text" id="pl-sh-hobby-inp" placeholder="ריצה, גיטרה, ערבית..." />
+                <button class="btn-sm green" onclick="plShAddHobby()">+ הוסף</button>
+              </div>
+            </div>
+
+            <!-- Section 3: Study goal -->
+            <div class="pl-sh-section">
+              <div class="pl-sh-sec-title">⚡ כמה אתה רוצה ללמוד השבוע?</div>
+              <div class="pl-sh-goal-row">
+                <div class="pl-sh-goal-opt" data-val="min" onclick="plShSelectGoal(this)">
+                  <div class="pl-sh-goal-icon">🌱</div>
+                  <div class="pl-sh-goal-name">קל</div>
+                  <div class="pl-sh-goal-desc">1-2 משימות ליום</div>
+                </div>
+                <div class="pl-sh-goal-opt sel" data-val="ok" onclick="plShSelectGoal(this)">
+                  <div class="pl-sh-goal-icon">⚡</div>
+                  <div class="pl-sh-goal-name">בינוני</div>
+                  <div class="pl-sh-goal-desc">2-3 משימות ליום</div>
+                </div>
+                <div class="pl-sh-goal-opt" data-val="max" onclick="plShSelectGoal(this)">
+                  <div class="pl-sh-goal-icon">🔥</div>
+                  <div class="pl-sh-goal-name">מקסימום</div>
+                  <div class="pl-sh-goal-desc">3-4 משימות ליום</div>
+                </div>
+              </div>
+            </div>
+
+            <button class="btn-primary" onclick="plShBuildFirstWeek()" id="pl-sh-build-btn">
+              🚀 בנה לוז שבוע ראשון
+            </button>
           </div>
         </div>
 
-        <!-- COURSES SECTION -->
+        <!-- COURSES SECTION (shown after setup) -->
         <div id="pl-courses-section">
           <div class="pl-sec-hdr">
             <span class="pl-sec-title">📚 הקורסים שלי</span>
@@ -355,65 +395,15 @@
         </div>
 
         <!-- QUICK ACTIONS -->
-        <div class="pl-actions-row">
+        <div class="pl-actions-row" id="pl-actions-row">
           <button class="pl-action-chip red" onclick="openEmergencyMode()">⚡ מצב חירום</button>
           <button class="pl-action-chip" onclick="openRecalc('schedule')">🤖 יועץ לו"ז</button>
           <button class="pl-action-chip" onclick="showPage('weekly-review',null);updateBottomNav('weekly-review')">📋 סיכום שבועי</button>
         </div>
 
-        <!-- ADVANCED: hidden form for backward-compatible JS calls -->
-        <details class="section-box pl-advanced-details">
-          <summary class="pl-advanced-summary">✨ תכנון מתקדם לקורס ספציפי</summary>
-          <div class="planner-form" style="margin-top:1.25rem">
-            <div class="form-grid">
-              <div><label class="field-label">שם הקורס *</label><input type="text" id="pl-course" placeholder="חשבון דיפרנציאלי ואינטגרלי" /></div>
-              <div><label class="field-label">תאריך המבחן *</label><input type="date" id="pl-date" /></div>
-              <div><label class="field-label">ממתי להתחיל ללמוד?</label><input type="date" id="pl-start-date" /></div>
-            </div>
-            <div class="form-grid">
-              <div><label class="field-label">שעות בשבוע לקורס</label><input type="number" id="pl-hours" placeholder="12" /></div>
-              <div>
-                <label class="field-label">עדיפות: <span id="conf-val">3⭐</span></label>
-                <input type="range" id="pl-conf" min="1" max="5" value="3" oninput="document.getElementById('conf-val').textContent=this.value+'⭐'" />
-              </div>
-            </div>
-            <button class="btn-generate" id="gen-btn" onclick="generatePlan()">✨ צור תוכנית מגוונת</button>
-          </div>
-          <div class="section-box hidden" id="plan-result-box" style="box-shadow:none;border:1px solid var(--border);margin-top:1rem">
-            <div class="section-head">
-              <div class="section-title-sm">📅 התוכנית שנוצרה</div>
-              <button class="btn-sm green" onclick="addPlanToSchedule()">✓ הוסף ללו"ז</button>
-            </div>
-            <div id="plan-table-wrap"></div>
-          </div>
-          <div style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border)">
-            <div class="section-head" style="margin-bottom:1rem">
-              <div>
-                <div class="section-title-sm">🎓 תכנון סמסטר מלא</div>
-                <div style="font-size:0.75rem;color:var(--muted)">AI יבנה לוח לכל הסמסטר עם כל הקורסים</div>
-              </div>
-              <button class="btn-sm green" onclick="addSemesterCourse()">+ קורס</button>
-            </div>
-            <div id="semester-courses-list"></div>
-            <div id="semester-capacity-wrap" class="hidden sem-cap-bar-wrap">
-              <div style="font-size:0.75rem;font-weight:800;margin-bottom:0.6rem">📊 ניצולת זמן</div>
-              <div id="semester-capacity-rows"></div>
-            </div>
-            <button class="btn-generate" id="semester-gen-btn" onclick="generateSemesterPlan()" style="margin-top:0.5rem">🚀 תוכנית סמסטר מלאה</button>
-          </div>
-          <div class="section-box hidden" id="semester-result-box" style="box-shadow:none;border:1px solid var(--border);margin-top:1rem">
-            <div class="section-head">
-              <div>
-                <div class="section-title-sm">📅 תוכנית הסמסטר</div>
-                <div id="semester-result-sub" style="font-size:0.78rem;color:var(--muted)"></div>
-              </div>
-              <button class="btn-sm green" onclick="addSemesterPlanToSchedule()">✓ אשר הכל ללו"ז</button>
-            </div>
-            <div id="semester-table-wrap"></div>
-          </div>
-          <!-- Legacy hidden div for renderCourseManager -->
-          <div id="course-manager-list" style="display:none"></div>
-        </details>
+        <!-- Hidden legacy IDs kept for JS compatibility -->
+        <div id="course-manager-list" style="display:none"></div>
+        <input type="hidden" id="pl-course" /><input type="hidden" id="pl-date" /><input type="hidden" id="pl-start-date" /><input type="hidden" id="pl-hours" /><input type="hidden" id="pl-conf" value="3" /><div id="plan-result-box" class="hidden"></div><div id="plan-table-wrap" style="display:none"></div><div id="semester-courses-list" style="display:none"></div><div id="semester-result-box" class="hidden"></div><div id="semester-table-wrap" style="display:none"></div>
       </div>
 
       <div class="page" id="page-schedule">

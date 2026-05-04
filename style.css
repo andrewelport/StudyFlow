@@ -2556,6 +2556,74 @@ input[type="date"],input[type="time"]{color:var(--text)}
 }
 
 /* ═══════════════════════════════════
+   START HERE WIZARD (first-time planner)
+═══════════════════════════════════ */
+.pl-sh-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 1.5rem; box-shadow: var(--shadow); max-width: 640px; margin: 0 auto 1.5rem; }
+.pl-sh-hero { text-align: center; margin-bottom: 1.5rem; }
+.pl-sh-emoji { font-size: 2.4rem; line-height: 1; margin-bottom: 0.5rem; }
+.pl-sh-title { font-size: 1.35rem; font-weight: 900; color: var(--text); margin-bottom: 0.35rem; }
+.pl-sh-desc { font-size: 0.84rem; color: var(--muted); line-height: 1.6; max-width: 340px; margin: 0 auto; }
+.pl-sh-section { border-top: 1px solid var(--border); padding-top: 1.1rem; margin-top: 1.1rem; }
+.pl-sh-sec-title { font-size: 0.88rem; font-weight: 800; color: var(--text); margin-bottom: 0.75rem; }
+.pl-sh-optional { font-size: 0.78rem; font-weight: 400; color: var(--muted); }
+.pl-sh-courses-header { display: grid; grid-template-columns: 1fr 130px 60px 32px; gap: 0.4rem; margin-bottom: 0.3rem; padding: 0 0.1rem; }
+.pl-sh-course-row { display: grid; grid-template-columns: 1fr 130px 60px 32px; gap: 0.4rem; margin-bottom: 0.4rem; align-items: center; }
+.pl-sh-course-row input { padding: 0.55rem 0.7rem; font-size: 0.86rem; }
+.pl-sh-hobby-add { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+.pl-sh-hobby-add input { flex: 1; }
+.pl-sh-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; min-height: 1rem; }
+.pl-sh-hobby-chip { background: var(--accent-light); color: var(--accent); border-radius: 20px; padding: 0.28rem 0.75rem; font-size: 0.82rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem; }
+.pl-sh-chip-x { cursor: pointer; opacity: 0.55; font-size: 1rem; margin-right: 0.15rem; transition: opacity 0.15s; }
+.pl-sh-chip-x:hover { opacity: 1; }
+.pl-sh-goal-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.55rem; }
+.pl-sh-goal-opt { background: var(--surface2); border: 2px solid var(--border); border-radius: 14px; padding: 0.85rem 0.5rem; text-align: center; cursor: pointer; transition: all 0.18s; }
+.pl-sh-goal-opt:hover, .pl-sh-goal-opt.sel { border-color: var(--accent); background: var(--accent-light); }
+.pl-sh-goal-icon { font-size: 1.4rem; margin-bottom: 0.3rem; }
+.pl-sh-goal-name { font-size: 0.88rem; font-weight: 800; color: var(--text); }
+.pl-sh-goal-desc { font-size: 0.72rem; color: var(--muted); margin-top: 0.15rem; line-height: 1.4; }
+@media (max-width: 480px) {
+  .pl-sh-courses-header { display: none; }
+  .pl-sh-course-row { grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; gap: 0.35rem; background: var(--surface2); border-radius: 10px; padding: 0.6rem; margin-bottom: 0.5rem; }
+  .pl-sh-course-row .plsh-name { grid-column: 1 / -1; }
+  .pl-sh-course-row .plsh-exam { grid-column: 1; }
+  .pl-sh-course-row .plsh-hrs { grid-column: 2; }
+  .pl-sh-course-row .btn-sm { grid-column: 2; justify-self: end; grid-row: 1; }
+  .pl-sh-goal-row { grid-template-columns: 1fr; }
+  .pl-sh-goal-opt { display: flex; align-items: center; gap: 0.75rem; text-align: right; padding: 0.7rem 0.85rem; }
+  .pl-sh-goal-icon { font-size: 1.2rem; margin-bottom: 0; flex-shrink: 0; }
+}
+
+/* ═══════════════════════════════════
+   MOBILE FIXES — anchor builder + modal
+═══════════════════════════════════ */
+@media (max-width: 480px) {
+  /* Anchor builder: prevent overflow */
+  .anchor-builder-row { padding: 0.75rem; }
+  .ab-header { flex-wrap: wrap; }
+  .ab-days { flex-wrap: wrap; gap: 0.3rem; }
+  .ob-day-btn { width: 32px; height: 32px; font-size: 0.72rem; }
+
+  /* Modal: full-width on small screens */
+  .modal-box { padding: 1.25rem 1rem; border-radius: 16px; margin: 0.5rem; max-width: calc(100vw - 1rem); }
+  .modal-overlay { padding: 0.5rem; align-items: flex-end; }
+
+  /* Anchor modal grid fields: single column */
+  .modal-box .form-grid { grid-template-columns: 1fr; }
+
+  /* Exam cards: single column */
+  .exam-row-card { flex-direction: column; gap: 0.5rem; }
+  .exam-date-pill { min-width: 0; width: 100%; text-align: right; display: flex; gap: 0.75rem; align-items: center; border-radius: 10px; padding: 0.4rem 0.75rem; }
+  .exam-days-badge { font-size: 1.1rem; min-width: 0; }
+
+  /* Anchor list cards */
+  .anchor-card { flex-wrap: wrap; }
+
+  /* Planner course cards: single column on mobile */
+  .pl-cards-grid { grid-template-columns: 1fr; }
+  .pl-course-card .pl-cc-top { height: 6px; }
+}
+
+/* ═══════════════════════════════════
    PROFILE QUESTION CARDS (pq-card)
    Beautiful onboarding redesign
 ═══════════════════════════════════ */
