@@ -195,6 +195,17 @@
       <button class="nav-item" onclick="showPage('progress',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> <span>התקדמות</span></button>
       <button class="nav-item" onclick="openPsychologist()"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> <span>תמיכה נפשית</span></button>
 
+      <div class="wr-sidebar-card" id="wr-sidebar-card" onclick="showPage('weekly-review',null);updateBottomNav('weekly-review');closeSidebar()">
+        <div class="wrs-header">
+          <span class="wrs-icon">📋</span>
+          <span class="wrs-title">סיכום שבועי</span>
+          <span class="wrs-badge" id="wrs-badge"></span>
+        </div>
+        <div class="wrs-status" id="wrs-status">טוען...</div>
+        <div class="wrs-sub" id="wrs-sub"></div>
+        <button class="wrs-btn" id="wrs-btn" onclick="event.stopPropagation();showPage('weekly-review',null);updateBottomNav('weekly-review');closeSidebar()">▶ בנה לוז עכשיו</button>
+      </div>
+
       <div class="sidebar-bottom">
         <hr style="border:none; border-top:1px solid var(--border); margin:0.5rem 0;">
 <button class="nav-item" onclick="openSettings();closeSidebar()"><span class="nav-icon"><svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></span> <span>הגדרות</span></button>
@@ -230,6 +241,15 @@
         </div>
 
         <div id="next-task-widget" class="next-task-widget hidden"></div>
+
+        <!-- Weekly Review Banner -->
+        <div id="wr-banner" class="hidden wr-banner" onclick="showPage('weekly-review',null);updateBottomNav('weekly-review')" style="cursor:pointer">
+          <div class="wr-banner-icon">📋</div>
+          <div style="flex:1">
+            <div class="wr-banner-title" id="wr-banner-msg">שבת שלום! זמן לסכם את השבוע</div>
+            <div class="wr-banner-sub">3 דקות שמשנות את השבוע הבא ←</div>
+          </div>
+        </div>
 
         <div id="urgent-exam-banner" class="hidden exam-urgency-banner">
           <span style="font-size:1.5rem">🚨</span>
@@ -291,73 +311,109 @@
 
       <div class="page" id="page-planner">
         <div class="page-header">
-          <div class="page-title">מתכנן AI</div>
-          <div class="page-sub" id="planner-sub">בחר מצב: תכנון קורס בודד או תכנון סמסטר שלם עם כל הקורסים.</div>
+          <div class="page-title">מתכנן</div>
+          <div class="page-sub">קורסים · מטרות · לוח זמנים</div>
         </div>
 
-        <!-- Mode Toggle -->
-        <div style="display:flex;gap:0.55rem;margin-bottom:1.5rem;">
-          <button class="planner-mode-btn active" id="mode-btn-single" onclick="setPlannerMode('single')">📚 קורס בודד</button>
-          <button class="planner-mode-btn" id="mode-btn-semester" onclick="setPlannerMode('semester')">🎓 תכנון סמסטר מלא</button>
-        </div>
-
-        <!-- SINGLE COURSE MODE -->
-        <div id="planner-single-section">
-          <div class="section-box">
-            <div class="section-title-sm" style="margin-bottom:1.25rem">📚 פרטי הקורס</div>
-            <div class="planner-form">
-              <div class="form-grid">
-                <div><label class="field-label">שם הקורס *</label><input type="text" id="pl-course" placeholder="חשבון דיפרנציאלי ואינטגרלי" /></div>
-                <div><label class="field-label">תאריך המבחן *</label><input type="date" id="pl-date" /></div>
-                <div><label class="field-label">ממתי להתחיל ללמוד?</label><input type="date" id="pl-start-date" /></div>
-              </div>
-              <div class="form-grid">
-                <div><label class="field-label">הקצאת שעות <b>בשבוע</b> לקורס זה</label><input type="number" id="pl-hours" placeholder="לדוגמה: 12" /></div>
-                <div>
-                  <label class="field-label">עדיפות הקורס השבוע: <span id="conf-val">3⭐</span></label>
-                  <input type="range" id="pl-conf" min="1" max="5" value="3" oninput="document.getElementById('conf-val').textContent=this.value+'⭐'" />
-                </div>
-              </div>
-              <button class="btn-generate" id="gen-btn" onclick="generatePlan()">✨ צור תוכנית מגוונת</button>
+        <!-- WELCOME STATE (first time, no data) -->
+        <div id="pl-empty-state" class="hidden">
+          <div class="pl-welcome">
+            <div class="pl-welcome-icon-big">🎓</div>
+            <div class="pl-welcome-h">ה-AI שבונה את הסמסטר שלך</div>
+            <div class="pl-welcome-p">הוסף קורסים ומטרות — AI יבנה לוח שבועי חכם, ישאל אותך כל שבוע ויסתגל לפי ההתקדמות שלך</div>
+            <div class="pl-welcome-flow">
+              <div class="pl-wf-step"><span class="pl-wf-n">01</span><span>הגדר קורסים</span></div>
+              <div class="pl-wf-line"></div>
+              <div class="pl-wf-step"><span class="pl-wf-n">02</span><span>הוסף מטרות</span></div>
+              <div class="pl-wf-line"></div>
+              <div class="pl-wf-step"><span class="pl-wf-n">03</span><span>AI בונה שבוע</span></div>
+            </div>
+            <div style="display:flex;gap:0.75rem;flex-wrap:wrap;justify-content:center;margin-top:1.75rem">
+              <button class="pl-welcome-cta-primary" onclick="openAddCourseModal()">📚 הוסף קורס ראשון</button>
+              <button class="pl-welcome-cta-secondary" onclick="showPage('hobby',null);_hpShowSetup()">🎯 הוסף מטרה</button>
             </div>
           </div>
-          <div class="section-box hidden" id="plan-result-box">
+        </div>
+
+        <!-- COURSES SECTION -->
+        <div id="pl-courses-section">
+          <div class="pl-sec-hdr">
+            <span class="pl-sec-title">📚 הקורסים שלי</span>
+            <button class="pl-sec-add" onclick="openAddCourseModal()">+ הוסף</button>
+          </div>
+          <div id="pl-course-cards-wrap" class="pl-cards-grid"></div>
+        </div>
+
+        <!-- HOBBIES SECTION -->
+        <div id="pl-hobbies-section">
+          <div class="pl-sec-hdr">
+            <span class="pl-sec-title">🎯 מטרות ותחביבים</span>
+            <button class="pl-sec-add" onclick="showPage('hobby',null);_hpShowSetup()">+ הוסף</button>
+          </div>
+          <div id="pl-hobby-cards-wrap" class="pl-cards-grid"></div>
+          <div id="pl-hobbies-empty-hint" class="pl-empty-hint hidden">הוסף מטרה — ריצה, גיטרה, שפה חדשה, קריאה...</div>
+        </div>
+
+        <!-- QUICK ACTIONS -->
+        <div class="pl-actions-row">
+          <button class="pl-action-chip red" onclick="openEmergencyMode()">⚡ מצב חירום</button>
+          <button class="pl-action-chip" onclick="openRecalc('schedule')">🤖 יועץ לו"ז</button>
+          <button class="pl-action-chip" onclick="showPage('weekly-review',null);updateBottomNav('weekly-review')">📋 סיכום שבועי</button>
+        </div>
+
+        <!-- ADVANCED: hidden form for backward-compatible JS calls -->
+        <details class="section-box pl-advanced-details">
+          <summary class="pl-advanced-summary">✨ תכנון מתקדם לקורס ספציפי</summary>
+          <div class="planner-form" style="margin-top:1.25rem">
+            <div class="form-grid">
+              <div><label class="field-label">שם הקורס *</label><input type="text" id="pl-course" placeholder="חשבון דיפרנציאלי ואינטגרלי" /></div>
+              <div><label class="field-label">תאריך המבחן *</label><input type="date" id="pl-date" /></div>
+              <div><label class="field-label">ממתי להתחיל ללמוד?</label><input type="date" id="pl-start-date" /></div>
+            </div>
+            <div class="form-grid">
+              <div><label class="field-label">שעות בשבוע לקורס</label><input type="number" id="pl-hours" placeholder="12" /></div>
+              <div>
+                <label class="field-label">עדיפות: <span id="conf-val">3⭐</span></label>
+                <input type="range" id="pl-conf" min="1" max="5" value="3" oninput="document.getElementById('conf-val').textContent=this.value+'⭐'" />
+              </div>
+            </div>
+            <button class="btn-generate" id="gen-btn" onclick="generatePlan()">✨ צור תוכנית מגוונת</button>
+          </div>
+          <div class="section-box hidden" id="plan-result-box" style="box-shadow:none;border:1px solid var(--border);margin-top:1rem">
             <div class="section-head">
               <div class="section-title-sm">📅 התוכנית שנוצרה</div>
-              <button class="btn-sm green" onclick="addPlanToSchedule()">✓ אישור והוספה ללו"ז</button>
+              <button class="btn-sm green" onclick="addPlanToSchedule()">✓ הוסף ללו"ז</button>
             </div>
             <div id="plan-table-wrap"></div>
           </div>
-        </div>
-
-        <!-- SEMESTER MODE -->
-        <div id="planner-semester-section" class="hidden">
-          <div class="section-box">
+          <div style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border)">
             <div class="section-head" style="margin-bottom:1rem">
               <div>
-                <div class="section-title-sm">🎓 קורסי הסמסטר</div>
-                <div style="font-size:0.78rem;color:var(--muted);margin-top:0.25rem">הוסף את כל הקורסים, מלא פרטים, ו-AI יבנה לוח זמנים אופטימלי לכל הסמסטר</div>
+                <div class="section-title-sm">🎓 תכנון סמסטר מלא</div>
+                <div style="font-size:0.75rem;color:var(--muted)">AI יבנה לוח לכל הסמסטר עם כל הקורסים</div>
               </div>
-              <button class="btn-sm green" onclick="addSemesterCourse()">+ הוסף קורס</button>
+              <button class="btn-sm green" onclick="addSemesterCourse()">+ קורס</button>
             </div>
             <div id="semester-courses-list"></div>
             <div id="semester-capacity-wrap" class="hidden sem-cap-bar-wrap">
-              <div style="font-size:0.75rem;font-weight:800;color:var(--text);margin-bottom:0.6rem">📊 ניצולת זמן משוערת לפי קורס</div>
+              <div style="font-size:0.75rem;font-weight:800;margin-bottom:0.6rem">📊 ניצולת זמן</div>
               <div id="semester-capacity-rows"></div>
             </div>
-            <button class="btn-generate" id="semester-gen-btn" onclick="generateSemesterPlan()" style="margin-top:0.5rem">🚀 צור תוכנית סמסטר מלאה</button>
+            <button class="btn-generate" id="semester-gen-btn" onclick="generateSemesterPlan()" style="margin-top:0.5rem">🚀 תוכנית סמסטר מלאה</button>
           </div>
-          <div class="section-box hidden" id="semester-result-box">
+          <div class="section-box hidden" id="semester-result-box" style="box-shadow:none;border:1px solid var(--border);margin-top:1rem">
             <div class="section-head">
               <div>
                 <div class="section-title-sm">📅 תוכנית הסמסטר</div>
-                <div id="semester-result-sub" style="font-size:0.78rem;color:var(--muted);margin-top:0.2rem"></div>
+                <div id="semester-result-sub" style="font-size:0.78rem;color:var(--muted)"></div>
               </div>
               <button class="btn-sm green" onclick="addSemesterPlanToSchedule()">✓ אשר הכל ללו"ז</button>
             </div>
             <div id="semester-table-wrap"></div>
           </div>
-        </div>
+          <!-- Legacy hidden div for renderCourseManager -->
+          <div id="course-manager-list" style="display:none"></div>
+        </details>
       </div>
 
       <div class="page" id="page-schedule">
@@ -383,6 +439,7 @@
                 <button class="btn-sm green" style="flex:1;font-size:0.85rem;" onclick="openManualTaskModal()">+ משימה</button>
                 <button class="btn-sm red" style="flex:1;font-size:0.85rem;" onclick="openRecalc('schedule')"><svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg> סידור AI</button>
                 <button class="btn-sm purple" style="flex:1;font-size:0.85rem;" onclick="toggleCalendarViewModal()"><svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> זום ליומן</button>
+                <button class="btn-sm" style="flex:1;font-size:0.85rem;background:var(--green-light);color:var(--green);border:1.5px solid var(--green)" onclick="openTimeChart()"><svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg> הקצאת זמן</button>
               </div>
             </div>
             <div id="day-timeline-view" class="timeline-container"></div>
@@ -450,67 +507,70 @@
 
       <div class="page" id="page-progress">
         <div class="page-header">
-          <div class="page-title">התקדמות</div>
-          <div class="page-sub">כל משימה שאתה מסיים מצמיח את העץ שלך</div>
+          <div class="page-title">StudyQuest</div>
+          <div class="page-sub">עלה ברמות · צבור הישגים · שבור שיאים</div>
         </div>
 
-        <!-- Tree hero card -->
-        <div class="tree-stage-card">
-          <div class="tree-hero-layout">
-            <div class="tree-hero-wrap" id="tree-hero-wrap"></div>
-            <div class="tree-info-col">
-              <div class="tree-level-num" id="tree-level-num">רמה 1</div>
-              <div class="tree-level-name" id="tree-level-name-badge">מתחיל</div>
-              <div class="tree-pts-row">
-                <div class="tree-pts-big" id="tree-pts">0</div>
-                <div class="tree-pts-label">XP</div>
-              </div>
-              <div class="tree-xp-bar-wrap">
-                <div class="tree-xp-bar-fill" id="tree-xp-bar-fill" style="width:0%"></div>
-              </div>
-              <div class="tree-xp-to-next" id="tree-next">עוד 100 XP לשלב הבא</div>
+        <!-- XP Hero -->
+        <div class="sq-hero-card">
+          <div class="sq-ring-wrap">
+            <svg class="sq-ring-svg" viewBox="0 0 140 140">
+              <circle cx="70" cy="70" r="56" stroke="rgba(255,255,255,0.12)" stroke-width="10" fill="none"/>
+              <circle id="sq-ring-fill" cx="70" cy="70" r="56" stroke="url(#sqGrad)" stroke-width="10" fill="none"
+                stroke-linecap="round" transform="rotate(-90 70 70)"
+                stroke-dasharray="351.9" stroke-dashoffset="351.9"
+                style="transition:stroke-dashoffset 1.2s cubic-bezier(0.34,1.56,0.64,1);filter:drop-shadow(0 0 8px rgba(167,139,250,0.7))"/>
+              <defs>
+                <linearGradient id="sqGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#a78bfa"/>
+                  <stop offset="100%" stop-color="#38ef7d"/>
+                </linearGradient>
+              </defs>
+            </svg>
+            <div class="sq-ring-center">
+              <div class="sq-level-emoji" id="xp-level-emoji">🌱</div>
+              <div class="sq-xp-num" id="tree-pts">0</div>
+              <div class="sq-xp-lbl">XP</div>
+            </div>
+          </div>
+          <div class="sq-hero-info">
+            <div class="sq-hero-level-name" id="tree-next">מתחיל</div>
+            <div class="sq-xp-bar-wrap"><div class="sq-xp-bar" id="sq-xp-bar" style="width:0%"></div></div>
+            <div class="sq-xp-caption" id="sq-xp-caption">0 / 100 XP לרמה הבאה</div>
+            <div class="sq-streak-chip">
+              <span class="sq-fire" id="sq-fire-icon">🔥</span>
+              <span class="sq-streak-num" id="streak-badge">0</span>
+              <span class="sq-streak-lbl">ימי רצף</span>
             </div>
           </div>
         </div>
 
-        <!-- Stats row — no emojis -->
-        <div class="prog-stats-row">
-          <div class="prog-stat-card">
-            <div class="prog-stat-icon" style="background:rgba(251,191,36,0.12);color:#f59e0b">
-              <svg viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 11-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 002.5 2.5z"/></svg>
-            </div>
-            <div id="streak-badge" class="prog-stat-val">0</div>
-            <div class="prog-stat-lbl">ימי רצף</div>
-          </div>
-          <div class="prog-stat-card">
-            <div class="prog-stat-icon" style="background:rgba(99,102,241,0.1);color:var(--accent)">
-              <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-            </div>
-            <div id="stat-total-done" class="prog-stat-val">0</div>
-            <div class="prog-stat-lbl">משימות הושלמו</div>
-          </div>
-          <div class="prog-stat-card">
-            <div class="prog-stat-icon" style="background:rgba(16,185,129,0.1);color:var(--green)">
-              <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-            </div>
-            <div id="stat-pct" class="prog-stat-val">0%</div>
-            <div class="prog-stat-lbl">אחוז ביצוע</div>
-          </div>
-          <span id="stat-total" style="display:none">0</span>
+        <!-- Stats pills -->
+        <div class="sq-stats-row">
+          <div class="sq-stat-pill"><span class="sq-stat-n" id="stat-total-done">0</span><span class="sq-stat-l">הושלמו</span></div>
+          <div class="sq-stat-pill"><span class="sq-stat-n" id="stat-pct">0%</span><span class="sq-stat-l">אחוז</span></div>
+          <div class="sq-stat-pill"><span class="sq-stat-n" id="sq-exams-stat">0</span><span class="sq-stat-l">מבחנים</span></div>
+          <div class="sq-stat-pill sq-stat-gold"><span class="sq-stat-n" id="sq-pts-today">+0</span><span class="sq-stat-l">XP היום</span></div>
         </div>
+        <span id="stat-total" style="display:none">0</span>
 
-        <!-- Daily quest -->
-        <div class="section-box" style="background:linear-gradient(135deg,var(--accent),var(--purple));border:none;color:white;padding:1.25rem 1.5rem">
-          <div style="font-size:0.62rem;font-weight:800;letter-spacing:2px;text-transform:uppercase;margin-bottom:0.5rem;opacity:0.75">יעד יומי</div>
-          <div id="quest-text" style="font-size:0.9rem;font-weight:600;line-height:1.5"></div>
-          <div id="quest-reward" style="margin-top:0.5rem"></div>
-        </div>
-
-        <!-- Activity heatmap -->
+        <!-- Daily missions -->
         <div class="section-box">
-          <div class="section-head"><div class="section-title-sm">פעילות לימודית</div><span style="font-size:0.7rem;color:var(--muted);font-weight:600">15 שבועות אחרונים</span></div>
-          <div id="activity-heatmap" class="heatmap-outer"></div>
-          <div id="heatmap-legend" class="heatmap-legend"></div>
+          <div class="section-head">
+            <div class="section-title-sm">משימות יומיות</div>
+            <span id="quest-reward" style="font-size:0.75rem;font-weight:700;color:var(--accent)"></span>
+          </div>
+          <div id="sq-missions-wrap"></div>
+          <div id="quest-text" style="display:none"></div>
+        </div>
+
+        <!-- Achievements -->
+        <div class="section-box">
+          <div class="section-head">
+            <div class="section-title-sm">הישגים</div>
+            <span id="sq-badge-count" style="font-size:0.72rem;color:var(--muted);font-weight:700"></span>
+          </div>
+          <div id="sq-badges-wrap" class="sq-badges-grid"></div>
         </div>
 
         <!-- Course breakdown -->
@@ -519,12 +579,184 @@
           <div id="course-progress-bars"></div>
         </div>
 
-        <!-- Weekly analysis -->
+        <!-- Activity heatmap -->
         <div class="section-box">
-          <div class="section-head"><div class="section-title-sm">ניתוח שבועי</div></div>
-          <button class="btn-primary" onclick="openRecalc('weekly')" style="font-size:0.9rem;">התחל ישיבת סיכום שבועית</button>
+          <div class="section-head"><div class="section-title-sm">פעילות לימודית</div><span style="font-size:0.7rem;color:var(--muted);font-weight:600">15 שבועות</span></div>
+          <div id="activity-heatmap" class="heatmap-outer"></div>
+          <div id="heatmap-legend" class="heatmap-legend"></div>
+        </div>
+
+      </div>
+
+      <!-- ══ HOBBY / PERSONAL GOALS PAGE ══ -->
+      <div class="page" id="page-hobby">
+
+        <!-- EMPTY STATE -->
+        <div id="hp-empty">
+          <div class="page-header">
+            <div class="page-title">מטרות אישיות</div>
+            <div class="page-sub">מסלול AI מגוון — ממתחיל עד המטרה</div>
+          </div>
+          <div class="hp-empty-card">
+            <div class="hp-empty-icon">🎯</div>
+            <div class="hp-empty-title">מה המטרה האישית שלך?</div>
+            <div class="hp-empty-sub">ריצה, גיטרה, ציור, שפה חדשה — AI יבנה לך מסלול, ימצא זמן בלוז שלך ויעקוב אחר ההתקדמות בכל שבוע</div>
+            <button class="btn-primary" onclick="_hpShowSetup()" style="margin-top:1.5rem;width:100%;max-width:320px">+ הוסף מטרה / תחביב</button>
+          </div>
+        </div>
+
+        <!-- SETUP FORM -->
+        <div id="hp-setup" class="hidden">
+          <div class="page-header" style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div class="page-title">מטרה חדשה</div>
+              <div class="page-sub">AI יבנה לך מסלול מותאם אישית</div>
+            </div>
+            <button class="btn-sm" onclick="_hpShowEmpty()">← חזור</button>
+          </div>
+          <div class="section-box">
+            <div style="display:flex;flex-direction:column;gap:0.85rem">
+              <div>
+                <label class="field-label">שם התחביב / המטרה *</label>
+                <input type="text" id="hp-setup-name" placeholder="ריצה, גיטרה, ספרדית, ציור..." />
+              </div>
+              <div>
+                <label class="field-label">מה המטרה הספציפית? *</label>
+                <input type="text" id="hp-setup-goal" placeholder="לדוגמה: לרוץ 5 ק״מ, ללמוד 10 שירים, להגיע A2..." />
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
+                <div>
+                  <label class="field-label">כמה פעמים בשבוע?</label>
+                  <select id="hp-setup-freq">
+                    <option value="1">פעם בשבוע</option>
+                    <option value="2">פעמיים</option>
+                    <option value="3" selected>3 פעמים</option>
+                    <option value="4">4 פעמים</option>
+                    <option value="5">5 פעמים</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="field-label">כמה דקות לאימון?</label>
+                  <select id="hp-setup-dur">
+                    <option value="20">20 דק'</option>
+                    <option value="30" selected>30 דק'</option>
+                    <option value="45">45 דק'</option>
+                    <option value="60">שעה</option>
+                    <option value="90">90 דק'</option>
+                  </select>
+                </div>
+              </div>
+              <button class="btn-generate" onclick="hpCreateHobby()" style="margin-top:0.25rem">בנה לי מסלול + תוכנית אישית</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- MAIN VIEW -->
+        <div id="hp-main" class="hidden">
+
+          <!-- Tabs (multiple hobbies) -->
+          <div id="hp-tabs" style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:1rem"></div>
+
+          <!-- Hero card -->
+          <div class="hp-hero-card">
+            <div class="hp-hero-top">
+              <div>
+                <div class="hp-hero-name" id="hp-hero-name"></div>
+                <div class="hp-hero-goal" id="hp-hero-goal"></div>
+              </div>
+              <button class="hp-delete-btn" onclick="hpDeleteHobby()" title="מחק">✕</button>
+            </div>
+            <div class="hp-hero-stats">
+              <div class="hp-stat"><span class="hp-stat-n" id="hp-sessions-count">0</span><span class="hp-stat-l">אימונים</span></div>
+              <div class="hp-stat"><span class="hp-stat-n" id="hp-freq-count">3/שבוע</span><span class="hp-stat-l">תדירות</span></div>
+              <div class="hp-stat hp-stat-next"><span class="hp-stat-n" id="hp-next-date" style="font-size:0.75rem">—</span><span class="hp-stat-l">הבא</span></div>
+            </div>
+          </div>
+
+          <!-- Track / Roadmap -->
+          <div class="section-box" style="padding:1.25rem 1rem 1.5rem">
+            <div class="section-head" style="margin-bottom:1rem">
+              <div class="section-title-sm">המסלול שלך</div>
+            </div>
+            <div id="hp-track"></div>
+          </div>
+
+          <!-- Find slots button -->
+          <button class="btn-generate" id="hp-find-btn" onclick="findHobbySlots()" style="background:linear-gradient(135deg,#f59e0b,#ef4444);margin-bottom:1rem">
+            📅 מצא לי זמן בלוז שלי לאימונים
+          </button>
+
+          <!-- Upcoming sessions -->
+          <div class="section-box">
+            <div class="section-head" style="margin-bottom:0.75rem">
+              <div class="section-title-sm">אימונים מתוכננים</div>
+            </div>
+            <div id="hp-upcoming-list"></div>
+          </div>
+
+          <!-- AI Coach chat -->
+          <div class="section-box hp-coach-card">
+            <div class="section-head" style="margin-bottom:0.75rem">
+              <div>
+                <div class="section-title-sm">המאמן האישי שלך</div>
+                <div style="font-size:0.73rem;color:var(--muted);margin-top:0.15rem">AI שזוכר את המטרה, ההתקדמות ומסייע לך להתמיד</div>
+              </div>
+            </div>
+            <div class="chat-messages" id="hp-chat" style="min-height:200px;max-height:380px;overflow-y:auto;display:flex;flex-direction:column;gap:0.75rem;margin-bottom:0.85rem"></div>
+            <div class="chat-input-area">
+              <input type="text" id="hp-input" placeholder="ספר למאמן מה קרה..." onkeydown="if(event.key==='Enter')sendHobbyPageMessage()" style="flex:1;background:var(--surface2);border:1px solid var(--border);padding:0.7rem 1rem;border-radius:10px;color:var(--text);font-family:var(--sans)" />
+              <button onclick="sendHobbyPageMessage()" style="background:linear-gradient(135deg,#f59e0b,#ef4444);color:white;border:none;border-radius:10px;padding:0.65rem 1.3rem;font-family:var(--sans);font-weight:700;cursor:pointer;font-size:0.85rem">שלח</button>
+            </div>
+          </div>
+
         </div>
       </div>
+      <!-- ══ END HOBBY PAGE ══ -->
+
+      <!-- ══ WEEKLY REVIEW PAGE ══ -->
+      <div class="page" id="page-weekly-review">
+        <div class="page-header">
+          <div class="page-title">סיכום שבועי</div>
+          <div class="page-sub">כל שבת בערב — 3 דקות שמשנות את השבוע הבא</div>
+        </div>
+
+        <!-- Done state -->
+        <div id="wr-done" class="hidden">
+          <div class="wr-done-card">
+            <div class="wr-done-icon">✅</div>
+            <div class="wr-done-title">השבוע תוכנן!</div>
+            <div class="wr-done-sub">הלוז מכסה עד <span id="wr-next-sat"></span></div>
+            <button class="btn-sm" style="margin-top:1rem" onclick="_wrForceRebuild=true;renderWeeklyReview()">🔄 בנה מחדש</button>
+          </div>
+        </div>
+
+        <!-- Active review -->
+        <div id="wr-active">
+          <!-- Progress -->
+          <div class="wr-prog-wrap">
+            <div class="wr-prog-bar" id="wr-prog-bar" style="width:0%"></div>
+          </div>
+
+          <!-- Message feed -->
+          <div id="wr-msgs" class="wr-msgs"></div>
+
+          <!-- Choice buttons -->
+          <div id="wr-choices" class="wr-choices hidden"></div>
+
+          <!-- Plan preview + confirm -->
+          <div id="wr-result" class="hidden section-box" style="margin-top:1rem">
+            <div class="section-head">
+              <div class="section-title-sm">תוכנית השבוע הקרוב</div>
+            </div>
+            <div id="wr-preview"></div>
+            <div style="margin-top:1rem;display:flex;flex-direction:column;gap:0.6rem">
+              <button class="wr-confirm-btn" onclick="confirmWeeklyPlan()">✓ אשר ובנה את השבוע</button>
+              <button class="btn-sm" onclick="_wrInit()">← שאלות מחדש</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- ══ END WEEKLY REVIEW ══ -->
 
     </div>
   </div>
@@ -552,6 +784,10 @@
     <button class="bn-item" id="bn-progress" onclick="showPage('progress',document.querySelectorAll('.nav-item')[5]);updateBottomNav('progress')">
       <div class="bn-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
       <div class="bn-label">התקדמות</div>
+    </button>
+    <button class="bn-item" id="bn-weekly-review" onclick="showPage('weekly-review',null);updateBottomNav('weekly-review')">
+      <div class="bn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>
+      <div class="bn-label">סיכום שבוע</div>
     </button>
   </div>
 </nav>
@@ -604,8 +840,18 @@
       <div><label class="field-label">שעת סיום</label><input type="time" id="anc-end" value="16:00" /></div>
     </div>
     <div id="anc-per-day-times" class="hidden" style="margin-bottom:0.75rem">
-      <label class="field-label" style="margin-bottom:0.4rem">⚙️ שעות לכל יום (ניתן לכוון בנפרד)</label>
+      <label class="field-label" style="margin-bottom:0.4rem">שעות לכל יום (ניתן לכוון בנפרד)</label>
       <div id="anc-day-rows"></div>
+    </div>
+    <div class="form-row" style="margin-bottom:0.75rem">
+      <label class="field-label">בתוקף עד</label>
+      <div style="display:flex;align-items:center;gap:0.6rem">
+        <input type="date" id="anc-end-date" style="flex:1;opacity:0.35" disabled />
+        <label style="display:flex;align-items:center;gap:0.3rem;font-size:0.82rem;font-weight:700;cursor:pointer;white-space:nowrap">
+          <input type="checkbox" id="anc-forever" checked onchange="const d=document.getElementById('anc-end-date');d.disabled=this.checked;d.style.opacity=this.checked?'0.35':'1'" />
+          תמיד
+        </label>
+      </div>
     </div>
     <div class="modal-footer"><button class="btn-confirm" onclick="saveAnchorManual()">שמור</button><button class="btn-cancel" onclick="closeModal('anchor-modal')">ביטול</button></div>
   </div>
@@ -717,11 +963,13 @@
             <div class="settings-row-icon" style="background:#ecfdf5;color:#059669;flex-shrink:0">
               <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
             </div>
-            <label style="font-size:0.88rem;font-weight:700;color:var(--text)">Groq API Key</label>
+            <label style="font-size:0.88rem;font-weight:700;color:var(--text)">מצב AI</label>
           </div>
+          <div id="api-managed-banner" style="background:var(--green-light);border:1px solid var(--green);border-radius:10px;padding:0.6rem 0.85rem;font-size:0.8rem;color:var(--green);font-weight:700;margin-bottom:0.75rem">✅ ה-AI מנוהל על ידי מפתח האפליקציה</div>
+          <div style="margin-bottom:0.3rem;font-size:0.82rem;font-weight:700;color:var(--text)">מפתח Groq API אישי</div>
+          <div style="font-size:0.74rem;color:var(--muted);margin-bottom:0.5rem">קבל מפתח חינמי: <b>console.groq.com</b> ← API Keys ← Create</div>
           <input type="password" id="settings-api-key" placeholder="gsk_..." autocomplete="off" style="width:100%;background:var(--surface);border:1.5px solid var(--border2);border-radius:10px;padding:0.65rem 0.9rem;font-size:0.88rem;color:var(--text);font-family:var(--mono)" />
           <div id="api-key-status" style="margin-top:0.35rem;font-size:0.75rem;font-weight:600"></div>
-          <div style="margin-top:0.25rem;font-size:0.72rem;color:var(--muted)">השג בחינם: console.groq.com/keys</div>
         </div>
       </div>
 
@@ -830,6 +1078,38 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- (hobby overlay removed — now a full page) -->
+
+<!-- COURSE ADD MODAL -->
+<div class="modal-overlay hidden" id="course-add-modal">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-title">📚 הוספת קורס חדש</div>
+    <div style="display:flex;flex-direction:column;gap:1rem;margin-top:1rem">
+      <div>
+        <label class="field-label">שם הקורס *</label>
+        <input type="text" id="cam-name" placeholder="חשבון דיפרנציאלי, פסיכולוגיה..." />
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
+        <div>
+          <label class="field-label">תאריך מבחן *</label>
+          <input type="date" id="cam-exam-date" />
+        </div>
+        <div>
+          <label class="field-label">שעות לימוד בשבוע</label>
+          <input type="number" id="cam-hours" placeholder="6" min="1" max="30" value="6" />
+        </div>
+      </div>
+      <div style="font-size:0.78rem;color:var(--muted);background:var(--surface2);border-radius:10px;padding:0.65rem 0.9rem;line-height:1.5">
+        💡 לאחר הוספה, לחץ "✨ תכנן" על הכרטיסייה כדי שה-AI יבנה תוכנית לימודים
+      </div>
+    </div>
+    <div class="modal-footer" style="margin-top:1.5rem">
+      <button class="btn-sm" onclick="closeModal('course-add-modal')">ביטול</button>
+      <button class="btn-sm green" onclick="addPlannerCourse()">+ הוסף קורס</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════════════════════════════
      FOCUS LOCK MODE — Premium distraction blocker
      ══════════════════════════════════════════ -->
@@ -918,6 +1198,52 @@
     </div>
     <button class="action-btn action-cancel-btn" onclick="closeTaskActionSheet()" style="margin-top:0.5rem;background:var(--surface2);color:var(--muted)">ביטול</button>
   </div>
+
+<!-- EMERGENCY MODE MODAL -->
+<div class="modal-overlay hidden" id="emergency-modal">
+  <div class="modal-box" style="max-width:460px">
+    <div class="modal-title" style="background:linear-gradient(135deg,#ef4444,#f97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">⚡ מצב חירום לפני מבחן</div>
+    <div style="font-size:0.82rem;color:var(--muted);margin-bottom:1.25rem;line-height:1.5">ה-AI ימלא כל חלון זמן פנוי בלמידה אינטנסיבית לקורס אחד עד המבחן.</div>
+    <div class="form-row">
+      <label class="field-label">בחר מבחן *</label>
+      <select id="em-exam-sel" style="font-size:0.88rem"></select>
+    </div>
+    <div class="form-row">
+      <label class="field-label">תחילת מצב חירום</label>
+      <input type="date" id="em-start" />
+    </div>
+    <div class="form-row">
+      <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.85rem;font-weight:700">
+        <input type="checkbox" id="em-clear-others" />
+        פנה קורסים אחרים מהתקופה (השמר משימות שהושלמו)
+      </label>
+    </div>
+    <button id="em-gen-btn" class="btn-generate" style="background:linear-gradient(135deg,#ef4444,#f97316);margin-bottom:0.75rem" onclick="generateEmergencySchedule()">⚡ צור לוז חירום</button>
+    <div id="em-result-wrap" class="hidden" style="background:var(--surface2);border-radius:12px;padding:0.85rem;margin-bottom:0.75rem;border:1px solid var(--border)">
+      <div style="font-weight:800;font-size:0.9rem;margin-bottom:0.5rem;color:var(--green)">✅ תוכנית מוכנה — <span id="em-result-count"></span></div>
+      <div id="em-preview-list" style="margin-bottom:0.75rem"></div>
+      <button class="btn-confirm" onclick="confirmEmergencySchedule()">אשר והוסף ללו"ז</button>
+    </div>
+    <button class="btn-cancel" onclick="closeModal('emergency-modal')" style="width:100%">ביטול</button>
+  </div>
+</div>
+
+<!-- TIME CHART MODAL -->
+<div class="modal-overlay hidden" id="time-chart-modal">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-title">הקצאת זמן שבועית</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+      <div style="font-size:0.78rem;color:var(--muted)" id="tc-total-label"></div>
+      <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.8rem;font-weight:700;cursor:pointer">
+        <input type="checkbox" id="tc-toggle-hours" onchange="renderTimeChart()" />
+        הצג בשעות
+      </label>
+    </div>
+    <div id="tc-chart-wrap"></div>
+    <div style="margin-top:1rem;font-size:0.7rem;color:var(--muted);line-height:1.4">⚓ עוגנים = שעות שבועיות קבועות · 📚 קורסים = משימות פתוחות ב-30 הימים הקרובים</div>
+    <button class="btn-cancel" onclick="closeModal('time-chart-modal')" style="width:100%;margin-top:1rem">סגור</button>
+  </div>
+</div>
 
 <script src=https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2></script>
 <script src=app.js></script>
