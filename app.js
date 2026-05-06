@@ -1,4 +1,4 @@
-// ── SUPABASE INIT ──
+﻿// ── SUPABASE INIT ──
 const SUPABASE_URL = 'https://cysywoaquuuteyxcxumz.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN5c3l3b2FxdXV1dGV5eGN4dW16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4NzUyMjUsImV4cCI6MjA5MjQ1MTIyNX0.fnZbaYT2782XQpn6Bku5VkK-Xxmc9BwoA9e3bwjIibM';
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -166,6 +166,8 @@ let selectedMonthDay = null;
 let schedViewMode = 'timeline';
 let pendingRecalcActions = null;
 let psychHistory = [];
+let _rcPendingTasks = [];
+let _rcCapacityCtx = null;
 let assistantHistory = [];
 let _emergencyPlan = null;
 let hobbyHistory = [];
@@ -370,7 +372,15 @@ async function loadFromCloud() {
   try {
     const { data, error } = await db.from('user_data').select('data').eq('user_id', currentUser.id).single();
     if (error || !data?.data) return false;
-    S = { ...S, ...data.data };
+    const cloud = data.data;
+    const localPts   = S.points       || 0;
+    const localStrk  = S.streak       || 0;
+    const localDone  = S.doneTaskCount|| 0;
+    S = { ...S, ...cloud };
+    // Cumulative progress fields: always keep the higher value so cloud can never erase local gains
+    S.points        = Math.max(localPts,  cloud.points       || 0);
+    S.streak        = Math.max(localStrk, cloud.streak       || 0);
+    S.doneTaskCount = Math.max(localDone, cloud.doneTaskCount|| 0);
     return true;
   } catch(e) { return false; }
 }
@@ -1433,14 +1443,13 @@ ${slotsData.anchorDetails || '  אין עוגנים'}
 ═══ שלב 1 — בנייה הדרגתית (${startDate} עד ${buildupEndStr}) ═══
 • צור בדיוק ${buildupTasks} משימות
 • פיזור: עד 2 משימות ביום, עד ${maxPerWeek} בשבוע — אל תצבור!
-• סדר גיוון חובה (חזור על המחזור): קריאת חומר → תרגול → שאלות ממבחן ישן → חזרה מרווחת → סיכום
-• שמות דוגמה: "קריאת חומר ב-${course}", "תרגול ${course}", "שאלות ממבחנים — ${course}", "חזרה מרווחת — ${course}", "סיכום נושאים — ${course}"
+• שם כל משימה חייב להיות בדיוק: "${course}" — ללא תוספות, ללא מקף, ללא תיאור
 • עדיפות: "בינוני"
 
 ═══ שלב 2 — קראנץ' אינטנסיבי (${crunchStartStr} עד ${examMinus1}, ${crunchDays} ימים לפני המבחן) ═══
 • צור בדיוק ${crunchTasks} משימות
 • ניתן עד 3 ביום, שים לב: מחר אחרי ${examMinus1} זה המבחן — אל תחרוג!
-• שמות בלבד: "שליפה אקטיבית — ${course}", "מבחן תרגול — ${course}", "חזרה אינטנסיבית — ${course}"
+• שם כל משימה חייב להיות בדיוק: "${course}"
 • עדיפות: "גבוה"
 
 חוקי ברזל (שבירתם = פסילה):
@@ -1454,7 +1463,7 @@ ${slotsData.anchorDetails || '  אין עוגנים'}
 חלונות זמן פנויים (רק בהם מותר לשבץ!):
 ${slotsData.text}
 
-JSON בלבד: {"tasks":[{"date":"YYYY-MM-DD","time":"HH:MM","course":"${course}","name":"...","duration":"X דק'","priority":"גבוה|בינוני"}]}`;
+JSON בלבד: {"tasks":[{"date":"YYYY-MM-DD","time":"HH:MM","course":"${course}","name":"${course}","duration":"X דק'","priority":"גבוה|בינוני"}]}`;
   
   try{
     const _content1 = await callAI({ messages: [{role:'user', content:prompt}], temperature: 0.2, json: true });
@@ -1467,7 +1476,7 @@ JSON בלבד: {"tasks":[{"date":"YYYY-MM-DD","time":"HH:MM","course":"${course}
       const noTaskCollision = !S.tasks.find(old => old.date === t.date && old.time === t.time && !old.done && !old.missed && old.course !== course);
       return isInWindow && isDateValid && noTaskCollision;
     });
-    S.pendingPlan = validTasks.map(t => ({...t, id:uid(), done:false, missed:false}));
+    S.pendingPlan = validTasks.map(t => ({...t, id:uid(), name: t.course || t.name, done:false, missed:false}));
     if(S.pendingPlan.length === 0) { throw new Error('ה-AI לא מצא זמנים חוקיים.'); }
     if(!S.exams.find(e => e.course === course && e.date === date)){ S.exams.push({id:uid(), course, date, type:'מבחן', conf:parseInt(priority), readyPct:0, createdDate: ld(new Date())}); }
     save();
@@ -1518,11 +1527,11 @@ function renderPlanTable(tasks, wrapId){
         </div>
         <div style="flex:1;padding:0.5rem 0.8rem;display:flex;flex-direction:column;justify-content:center;">
           <div style="display:flex;align-items:center;gap:0.35rem;flex-wrap:wrap;margin-bottom:0.15rem;">
-            ${t.course?`<span style="font-size:0.63rem;font-weight:800;padding:0.1rem 0.45rem;border-radius:99px;background:${cColor}22;color:${cColor}">${t.course}</span>`:''}
             <span style="font-size:0.63rem;font-weight:700;padding:0.1rem 0.4rem;border-radius:6px;background:${isCrunch?'var(--red-light)':'var(--accent-light)'};color:${isCrunch?'var(--red)':'var(--accent)'}">${isCrunch?'🔥 קראנץ׳':'📚 בנייה'}</span>
             <span style="font-size:0.6rem;color:var(--muted);font-family:var(--mono)">${fmtDate(t.date)}</span>
           </div>
-          <div style="font-size:0.87rem;font-weight:700;color:var(--text)">${t.name}</div>
+          <div style="font-size:0.9rem;font-weight:800;color:var(--text);margin-bottom:0.1rem">${t.course||t.name}</div>
+          <div style="font-size:0.73rem;color:var(--muted);font-weight:500">${t.name}</div>
         </div>
       </div>`;
     }).join('');
@@ -1905,12 +1914,12 @@ async function generateEmergencySchedule() {
 
 הנחיות מחמירות:
 - השתמש בכל זמן פנוי ברשימה. כל משימה = 90 דקות.
-- שמות משימות (גוון ביניהם): "שינון אקטיבי — ${exam.course}", "פתרון מבחנים ישנים — ${exam.course}", "חזרה מרווחת — ${exam.course}", "שליפה מהזיכרון — ${exam.course}", "סיכום נושאים — ${exam.course}"
+- שם כל משימה חייב להיות בדיוק: "${exam.course}"
 - כל המשימות: priority: "גבוה"
 - שעות חוקיות בלבד: "08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00"
 - תאריכים: ${startDate} עד ${examMinus1} בלבד (לא כולל יום המבחן ${examDate})
 
-JSON בלבד: {"tasks":[{"date":"YYYY-MM-DD","time":"HH:MM","course":"${exam.course}","name":"...","duration":"90 דק'","priority":"גבוה"}]}`;
+JSON בלבד: {"tasks":[{"date":"YYYY-MM-DD","time":"HH:MM","course":"${exam.course}","name":"${exam.course}","duration":"90 דק'","priority":"גבוה"}]}`;
 
   try {
     const raw = await callAI({ messages:[{role:'user',content:prompt}], temperature:0.2, json:true });
@@ -1943,7 +1952,7 @@ function confirmEmergencySchedule() {
   if (!plan?.length) { toast('אין תוכנית לאישור'); return; }
   plan.forEach(t => {
     S.tasks = S.tasks.filter(old => !(old.date===t.date && old.time===t.time && !old.done));
-    S.tasks.push(t);
+    S.tasks.push({...t, name: t.course || t.name});
   });
   _emergencyPlan = null;
   save(); renderAll();
@@ -2197,11 +2206,11 @@ ${allSlots.text}
 3. בחלון קראנץ׳ — רק הקורס הרלוונטי, עד 3 ביום
 4. מחוץ לקראנץ׳ — חלק לפי יחס: (שעות × עדיפות) לכל קורס
 5. עד 2-3 משימות ביום בסך הכל, עד 5 בשבוע לכל קורס
-6. גיוון שמות: קריאת חומר / תרגול / שאלות ממבחן / חזרה מרווחת / סיכום / [קראנץ׳: שליפה אקטיבית / מבחן תרגול / חזרה אינטנסיבית]
+6. שם כל משימה חייב להיות בדיוק שם הקורס שלה — ללא תוספות
 7. priority: "בינוני" לשלב בנייה, "גבוה" לשלב קראנץ׳
 
 JSON בלבד — עד 150 משימות:
-{"tasks":[{"date":"YYYY-MM-DD","time":"HH:MM","course":"שם הקורס","name":"שם מגוון","duration":"90 דק'","priority":"גבוה|בינוני"}]}`;
+{"tasks":[{"date":"YYYY-MM-DD","time":"HH:MM","course":"שם הקורס","name":"שם הקורס","duration":"90 דק'","priority":"גבוה|בינוני"}]}`;
 
   try {
     const _content2 = await callAI({ messages:[{role:'user',content:prompt}], temperature:0.2, json:true, maxTokens:8000 });
@@ -2231,8 +2240,8 @@ JSON בלבד — עד 150 משימות:
     const validTasks = Object.values(slotMap);
     if (!validTasks.length) throw new Error('לא נוצרו משימות תקינות — נסה שוב');
 
-    S.pendingPlan = validTasks;
-    renderSemesterPlanTable(validTasks, courses);
+    S.pendingPlan = validTasks.map(t => ({...t, name: t.course || t.name}));
+    renderSemesterPlanTable(S.pendingPlan, courses);
     document.getElementById('semester-result-box').classList.remove('hidden');
     document.getElementById('semester-result-sub').textContent = `${validTasks.length} משימות · ${courses.length} קורסים · ${Math.round(validTasks.length*1.5)} שעות`;
     document.getElementById('semester-result-box').scrollIntoView({behavior:'smooth',block:'start'});
@@ -2743,7 +2752,7 @@ function renderTodayTasks(){
     return `<div class="tl-slot ${sc}" style="${animDelay}">
       <div class="tl-bar" style="background:${cColor}"></div>
       <div class="tl-time"><div class="tl-time-h">${th}</div><div class="tl-time-m">${tm}</div></div>
-      <div class="tl-body">
+      <div class="tl-body" onclick="openTaskEditSheet('${t.id}')">
         <div class="tl-meta">
           ${t.course?`<span class="tl-course-tag" style="background:${cColor}22;color:${cColor}">${t.course}</span>`:''}
           ${t.priority?`<span class="tl-pri" style="background:${priBg[t.priority]||'var(--yellow-light)'};color:${priColor[t.priority]||'var(--yellow)'}">${t.priority}</span>`:''}
@@ -3463,7 +3472,7 @@ function scheduleExamCrunch(examId) {
     return;
   }
 
-  const crunchNames = [`שליפה אקטיבית — ${ex.course}`, `מבחן תרגול — ${ex.course}`, `חזרה אינטנסיבית — ${ex.course}`, `תרגול שאלות — ${ex.course}`];
+  const crunchNames = [ex.course];
   const validTimes = ["08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00"];
   const newTasks = []; let nameIdx = 0;
   const lines = slotsData.text.split('\n').filter(l => l.trim());
@@ -3594,77 +3603,181 @@ function checkPastDueTasks() {
     const todayStr = ld(new Date()); let missedTasks = [];
     S.tasks.forEach(t => { if (t.date < todayStr && !t.done && !t.missed) { t.missed = true; t.missedReason = 'לא בוצע (עבר)'; missedTasks.push(t); } });
     if (missedTasks.length > 0) {
+        _rcPendingTasks = missedTasks;
         save();
         openRecalc('morning');
         const chat = document.getElementById('recalc-chat');
-        const taskDetails = missedTasks.map(t=>`"${t.name}" (${t.course||'ללא קורס'}, ${t.date})`).join(', ');
-        const taskJSON = JSON.stringify(missedTasks.map(t=>({id:t.id,name:t.name,course:t.course,date:t.date,time:t.time})));
-        const slotsData = getAvailableSlots(todayStr, todayStr, 3);
-        const msg = `בוקר טוב ☀️<br>ראיתי ${missedTasks.length > 1 ? `שנשארו ${missedTasks.length} משימות לא גמורות` : 'שנשארה משימה לא גמורה'}: <b>${taskDetails}</b>.<br><br>לא משאירים פצועים בשטח 💪 <b>מה לעשות? לשבץ מחדש היום, לדחות לסוף שבוע, או לוותר?</b>`;
-        chat.innerHTML = `<div class="chat-msg ai"><div class="chat-bubble">${msg}</div></div>`;
-        recalcHistory = [{role: 'system', content: `יש ${missedTasks.length} משימות שפוספסו: ${taskJSON}.
-זמנים פנויים היום: ${slotsData.text||'אין'}.
-חוקים: (1) הצע 2-3 אפשרויות קונקרטיות לשיבוץ מחדש. (2) כשהמשתמש בוחר — החזר JSON עם actions.update (id+date+time חדשים). (3) שעות תקינות: 08:00,09:00,10:00,11:00,12:00,13:00,14:00,15:00,16:00,17:00,18:00,19:00,20:00. (4) פורמט: {"reply":"...","actions":{"update":[{"id":"ID","date":"YYYY-MM-DD","time":"HH:MM"}]}}`}];
+        const taskSummary = missedTasks.map(t => `• <b>${t.course||t.name}</b> — ${t.date}`).join('<br>');
+        const plural = missedTasks.length > 1 ? `${missedTasks.length} משימות לא גמורות` : 'משימה לא גמורה';
+        chat.innerHTML = `<div class="chat-msg ai"><div class="chat-bubble">בוקר טוב ☀️<br>ראיתי שנשארה ${plural}:<br><br>${taskSummary}<br><br>לא משאירים פצועים בשטח 💪 <b>מה לעשות?</b></div></div>`;
+        const zone = document.getElementById('recalc-actions-zone');
+        zone.innerHTML = `
+          <button class="rc-action-btn rc-blue"  onclick="_rcDoRescheduleMissed('tomorrow')">📅 דחה הכל למחר</button>
+          <button class="rc-action-btn rc-green" onclick="_rcDoRescheduleMissed('spread')">📆 פזר על השבוע הקרוב</button>
+          <button class="rc-action-btn rc-muted" onclick="_rcDoMarkMissed()">📌 השאר כפוספסות</button>`;
     }
 }
 
+// ── RECALC DIRECT-ACTION HELPERS ──
+function _findNextFreeSlot(fromDateStr) {
+  const validTimes = ["08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00"];
+  const wakeH  = parseInt((S.wakeTime||'08:00').split(':')[0]);
+  const sleepH = parseInt((S.sleepTime||'23:00').split(':')[0]);
+  let d = new Date(fromDateStr + 'T12:00:00');
+  for (let i = 0; i < 28; i++, d.setDate(d.getDate() + 1)) {
+    const dateStr = ld(d);
+    const dow = d.getDay();
+    if (dow === 6) continue;
+    for (const slot of validTimes) {
+      const h = parseInt(slot.split(':')[0]);
+      if (h < wakeH || h >= sleepH) continue;
+      const sm = h * 60;
+      const anchorBusy = (S.anchors||[]).some(a => {
+        if (parseInt(a.day) !== dow) return false;
+        const as2 = parseInt((a.start||'00:00').split(':')[0])*60 - (a.travelMin||0);
+        const ae2 = parseInt((a.end  ||'00:00').split(':')[0])*60 + (a.travelMin||0);
+        return sm < ae2 && (sm + 90) > as2;
+      });
+      if (anchorBusy) continue;
+      if (!S.tasks.some(t => t.date === dateStr && t.time === slot && !t.done && !t.missed))
+        return { date: dateStr, time: slot };
+    }
+  }
+  return null;
+}
+
+function _rcShowTextInput() {
+  document.getElementById('recalc-input-wrap').classList.remove('hidden');
+  const tog = document.getElementById('rc-custom-toggle');
+  if (tog) tog.classList.add('hidden');
+  document.getElementById('recalc-input').focus();
+}
+
+function _rcShowResult(html, type = 'success') {
+  const zone = document.getElementById('recalc-actions-zone');
+  zone.innerHTML = `<div class="rc-result-box ${type}">${html}</div>
+    <button class="rc-action-btn rc-muted" onclick="closeRecalc()" style="margin-top:0.25rem">סגור</button>`;
+  document.getElementById('recalc-input-wrap').classList.add('hidden');
+  const tog = document.getElementById('rc-custom-toggle');
+  if (tog) tog.classList.add('hidden');
+}
+
+function _rcDoMoveNextDay() {
+  const results = [];
+  _rcPendingTasks.forEach(t => {
+    const base = new Date((t.date || ld(new Date())) + 'T12:00:00');
+    base.setDate(base.getDate() + 1);
+    const slot = _findNextFreeSlot(ld(base));
+    if (slot) {
+      S.tasks.push({...t, id: uid(), date: slot.date, time: slot.time, done: false, missed: false, name: t.course || t.name});
+      results.push(`• <b>${t.course||t.name}</b> → ${slot.date} ${slot.time}`);
+    }
+  });
+  save(); renderAll();
+  _rcShowResult(`✅ ${results.length} משימות שובצו מחדש:<br><br><div style="font-size:0.82rem;text-align:right;font-weight:400">${results.join('<br>')}</div>`);
+}
+
+function _rcDoSpreadWeek() {
+  let searchFrom = ld(new Date());
+  const results = [];
+  _rcPendingTasks.forEach(t => {
+    const slot = _findNextFreeSlot(searchFrom);
+    if (slot) {
+      S.tasks.push({...t, id: uid(), date: slot.date, time: slot.time, done: false, missed: false, name: t.course || t.name});
+      results.push(`• <b>${t.course||t.name}</b> → ${slot.date} ${slot.time}`);
+      searchFrom = slot.date;
+    }
+  });
+  save(); renderAll();
+  _rcShowResult(`✅ ${results.length} משימות פוזרו על השבוע:<br><br><div style="font-size:0.82rem;text-align:right;font-weight:400">${results.join('<br>')}</div>`);
+}
+
+function _rcDoIgnore() {
+  _rcShowResult(`🗑 ${_rcPendingTasks.length} משימות הוסרו מהלו"ז.`, 'deleted');
+  save(); renderAll();
+}
+
+// Morning mode — tasks exist in S.tasks as missed, we reschedule them
+function _rcDoRescheduleMissed(mode) {
+  let searchFrom = mode === 'tomorrow' ? ld(new Date(Date.now()+86400000)) : ld(new Date());
+  const results = [];
+  _rcPendingTasks.forEach(t => {
+    const slot = _findNextFreeSlot(searchFrom);
+    if (slot) {
+      t.date = slot.date; t.time = slot.time; t.missed = false; delete t.missedReason;
+      results.push(`• <b>${t.course||t.name}</b> → ${slot.date} ${slot.time}`);
+      searchFrom = slot.date;
+    }
+  });
+  save(); renderAll();
+  _rcShowResult(`✅ ${results.length} משימות שובצו מחדש:<br><br><div style="font-size:0.82rem;text-align:right;font-weight:400">${results.join('<br>')}</div>`);
+}
+
+function _rcDoMarkMissed() {
+  _rcShowResult(`📌 ${_rcPendingTasks.length} משימות נשארות כפוספסות.`, 'deleted');
+}
+
+function _rcProceedWithAvailable() {
+  const ctx = _rcCapacityCtx;
+  if (!ctx) { closeRecalc(); return; }
+  const perWeek = +(ctx.available / Math.max(1, ctx.weeks)).toFixed(1);
+  const el = document.getElementById('pl-hours');
+  if (el) el.value = perWeek;
+  closeRecalc();
+  setTimeout(() => generatePlan(), 150);
+}
+
+function _rcFreeFromCourse(course) {
+  const removed = S.tasks.filter(t => t.course === course && !t.done).length;
+  S.tasks = S.tasks.filter(t => !(t.course === course && !t.done));
+  save(); renderAll(); closeRecalc();
+  toast(`✅ הוסרו ${removed} משימות מ-"${course}"`);
+  setTimeout(() => generatePlan(), 200);
+}
+
 function openRecalcForCollision(anchor, tasks) {
+    _rcPendingTasks = tasks;
     openRecalc('collision');
     const chat = document.getElementById('recalc-chat');
-    const today = ld(new Date());
-    // Build a summary of displaced tasks
-    const taskSummary = tasks.map(t => `"${t.name}" (${t.course||'ללא קורס'}) — ${t.date} ${t.time}`).join('<br>');
-    const taskJSON = JSON.stringify(tasks.map(t=>({id:t.id,name:t.name,course:t.course,date:t.date,time:t.time,duration:t.duration})));
-    // Find available free slots for rescheduling context
-    const slotsData = getAvailableSlots(today, tasks.reduce((latest,t)=>t.date>latest?t.date:latest, today), 3);
     const totalDuration = tasks.reduce((sum,t)=>sum+parseInt(t.duration||90),0);
-    const msg = `⚠️ <b>ניגוד לו"ז!</b><br>העוגן <b>"${anchor.name}"</b> (יום ${['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'][anchor.day]}, ${anchor.start}–${anchor.end}) דרס את המשימות הבאות (${tasks.length} בסך הכל, ~${Math.round(totalDuration/60*10)/10} שעות):<br><br>${taskSummary}<br><br>הוצאתי אותן מהלו"ז. <b>מה לעשות איתן?</b>`;
-    chat.innerHTML = `<div class="chat-msg ai"><div class="chat-bubble">${msg}</div></div>`;
-    recalcHistory = [{
-      role: 'system',
-      content: `אתה מנהל לו"ז שעוזר לסטודנט לאחר שעוגן חדש דרס ${tasks.length} משימות (${Math.round(totalDuration/60*10)/10} שעות).
-עוגן חדש: "${anchor.name}" — יום ${anchor.day}, ${anchor.start}–${anchor.end}.
-משימות שנדרסו: ${taskJSON}.
-זמנים פנויים: ${slotsData.text || 'אין זמנים פנויים זמינים'}.
-היום: ${today}.
-
-חוקים: (1) הצג לסטודנט 2-3 אפשרויות קונקרטיות: לדחוס לסוף שבוע, לפרוס על הימים הקרובים, לדלג על חלק. (2) כשהסטודנט בוחר — החזר JSON עם actions.add לשיבוץ מחדש. (3) השתמש רק בשעות: 08:00,09:00,10:00,11:00,12:00,13:00,14:00,15:00,16:00,17:00,18:00,19:00,20:00. (4) אל תשבץ בזמן עוגנים אחרים. (5) פורמט: {"reply":"...","actions":{"add":[...]}}`
-    }];
+    const taskSummary = tasks.map(t => `• <b>${t.course||t.name}</b> — ${t.date} ${t.time}`).join('<br>');
+    chat.innerHTML = `<div class="chat-msg ai"><div class="chat-bubble">⚠️ <b>ניגוד לו"ז!</b><br>העוגן <b>"${anchor.name}"</b> דרס ${tasks.length} משימות (~${Math.round(totalDuration/60*10)/10} שעות):<br><br>${taskSummary}<br><br><b>מה לעשות עם המשימות?</b></div></div>`;
+    const zone = document.getElementById('recalc-actions-zone');
+    zone.innerHTML = `
+      <button class="rc-action-btn rc-blue"  onclick="_rcDoMoveNextDay()">📅 הזז כל אחת ליום הפנוי הבא</button>
+      <button class="rc-action-btn rc-green" onclick="_rcDoSpreadWeek()">📆 פזר על השבוע הקרוב</button>
+      <button class="rc-action-btn rc-red"   onclick="_rcDoIgnore()">🗑 מחק אותן</button>`;
 }
 
 function openCapacityNegotiation(course, requested, available, examDate, slotsText, perWeek, weeks) {
+    _rcCapacityCtx = { course, requested, available, examDate, perWeek, weeks };
     openRecalc('capacity');
     const deficit = (requested - available).toFixed(1);
     const chat = document.getElementById('recalc-chat');
-    const otherCourses = [...new Set(S.tasks.filter(t => t.course !== course && !t.done && t.date >= ld(new Date())).map(t => t.course))];
-    const otherCourseSummary = otherCourses.length > 0
-      ? otherCourses.map(c => { const cnt = S.tasks.filter(t=>t.course===c&&!t.done&&t.date>=ld(new Date())).length; return `${c} (${cnt} משימות)`; }).join(', ')
-      : 'אין קורסים אחרים';
-    const weekBreakdown = perWeek && weeks ? `<br><small style="opacity:0.8">(${perWeek} שעות/שבוע × ${weeks} שבועות = ${requested.toFixed(0)} שעות)</small>` : '';
     const availPerWeek = perWeek && weeks ? ` (${(available/weeks).toFixed(1)} שעות/שבוע)` : '';
-    const msg = `⚠️ <b>בעיית קיבולת!</b><br><br>
-ביקשת <b>${requested.toFixed(0)} שעות</b> ל-"${course}"${weekBreakdown}, אבל יש רק <b>${available.toFixed(1)} שעות פנויות</b>${availPerWeek} עד המבחן ב-${examDate} (מחסור: <b>${deficit} שעות</b>).<br><br>
-<b>קורסים אחרים בלו"ז:</b> ${otherCourseSummary}.<br><br>
-<b>איך תרצה לפתור את זה?</b><br>
-א. צור תוכנית עם ${available.toFixed(1)} שעות בלבד${availPerWeek}<br>
-ב. פנה שעות מקורס אחר (ספר לי מאיזה)<br>
-ג. הסר משימות לא קריטיות ואז נחזור לתכנן`;
-    chat.innerHTML = `<div class="chat-msg ai"><div class="chat-bubble">${msg}</div></div>`;
-    const perWeekCtx = perWeek && weeks ? ` (${perWeek} שעות/שבוע × ${weeks} שבועות)` : '';
-    recalcHistory = [{
-      role: 'system',
-      content: `אתה מנהל קיבולת לו"ז. הסטודנט ביקש ${requested.toFixed(0)} שעות${perWeekCtx} ל-"${course}" אבל יש רק ${available.toFixed(1)} שעות פנויות (מחסור: ${deficit} שעות).
-קורסים אחרים בלו"ז: ${otherCourseSummary}.
-מבחן: ${examDate}.
-זמנים פנויים: ${slotsText}.
-חוקים: (1) בקש את הסטודנט לבחור אחת מ-3 האפשרויות שהצעת. (2) אם הוא בוחר לפנות שעות מקורס אחר — החזר JSON עם actions.delete של המשימות שמתפנות. (3) אם הוא מסכים לתוכנית קטנה יותר — אמור לו לחזור למתכנן ולהזין ${(available/Math.max(1,weeks||1)).toFixed(1)} שעות/שבוע. (4) היה ישיר, ממוקד, לא יותר מ-3 אפשרויות. (5) פורמט: {"reply":"...","actions":{"delete":["ID"]}}`
-    }];
+    const weekBreakdown = perWeek && weeks ? `<small> (${perWeek} שעות/שבוע × ${weeks} שבועות)</small>` : '';
+    chat.innerHTML = `<div class="chat-msg ai"><div class="chat-bubble">⚠️ <b>אין מספיק מקום!</b><br><br>ביקשת <b>${requested.toFixed(0)} שעות</b> ל-"${course}"${weekBreakdown},<br>אבל יש רק <b>${available.toFixed(1)} שעות פנויות</b>${availPerWeek} עד ${examDate}.<br><b>מחסור: ${deficit} שעות.</b><br><br>בחר אפשרות:</div></div>`;
+    const otherCourses = [...new Set(S.tasks.filter(t => t.course !== course && !t.done && t.date >= ld(new Date())).map(t => t.course))];
+    window._rcOtherCourses = otherCourses;
+    const otherBtns = otherCourses.map((c, i) => {
+      const cnt = S.tasks.filter(t=>t.course===c&&!t.done&&t.date>=ld(new Date())).length;
+      return `<button class="rc-action-btn rc-orange" onclick="_rcFreeFromCourse(window._rcOtherCourses[${i}])">🗑 פנה שעות מ-"${c}" (${cnt} משימות)</button>`;
+    }).join('');
+    const zone = document.getElementById('recalc-actions-zone');
+    zone.innerHTML = `
+      <button class="rc-action-btn rc-blue" onclick="_rcProceedWithAvailable()">✅ תכנן עם ${available.toFixed(1)} שעות פנויות${availPerWeek}</button>
+      ${otherBtns}
+      <button class="rc-action-btn rc-muted" onclick="closeRecalc()">ביטול</button>`;
 }
 
 function openRecalc(mode = 'schedule') {
     recalcHistory = [];
     document.getElementById('recalc-overlay').classList.remove('hidden');
     document.getElementById('recalc-chat').innerHTML = '';
+    document.getElementById('recalc-actions-zone').innerHTML = '';
+    document.getElementById('recalc-input-wrap').classList.add('hidden');
+    const tog = document.getElementById('rc-custom-toggle');
+    if (tog) { tog.classList.remove('hidden'); }
     currentChatMode = mode;
     const header = document.getElementById('chat-dynamic-header');
     const title = document.getElementById('chat-header-title');
@@ -3690,6 +3803,7 @@ function openRecalc(mode = 'schedule') {
         let msg = badTasks.length > 0 ? `ראיתי שהשבוע היו ${badTasks.length} משימות שדורגו נמוך. בוא נבין למה ונתקן לשבוע הבא 🔍` : doneTasks > 0 ? `שבוע מצוין! השלמת ${doneTasks} משימות 🚀 על מה רוצה לשים דגש שבוע הבא?` : `היי! ספר לי איך היה השבוע — מה הלך טוב ומה היה קשה?`;
         chat.innerHTML = `<div class="chat-msg ai"><div class="chat-bubble">${msg}</div></div>`;
         recalcHistory = [{role: 'system', content: weekSysPrompt}];
+        _rcShowTextInput();
     } else if (mode === 'exam') {
         header.style.background = 'linear-gradient(135deg, #16c98d, #38ef7d)';
         title.textContent = '🎯 מעקב התקדמות לקורס';
@@ -3697,14 +3811,14 @@ function openRecalc(mode = 'schedule') {
         btn.style.background = 'linear-gradient(135deg, #16c98d, #38ef7d)';
         recalcHistory = [{role: 'system', content: `אתה יועץ אקדמי מומחה לקורסים. תפקידך לנתח את הפער בין הזמן שעבר לבין ההתקדמות בפועל, ולהציע אסטרטגיה ספציפית.
 חוקים: (1) נתח את הפער בין timePct לבין perfPct. (2) המלץ על שיטות למידה ספציפיות: חזרה מרווחת, שליפה אקטיבית, שילוב נושאים. (3) אם צריך לסדר מחדש — החזר JSON עם actions.update/add בשעות תקינות בלבד: 08:00,09:00,10:00,11:00,12:00,13:00,14:00,15:00,16:00,17:00,18:00,19:00,20:00. (4) היה ישיר — אמור אם הקצב מספיק או לא. (5) החזר JSON: {"reply":"...","actions":{...}}`}];
+        _rcShowTextInput();
     } else if (mode === 'morning' || mode === 'collision') {
         header.style.background = 'linear-gradient(135deg, #f5a623, #ff7b7b)';
         title.textContent = '⚡ מנהל לוח זמנים';
         sub.textContent = 'פתרון התנגשויות וסידור מחדש של משימות.';
         btn.style.background = 'linear-gradient(135deg, #f5a623, #ff7b7b)';
         if (!recalcHistory.length) {
-            recalcHistory = [{role: 'system', content: `אתה מנהל לוח זמנים מדויק. תפקידך לפתור התנגשויות ולסדר משימות שנפלו.
-חוקים: (1) השתמש רק בשעות: 08:00,09:00,10:00,11:00,12:00,13:00,14:00,15:00,16:00,17:00,18:00,19:00,20:00. (2) אל תקבע בעבר. (3) החזר JSON: {"reply":"...","actions":{"add":[...],"update":[{"id":"ID","date":"YYYY-MM-DD","time":"HH:MM"}]}}. (4) הסבר מה שינית ולמה.`}];
+            recalcHistory = [{role: 'system', content: `אתה מנהל לוח זמנים מדויק. תפקידך לפתור התנגשויות ולסדר משימות שנפלו. שם כל משימה חדשה חייב להיות בדיוק שם הקורס, ללא תוספות. חוקים: (1) שעות: 08:00,09:00,10:00,11:00,12:00,13:00,14:00,15:00,16:00,17:00,18:00,19:00,20:00. (2) אל תקבע בעבר. (3) החזר JSON: {"reply":"...","actions":{"add":[...],"update":[{"id":"ID","date":"YYYY-MM-DD","time":"HH:MM"}]}}.`}];
         }
     } else if (mode === 'capacity') {
         header.style.background = 'linear-gradient(135deg, #f59e0b, #ef4444)';
@@ -3725,6 +3839,7 @@ function openRecalc(mode = 'schedule') {
         if (!recalcHistory.length) {
           recalcHistory = [{role:'system',content:`אתה מנהל לו"ז. עזור לסטודנט להחליט מה לעשות עם משימות שנקבעו בחגים. פורמט: {"reply":"...","actions":{"update":[{"id":"ID","date":"YYYY-MM-DD","time":"HH:MM"}],"delete":["ID"]}}`}];
         }
+        _rcShowTextInput();
     } else { // schedule — Global Intelligent Manager
         header.style.background = 'linear-gradient(135deg,var(--red),#ff7b7b)';
         title.textContent = '⚡ מנהל לוח זמנים AI — ראייה גלובלית';
@@ -3746,6 +3861,15 @@ function openRecalc(mode = 'schedule') {
         const taskLines = pendingTasks.slice(0,30).map(t=>`  • [${t.id}] ${t.date} ${t.time||''} | ${t.course||'ללא קורס'} | ${t.name}`).join('\n') || '  אין';
         const examLines = S.exams.filter(e=>e.date>=todayStr).map(e=>`  • ${e.course}: ${e.date} (עוד ${Math.ceil((new Date(e.date)-new Date())/86400000)} ימים)`).join('\n') || '  אין';
         chat.innerHTML = `<div class="chat-msg ai"><div class="chat-bubble">היי! יש לי תמונה גלובלית של הלו"ז שלך — <b>${pendingTasks.length} משימות קרובות</b>, ${S.anchors.length} עוגנים, תפוסה: <b>~${Math.min(capacityPct,100)}%</b>.<br>שאל אותי על הלו"ז, בקש שינויים, הוספות, או שאל "מתי יש לי X?"</div></div>`;
+        setTimeout(() => {
+          const c = document.getElementById('recalc-chat');
+          if (c) _appendQuickReplies(c, [
+            { label: 'ייעל את הלו"ז',      text: 'ייעל את הלו"ז שלי — הזז משימות לשעות הטובות ביותר לפי הפרופיל שלי' },
+            { label: 'מה העומס השבוע?',    text: 'מה העומס שלי השבוע? האם הלו"ז ריאלי?' },
+            { label: 'פנה מקום לשעתיים',   text: 'פנה לי שעתיים ברצף מוקדם ביותר בשבוע הקרוב' },
+            { label: 'מחק מה שלא רלוונטי', text: 'הצג משימות שכדאי למחוק כי הן ישנות או לא רלוונטיות', cls: 'red' }
+          ]);
+        }, 50);
         recalcHistory = [{role:'system', content:`אתה מנהל לו"ז AI חכם לסטודנט ${S.userName||''} עם ראייה גלובלית מלאה.
 
 📋 עוגנים קבועים (אסור לחפוף):
@@ -3768,31 +3892,58 @@ ${examLines}
 (5) אם שאלה רגשית/נפשית → reply: "לתמיכה נפשית, פתח את בוט הפסיכולוג 🧠 דרך התפריט" ו-actions: {}
 (6) לפני הוספת שגרה חוזרת — בדוק קונפליקטים תחילה, הצע פשרה אם הלו"ז מלא
 (7) כשמוסיפים משימות חדשות — השתמש ב-ID אקראי חדש, לא בקיים`}];
+        _rcShowTextInput();
     }
 }
 function closeRecalc() { document.getElementById('recalc-overlay').classList.add('hidden'); renderAll(); }
-function applyPendingRecalcActions(cid) {
-    if (!pendingRecalcActions || !pendingRecalcActions.length) { toast('אין פעולות ממתינות'); return; }
-    const conflicts = pendingRecalcActions.filter(t => {
-        if (!t.date || !t.time) return false;
-        const taskDay = new Date(t.date + 'T12:00:00').getDay();
-        const tst = parseInt((t.time||'00:00').split(':')[0])*60 + parseInt((t.time||'00:00').split(':')[1]);
-        const anchorConflict = (S.anchors||[]).some(a => {
-            if (parseInt(a.day) !== taskDay) return false;
-            const ast = parseInt((a.start||'00:00').split(':')[0])*60 + parseInt((a.start||'00:00').split(':')[1]) - (a.travelMin||0);
-            const aen = parseInt((a.end||'00:00').split(':')[0])*60 + parseInt((a.end||'00:00').split(':')[1]) + (a.travelMin||0);
-            return tst < aen && (tst + 90) > ast;
-        });
-        const taskConflict = S.tasks.some(old => old.date === t.date && old.time === t.time && !old.done && !old.missed);
-        return anchorConflict || taskConflict;
+function _isRecalcConflict(t) {
+    if (!t.date || !t.time) return false;
+    const taskDay = new Date(t.date + 'T12:00:00').getDay();
+    const tst = parseInt((t.time||'00:00').split(':')[0])*60 + parseInt((t.time||'00:00').split(':')[1]);
+    const anchorConflict = (S.anchors||[]).some(a => {
+        if (parseInt(a.day) !== taskDay) return false;
+        const ast = parseInt((a.start||'00:00').split(':')[0])*60 + parseInt((a.start||'00:00').split(':')[1]) - (a.travelMin||0);
+        const aen = parseInt((a.end||'00:00').split(':')[0])*60 + parseInt((a.end||'00:00').split(':')[1]) + (a.travelMin||0);
+        return tst < aen && (tst + 90) > ast;
     });
-    if (conflicts.length > 0 && !confirm(`⚠️ ${conflicts.length} משימות מתנגשות עם לו"ז קיים. להוסיף בכל זאת?`)) return;
-    pendingRecalcActions.forEach(t => { S.tasks.push({...t, id: uid(), done: false, missed: false}); });
-    const count = pendingRecalcActions.length;
+    return anchorConflict || S.tasks.some(old => old.date === t.date && old.time === t.time && !old.done && !old.missed);
+}
+
+function _doApplyRecalcActions(cid, skipConflicts) {
+    if (!pendingRecalcActions?.length) return;
+    const tasks = skipConflicts
+        ? pendingRecalcActions.filter(t => !_isRecalcConflict(t))
+        : pendingRecalcActions;
+    tasks.forEach(t => { S.tasks.push({...t, id: uid(), name: t.course || t.name, done: false, missed: false}); });
+    const count = tasks.length;
     pendingRecalcActions = null;
     if (cid) document.getElementById(cid)?.remove();
     save(); renderAll();
     toast(`✅ ${count} משימות נוספו ללו"ז!`);
+}
+
+function applyPendingRecalcActions(cid) {
+    if (!pendingRecalcActions?.length) { toast('אין פעולות ממתינות'); return; }
+    const conflicts = pendingRecalcActions.filter(_isRecalcConflict);
+    if (!conflicts.length) { _doApplyRecalcActions(cid, false); return; }
+    // Show resolution buttons in-app — no browser confirm()
+    const el = document.getElementById(cid);
+    const nonCount = pendingRecalcActions.length - conflicts.length;
+    const conflictList = conflicts.map(t => `• <b>${t.course||t.name}</b> — ${t.date} ${t.time}`).join('<br>');
+    const resolveHtml = `
+        <div style="font-size:0.85rem">⚠️ <b>${conflicts.length} משימות מתנגשות עם לו"ז קיים:</b>
+          <div style="font-size:0.78rem;margin:0.35rem 0 0.75rem;color:var(--muted)">${conflictList}</div>
+        </div>
+        <div style="display:flex;gap:0.4rem;flex-wrap:wrap;justify-content:flex-end">
+          <button onclick="document.getElementById('${cid}').remove();pendingRecalcActions=null;toast('❌ בוטל')"
+            style="background:var(--surface2);color:var(--muted);border:1px solid var(--border);padding:0.45rem 0.9rem;border-radius:8px;font-weight:700;cursor:pointer;font-family:var(--sans);font-size:0.82rem">✗ בטל</button>
+          ${nonCount>0?`<button onclick="_doApplyRecalcActions('${cid}',true)"
+            style="background:var(--accent-light);color:var(--accent);border:1.5px solid var(--accent);padding:0.45rem 0.9rem;border-radius:8px;font-weight:700;cursor:pointer;font-family:var(--sans);font-size:0.82rem">הוסף ${nonCount} ללא מתנגשות</button>`:''}
+          <button onclick="_doApplyRecalcActions('${cid}',false)"
+            style="background:var(--green);color:white;border:none;padding:0.45rem 0.9rem;border-radius:8px;font-weight:700;cursor:pointer;font-family:var(--sans);font-size:0.82rem">הוסף הכל (דרוס ${conflicts.length})</button>
+        </div>`;
+    if (el) el.querySelector('.chat-bubble').innerHTML = resolveHtml;
+    else _doApplyRecalcActions(cid, false);
 }
 
 // ── PSYCHOLOGIST BOT ──
@@ -4104,7 +4255,7 @@ function hpConfirmAddTasks() {
     const offset = Math.round((i + 0.5) * remainingDays / n);
     d.setDate(today.getDate() + Math.min(offset, remainingDays));
     if (d.getDay() === 6) d.setDate(d.getDate() - 1); // skip Saturday
-    S.tasks.push({ id:uid(), name:t.name, course:hobby.name, date:ld(d), time:times[i%times.length],
+    S.tasks.push({ id:uid(), name:hobby.name, course:hobby.name, date:ld(d), time:times[i%times.length],
       duration:`${t.duration||hobby.sessionDuration} דק'`, priority:'בינוני', done:false, missed:false });
   });
   const added = n; hobby._pendingTasks = null;
@@ -4136,7 +4287,7 @@ ${slotsData.text}
     const parsed = JSON.parse(ans.match(/\{[\s\S]*\}/)[0]);
     if (!parsed.tasks?.length) throw new Error('empty');
     parsed.tasks.forEach(t => {
-      S.tasks.push({ id:uid(), name:t.name||`אימון ${hobby.name}`, course:hobby.name,
+      S.tasks.push({ id:uid(), name:hobby.name, course:hobby.name,
         date:t.date, time:t.time, duration:`${t.duration||hobby.sessionDuration} דק'`,
         priority:'בינוני', done:false, missed:false });
     });
@@ -4277,7 +4428,7 @@ async function _wrGenerate() {
     .sort((a,b)=>a.date.localeCompare(b.date)).slice(0,6)
     .map(e=>({ c:e.course, d:e.date, days:Math.ceil((new Date(e.date)-new Date())/86400000) }));
 
-  const { rules, taskDuration, tMin, tMax } = _buildSchedulingRules(S.profile, _wr.answers);
+  const { rules, taskDuration, tMin, tMax, sessionMins } = _buildSchedulingRules(S.profile, _wr.answers);
   const courseAdj = _buildCourseAdjustments(_wr.answers);
   const courseConfig = (S.courses||[]).map(c=>`${c.name}: ${c.hoursPerWeek}ש'/שבוע`).join(', ') || _wr.coursesLastWeek.join(', ') || 'לא הוגדרו';
   const hobbyLines = Object.entries(_wr.answers.hobbies).map(([h,v])=>`${h}: ${v==='none'?'דלג השבוע':v==='partial'?'פגישה אחת':'שמור תדירות'}`).join(', ') || 'אין';
@@ -4295,6 +4446,35 @@ async function _wrGenerate() {
     if (a.mat === 'little') return `${c}: כמעט סיים — חזרות בלבד`;
     return null;
   }).filter(Boolean).join('\n') || 'אין מידע';
+
+  const courseList = [...new Set([
+    ...Object.keys(_wr.answers.courses || {}),
+    ...(S.courses||[]).map(c=>c.name)
+  ])].filter(Boolean);
+  const insights = _buildPerformanceInsights(courseList);
+  const allocation = _calcStudyAllocation(slots.totalMinutes, _wr.answers, exams, insights, sessionMins);
+
+  const loadLbl = { min:'קל (40%)', ok:'בינוני (62%)', max:'מקסימום (83%)' }[_wr.answers.goal||'ok'] || 'בינוני';
+  const allocText = Object.entries(allocation.allocations).length
+    ? Object.entries(allocation.allocations).map(([c,a]) => {
+        const ins = insights[c];
+        let note = '';
+        if (ins?.avgRating !== null && ins?.avgRating < 2.5) note += ' ⚠️ דירוג נמוך היסטורי';
+        if (ins?.missRate > 0.4) note += ' ⚠️ פספוסים תכופים';
+        if (ins?.avgRating > 4.0 && ins?.missRate < 0.1) note += ' ✅ ביצועים מצוינים';
+        return `• ${c}: ${a.minutes} דק' (${a.sessions} ישיבות)${note}`;
+      }).join('\n')
+    : '• אין קורסים מוגדרים';
+  const perfText = courseList.length
+    ? courseList.map(c => {
+        const ins = insights[c];
+        if (!ins || ins.total === 0) return `• ${c}: אין נתונים היסטוריים`;
+        const ratingStr = ins.avgRating !== null ? `דירוג ממוצע: ${ins.avgRating.toFixed(1)}/5` : 'ללא דירוגים';
+        const missStr = ins.missRate > 0 ? `, פספוסים: ${Math.round(ins.missRate*100)}%` : '';
+        const slotsStr = ins.problemSlots.length ? `, שעות בעייתיות: ${ins.problemSlots.join('/')}` : '';
+        return `• ${c}: ${ratingStr}${missStr}${slotsStr}`;
+      }).join('\n')
+    : '• אין נתונים היסטוריים עדיין';
 
   const prompt = `אתה מתכנן לו"ז שבועי אישי. תפקידך ליצור לו"ז שמותאם בדיוק לסטודנט הזה — לא תבנית גנרית.
 
@@ -4316,7 +4496,13 @@ ${matInfo}
 
 ━━━ מבחנים קרובים ━━━
 ${exams.map(e=>`${e.c}: ${e.days} ימים (${e.d})`).join(' | ')||'אין'}
-מבחן בפחות מ-5 ימים → 60% מהזמן לקורס הזה
+
+━━━ הקצאת זמן לימוד — ${loadLbl} ━━━
+זמן פנוי סה"כ: ${slots.totalMinutes} דק' | ללמידה: ${allocation.studyMinutes} דק' (${Math.round(allocation.loadPct*100)}%) | מנוחה: ${allocation.restMinutes} דק'
+${allocText}
+
+━━━ ביצועים היסטוריים (60 יום אחרון) ━━━
+${perfText}
 
 ━━━ עוגנים חסומים (כולל זמני נסיעה — אסור בהחלט לשבץ כאן!) ━━━
 ${slots.anchorDetails || 'אין עוגנים'}
@@ -4327,12 +4513,13 @@ ${slots.text||'אין זמנים פנויים'}
 
 ━━━ הנחיות ביצוע ━━━
 • שבץ משימות רק בתוך חלונות הזמן הפנויים למעלה — לא מחוצה להם!
+• ⚠️ סה"כ זמן לימוד: ${allocation.studyMinutes} דק' — אל תחרוג! זה ${Math.round(allocation.loadPct*100)}% מהזמן הפנוי
+• חלק את הזמן לפי ההקצאה לעיל — קורסים עם ⚠️ מקבלים עדיפות בשעות פיק
 • משך כל משימה: ${Math.max(20,taskDuration-15)}–${taskDuration+20} דק' (לא חייב אחיד — התאם לקורס)
 • השאר לפחות 10 דק' הפסקה בין משימות
-• ${tMin}–${tMax} משימות ביום מקסימום
+• מקסימום ${tMax} משימות ביום, לא יותר מ-2 לאותו קורס ביום
 • גוון שמות (לא "לימוד — X" שוב ושוב)
-• לא יותר מ-2 משימות לאותו קורס ביום
-• פזר על כל הימים
+• פזר על כל ימי השבוע
 
 החזר JSON בלבד:
 {"tasks":[{"date":"YYYY-MM-DD","time":"HH:MM","course":"שם","name":"שם משימה","duration":"X דק'","priority":"גבוה|בינוני|נמוך"},...]}
@@ -4351,8 +4538,8 @@ ${slots.text||'אין זמנים פנויים'}
     if (!validTasks.length) throw new Error('כל המשימות חופפות עם עוגנים — נסה שוב');
     const removed = parsed.tasks.length - validTasks.length;
     if (removed > 0) _wrMsg(`⚠️ ${removed} משימות הוסרו כי חפפו עם עוגנים`);
-    _wr.pendingPlan = validTasks;
-    _wrShowPreview(validTasks);
+    _wr.pendingPlan = validTasks.map(t => ({...t, name: t.course || t.name}));
+    _wrShowPreview(_wr.pendingPlan);
   } catch(e) {
     _wrMsg(`שגיאה: ${e.message}. <button class="wr-btn-inline" onclick="_wrGenerate()">נסה שוב</button>`);
   }
@@ -4516,6 +4703,93 @@ function _wrNext() {
   }
 }
 
+function _buildPerformanceInsights(courses) {
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 60);
+  const cutoffStr = ld(cutoff);
+  const insights = {};
+  courses.forEach(c => {
+    const ct = (S.tasks||[]).filter(t => t.course === c && t.date >= cutoffStr);
+    const total = ct.length;
+    const missed = ct.filter(t => t.missed).length;
+    const rated = ct.filter(t => t.rating != null && !t.missed);
+    const avgRating = rated.length ? rated.reduce((s,t)=>s+(t.rating||3),0)/rated.length : null;
+    const missRate = total ? missed / total : 0;
+    const slotMisses = {};
+    ct.filter(t=>t.missed && t.time).forEach(t=>{ slotMisses[t.time]=(slotMisses[t.time]||0)+1; });
+    const problemSlots = Object.entries(slotMisses).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([s])=>s);
+    insights[c] = { total, missed, missRate, avgRating, problemSlots };
+  });
+  return insights;
+}
+
+function _calcStudyAllocation(freeMinutes, answers, exams, insights, sessionMins) {
+  const goal = answers.goal || 'ok';
+  const load = answers.load || 'ok';
+  let loadPct = goal === 'min' ? 0.40 : goal === 'ok' ? 0.62 : 0.83;
+  if (load === 'heavy') loadPct = Math.max(0.30, loadPct - 0.10);
+  if (load === 'light') loadPct = Math.min(0.90, loadPct + 0.08);
+  const studyMinutes = Math.round(freeMinutes * loadPct);
+  const restMinutes = freeMinutes - studyMinutes;
+  const sm = sessionMins || 60;
+
+  const allCourses = [...new Set([
+    ...Object.keys(answers.courses || {}),
+    ...(S.courses||[]).map(c=>c.name)
+  ])].filter(Boolean);
+  if (!allCourses.length) return { studyMinutes, loadPct, restMinutes, allocations: {} };
+
+  const weights = {};
+  allCourses.forEach(c => {
+    let w = 1.0;
+    const exam = exams.find(e => e.c === c);
+    if (exam) {
+      if      (exam.days <= 5)  w *= 3.0;
+      else if (exam.days <= 14) w *= 2.0;
+      else if (exam.days <= 30) w *= 1.5;
+    }
+    const ins = insights[c];
+    if (ins) {
+      if (ins.avgRating !== null && ins.avgRating < 2.5) w *= 1.4;
+      if (ins.missRate > 0.4) w *= 1.3;
+      if (ins.avgRating !== null && ins.avgRating > 4.0 && ins.missRate < 0.1) w *= 0.7;
+    }
+    const ca = answers.courses?.[c];
+    if (ca) {
+      if      (ca.u === 'hard' && ca.cov === 'little') w *= 1.5;
+      else if (ca.u === 'hard')                         w *= 1.25;
+      else if (ca.u === 'good' && ca.cov === 'all')     w *= 0.6;
+      if      (ca.mat === 'lots')   w *= 1.2;
+      else if (ca.mat === 'little') w *= 0.8;
+    }
+    if (answers.priority && answers.priority !== 'balanced' && answers.priority === c) w *= 1.4;
+    weights[c] = Math.max(0.1, w);
+  });
+
+  const urgentExam = exams.find(e => e.days <= 5);
+  const allocations = {};
+
+  if (urgentExam) {
+    const uc = urgentExam.c;
+    const urgentMins = Math.round(studyMinutes * 0.60);
+    const remaining = studyMinutes - urgentMins;
+    const others = allCourses.filter(c => c !== uc);
+    const otherW = others.reduce((s,c)=>s+(weights[c]||1),0)||1;
+    others.forEach(c => {
+      const mins = Math.round((weights[c]/otherW)*remaining);
+      allocations[c] = { minutes: mins, sessions: Math.max(1, Math.round(mins/sm)) };
+    });
+    allocations[uc] = { minutes: urgentMins, sessions: Math.max(1, Math.round(urgentMins/sm)) };
+  } else {
+    const totalW = Object.values(weights).reduce((s,w)=>s+w,0)||1;
+    allCourses.forEach(c => {
+      const mins = Math.round((weights[c]/totalW)*studyMinutes);
+      allocations[c] = { minutes: mins, sessions: Math.max(1, Math.round(mins/sm)) };
+    });
+  }
+
+  return { studyMinutes, loadPct, restMinutes, allocations };
+}
+
 function _buildSchedulingRules(profile, answers) {
   const p = profile || {};
   const load = answers.load;
@@ -4602,7 +4876,7 @@ function _buildSchedulingRules(profile, answers) {
     }
   }
 
-  return { rules, taskDuration, tMin, tMax, peakSlots, offPeakSlots, taskTypes };
+  return { rules, taskDuration, tMin, tMax, peakSlots, offPeakSlots, taskTypes, sessionMins };
 }
 
 function _buildCourseAdjustments(answers) {
@@ -4655,7 +4929,7 @@ function confirmWeeklyPlan() {
   // Remove undone tasks only within the target range
   S.tasks = S.tasks.filter(t => !(t.date >= range.start && t.date <= range.end && !t.done && !t.missed));
   // Add new plan
-  _wr.pendingPlan.forEach(t => S.tasks.push({...t, id:uid(), done:false, missed:false}));
+  _wr.pendingPlan.forEach(t => S.tasks.push({...t, id:uid(), name: t.course || t.name, done:false, missed:false}));
   // Record review
   if (!S.weeklyReview) S.weeklyReview = { lastReviewDate:null, history:[] };
   S.weeklyReview.lastReviewDate = today;
@@ -4679,7 +4953,7 @@ async function sendRecalc() {
   const todayStr = ld(new Date());
   const examsTxt = S.exams.map(e => `${e.course}: ${e.date}`).join(', ');
   
-  const ruleReminder = `היום: ${todayStr}. מבחנים: ${examsTxt||'אין'}. אתה עונה ב-JSON בלבד! פורמט: {"reply":"הטקסט שלך","actions":{"add":[{"date":"YYYY-MM-DD","time":"HH:MM","course":"שם","name":"יצירתי","duration":"60 דק'","priority":"בינוני"}],"delete":["ID"],"update":[{"id":"ID","date":"YYYY-MM-DD","time":"HH:MM"}]}}`;
+  const ruleReminder = `היום: ${todayStr}. מבחנים: ${examsTxt||'אין'}. אתה עונה ב-JSON בלבד! פורמט: {"reply":"הטקסט שלך","actions":{"add":[{"date":"YYYY-MM-DD","time":"HH:MM","course":"שם","name":"שם הקורס","duration":"60 דק'","priority":"בינוני"}],"delete":["ID"],"update":[{"id":"ID","date":"YYYY-MM-DD","time":"HH:MM"}]}}`;
 
   try {
     const _content3 = await callAI({ messages: [...recalcHistory, {role:'system', content:ruleReminder}], temperature: 0.3, json: true });
@@ -4701,8 +4975,9 @@ async function sendRecalc() {
     document.getElementById('recalc-loading')?.remove();
     chat.innerHTML += `<div class="chat-msg ai"><div class="chat-bubble">${(parsed.reply||'').replace(/\n/g,'<br>')}</div></div>`;
     if(parsed.actions && Array.isArray(parsed.actions.add) && parsed.actions.add.length > 0) {
+        parsed.actions.add = parsed.actions.add.map(t => ({...t, name: t.course || t.name}));
         pendingRecalcActions = parsed.actions.add;
-        const addList = parsed.actions.add.map(t => `• <b>${t.name||'משימה'}</b> — ${t.date||''} ${t.time||''}`).join('<br>');
+        const addList = parsed.actions.add.map(t => `• <b>${t.course||t.name||'משימה'}</b> — ${t.date||''} ${t.time||''}`).join('<br>');
         const cid = 'rc-' + Date.now();
         chat.innerHTML += `<div class="chat-msg ai" id="${cid}"><div class="chat-bubble" style="background:linear-gradient(135deg,var(--green-light),var(--accent-light));border:2px solid var(--green);padding:1rem 1.1rem;border-radius:14px">
             📅 <b>הצעה להוספה ללו"ז:</b><br><br>${addList}<br><br>
@@ -4713,6 +4988,21 @@ async function sendRecalc() {
         </div></div>`;
     } else if(updated) {
         toast('🚨 הלו"ז תוקן וסודר על ידי ה-AI!');
+        _appendQuickReplies(chat, [
+          { label: 'הצג מה שונה', text: 'מה בדיוק שינית עכשיו?' },
+          { label: 'בטל שינויים', text: 'בטל את השינויים האחרונים והחזר כמו שהיה', cls: 'red' },
+          { label: 'תודה ✓', text: 'תודה, סגור', cls: 'muted' }
+        ]);
+    } else {
+        // No changes — offer contextual quick replies
+        const replyLower = (parsed.reply||'').toLowerCase();
+        const chips = [
+          { label: 'הזז ליום הבא', text: 'הזז את המשימות המתנגשות ליום הבא' },
+          { label: 'אחרי העוגן', text: 'קבע אותן מיד אחרי סיום העוגן' },
+          { label: 'מחק אותן', text: 'מחק את המשימות שנפגעו', cls: 'red' },
+          { label: 'השאר כמו שזה', text: 'השאר הכל כמו שזה, תודה', cls: 'muted' }
+        ];
+        _appendQuickReplies(chat, chips);
     }
     chat.scrollTop = chat.scrollHeight;
   } catch(e) {
@@ -5108,4 +5398,126 @@ function closeTaskActionSheet() {
   if (bd) { bd.style.pointerEvents = 'none'; bd.classList.remove('open'); }
   const panel = document.getElementById('task-sheet-panel');
   if (panel) panel.classList.remove('open');
+}
+
+// ── TASK EDIT BOTTOM SHEET ──
+let _tesTaskId = null, _tesAISuggestion = null;
+
+function openTaskEditSheet(id) {
+  const t = S.tasks.find(x => String(x.id) === String(id));
+  if (!t) return;
+  _tesTaskId = id; _tesAISuggestion = null;
+
+  document.getElementById('tes-task-title').textContent = t.name || 'עריכת משימה';
+  document.getElementById('tes-name').value   = t.name || '';
+  document.getElementById('tes-course').value = t.course || '';
+  document.getElementById('tes-date').value   = t.date || ld(new Date());
+  document.getElementById('tes-time').value   = t.time || '09:00';
+  document.getElementById('tes-dur').value    = parseInt((t.duration||'90').match(/\d+/)?.[0]||90);
+
+  const qrow = document.getElementById('tes-quick-row');
+  if (qrow) qrow.style.display = (t.done || t.missed) ? 'none' : '';
+  const aiRes = document.getElementById('tes-ai-result');
+  if (aiRes) { aiRes.innerHTML = ''; aiRes.classList.remove('show'); }
+
+  document.getElementById('tes-backdrop').classList.add('open');
+  document.getElementById('tes-panel').classList.add('open');
+}
+
+function closeTaskEditSheet() {
+  document.getElementById('tes-backdrop').classList.remove('open');
+  document.getElementById('tes-panel').classList.remove('open');
+  _tesTaskId = null; _tesAISuggestion = null;
+}
+
+function tesDoneTask()   { if (!_tesTaskId) return; doneTask(_tesTaskId); closeTaskEditSheet(); }
+function tesMissTask()   { if (!_tesTaskId) return; missTask(_tesTaskId); closeTaskEditSheet(); }
+function tesDeleteTask() {
+  if (!_tesTaskId) return;
+  const t = S.tasks.find(x => String(x.id) === String(_tesTaskId));
+  if (!t || !confirm(`למחוק את "${t.name}"?`)) return;
+  deleteTask(_tesTaskId); closeTaskEditSheet();
+}
+
+async function tesAISuggestTime() {
+  if (!_tesTaskId) return;
+  const t = S.tasks.find(x => String(x.id) === String(_tesTaskId));
+  if (!t) return;
+  const btn = document.getElementById('tes-ai-btn');
+  const res = document.getElementById('tes-ai-result');
+  if (btn) { btn.textContent = '⏳ מחשב...'; btn.disabled = true; }
+  try {
+    const today = ld(new Date());
+    const freeSlots = getAvailableSlots(today, ld(new Date(Date.now()+7*86400000)), 90);
+    const dn = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+    const anchors = (S.anchors||[]).map(a=>`${a.name}: יום ${dn[a.day||0]}, ${a.start}–${a.end}`).join('; ')||'אין';
+    const raw = await callAI({ messages: [{ role:'user', content:
+      `אתה מתכנן לו"ז. הצע זמן אחד טוב יותר למשימה:
+שם: "${t.name}" | קורס: ${t.course||'ללא'} | משך: ${t.duration||'90 דק'}
+זמן נוכחי: ${t.date} ${t.time} | שיא ריכוז: ${S.profile?.focus_time||'בוקר'}
+עוגנים: ${anchors}
+זמנים פנויים (7 ימים): ${freeSlots.text||'אין'}
+החזר JSON בלבד: {"date":"YYYY-MM-DD","time":"HH:MM","reason":"משפט אחד בעברית"}`
+    }], temperature: 0.3, json: true });
+    const parsed = extractJSON(raw);
+    if (parsed?.date && parsed?.time) {
+      _tesAISuggestion = { date: parsed.date, time: parsed.time };
+      if (res) {
+        res.innerHTML = `📅 <b>הצעה:</b> ${fmtDate(parsed.date)} · ${parsed.time}<br>
+<span style="color:var(--muted);font-size:0.79rem">${parsed.reason||''}</span><br>
+<button onclick="tesApplyAISuggestion()" style="margin-top:0.45rem;background:var(--green);color:white;border:none;padding:0.35rem 0.9rem;border-radius:8px;font-family:var(--sans);font-weight:700;cursor:pointer;font-size:0.81rem">✓ אשר זמן</button>`;
+        res.classList.add('show');
+      }
+    } else {
+      if (res) { res.textContent = 'לא נמצא זמן פנוי מתאים בשבוע הקרוב.'; res.classList.add('show'); }
+    }
+  } catch(e) {
+    if (res) { res.textContent = `שגיאה: ${e.message}`; res.classList.add('show'); }
+  } finally {
+    if (btn) { btn.textContent = '🤖 AI — הצע זמן טוב יותר'; btn.disabled = false; }
+  }
+}
+
+function tesApplyAISuggestion() {
+  if (!_tesAISuggestion) return;
+  document.getElementById('tes-date').value = _tesAISuggestion.date;
+  document.getElementById('tes-time').value = _tesAISuggestion.time;
+  const res = document.getElementById('tes-ai-result');
+  if (res) res.classList.remove('show');
+  _tesAISuggestion = null;
+  toast('✓ עדכון הוחל — לחץ "שמור" לאישור');
+}
+
+function saveTaskEditSheet() {
+  if (!_tesTaskId) return;
+  const t = S.tasks.find(x => String(x.id) === String(_tesTaskId));
+  if (!t) { closeTaskEditSheet(); return; }
+  const name   = document.getElementById('tes-name').value.trim();
+  const course = document.getElementById('tes-course').value.trim();
+  const date   = document.getElementById('tes-date').value;
+  const time   = document.getElementById('tes-time').value;
+  const dur    = Math.max(15, parseInt(document.getElementById('tes-dur').value)||90);
+  if (!name || !date || !time) { toast('שם, תאריך ושעה הם שדות חובה'); return; }
+  Object.assign(t, { name, course, date, time, duration: `${dur} דק'` });
+  save(); renderAll(); closeTaskEditSheet(); toast('✅ נשמר!');
+}
+
+// ── QUICK REPLY CHIPS IN RECALC CHAT ──
+function _appendQuickReplies(chat, chips) {
+  const row = document.createElement('div');
+  row.className = 'quick-reply-row';
+  chips.forEach(({ label, cls, text }) => {
+    const btn = document.createElement('button');
+    btn.className = `quick-chip${cls ? ' '+cls : ''}`;
+    btn.textContent = label;
+    btn.onclick = () => {
+      row.remove();
+      const inp = document.getElementById('recalc-input');
+      if (inp) inp.value = text;
+      sendRecalc();
+    };
+    row.appendChild(btn);
+  });
+  chat.appendChild(row);
+  chat.scrollTop = chat.scrollHeight;
 }

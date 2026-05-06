@@ -864,10 +864,12 @@
       </div>
     </div>
     <div class="chat-messages" id="recalc-chat"></div>
-    <div class="chat-input-area">
+    <div id="recalc-actions-zone" class="recalc-actions-zone"></div>
+    <div class="chat-input-area hidden" id="recalc-input-wrap">
       <input type="text" id="recalc-input" placeholder="הקלד כאן..." onkeydown="if(event.key==='Enter')sendRecalc()" />
       <button class="btn-chat-send" id="btn-recalc-send" onclick="sendRecalc()">שלח</button>
     </div>
+    <button class="rc-custom-toggle hidden" id="rc-custom-toggle" onclick="_rcShowTextInput()">✏️ כתוב בקשה מותאמת</button>
   </div>
 </div>
 
@@ -1193,6 +1195,32 @@
     </div>
     <button class="action-btn action-cancel-btn" onclick="closeTaskActionSheet()" style="margin-top:0.5rem;background:var(--surface2);color:var(--muted)">ביטול</button>
   </div>
+
+<!-- TASK EDIT BOTTOM SHEET -->
+<div class="action-sheet-backdrop" id="tes-backdrop" onclick="closeTaskEditSheet()"></div>
+<div class="tes-panel" id="tes-panel">
+  <div class="tes-drag"></div>
+  <div class="tes-task-title" id="tes-task-title">עריכת משימה</div>
+  <div class="tes-quick-row" id="tes-quick-row">
+    <button class="tes-qbtn done"   onclick="tesDoneTask()">✓ סיים</button>
+    <button class="tes-qbtn missed" onclick="tesMissTask()">✗ פוספסה</button>
+    <button class="tes-qbtn del"    onclick="tesDeleteTask()">🗑 מחק</button>
+  </div>
+  <div class="tes-fields">
+    <div class="tes-field"><label>שם המשימה</label><input type="text" id="tes-name" placeholder="שם..." /></div>
+    <div class="tes-field-row">
+      <div class="tes-field"><label>תאריך</label><input type="date" id="tes-date" /></div>
+      <div class="tes-field"><label>שעה</label><input type="time" id="tes-time" /></div>
+    </div>
+    <div class="tes-field-row">
+      <div class="tes-field"><label>קורס</label><input type="text" id="tes-course" placeholder="קורס..." /></div>
+      <div class="tes-field"><label>משך (דק׳)</label><input type="number" id="tes-dur" min="15" max="480" step="15" /></div>
+    </div>
+  </div>
+  <button class="tes-ai-btn" id="tes-ai-btn" onclick="tesAISuggestTime()">🤖 AI — הצע זמן טוב יותר</button>
+  <div class="tes-ai-result" id="tes-ai-result"></div>
+  <button class="tes-save-btn" onclick="saveTaskEditSheet()">שמור שינויים</button>
+</div>
 
 <!-- EMERGENCY MODE MODAL -->
 <div class="modal-overlay hidden" id="emergency-modal">
