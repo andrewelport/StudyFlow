@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>StudyFlow  — ה-Waze של הלימודים</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=37">
+<link rel="stylesheet" href="style.css?v=46">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="logo_192.png">
 <meta name="theme-color" content="#4f6ef7">
@@ -456,7 +456,9 @@
   <div class="app-layout">
 
     <nav class="sidebar" id="sidebar">
-      <div class="sidebar-logo">Study<span>Flow</span></div>
+      <div class="sidebar-hdr">
+        <div class="sidebar-logo">Study<span>Flow</span></div>
+      </div>
       <div class="sidebar-sub">ה-Waze של הלימודים </div>
       <button class="nav-item active" onclick="showPage('today',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span> <span>היום</span></button>
       <button class="nav-item" onclick="showPage('planner',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span> <span>מתכנן לו"ז</span></button>
@@ -536,8 +538,21 @@
               <div class="focus-entry-sub">חסום הסחות דעת והיכנס למצב למידה</div>
             </div>
           </div>
-          <select id="pomo-task-select" class="pomo-select-task"><option value="">-- בחר משימה להתמקדות --</option></select>
-          <button class="btn-focus-start" onclick="openFocusMode()">התחל סשן 90 דקות </button>
+          <input type="hidden" id="pomo-task-select" value="">
+          <div class="pomo-custom-select" id="pomo-cs-wrap">
+            <button class="pomo-cs-trigger" id="pomo-cs-trigger" onclick="togglePomoTaskDrop(event)" type="button">
+              <span id="pomo-cs-label">— בחר משימה (רשות) —</span>
+              <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="pomo-cs-list" id="pomo-cs-list"></div>
+          </div>
+          <div class="pomo-duration-row">
+            <button class="pomo-dur-btn" onclick="selectPomoDuration(25,this)">25'</button>
+            <button class="pomo-dur-btn" onclick="selectPomoDuration(45,this)">45'</button>
+            <button class="pomo-dur-btn" onclick="selectPomoDuration(60,this)">60'</button>
+            <button class="pomo-dur-btn active" onclick="selectPomoDuration(90,this)">90'</button>
+          </div>
+          <button class="btn-focus-start" id="btn-focus-start-main" onclick="openFocusMode()">התחל סשן 90 דקות </button>
         </div>
 
         <div class="section-box">
@@ -1771,6 +1786,6 @@
 </div>
 
 <script src="scheduler.js?v=29"></script>
-<script src="app.js?v=39"></script>
+<script src="app.js?v=47"></script>
 </body>
 </html>
