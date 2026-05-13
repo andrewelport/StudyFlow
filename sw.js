@@ -1,4 +1,4 @@
-const CACHE = 'studyflow-v24';
+const CACHE = 'studyflow-v30';
 const PRECACHE = [
   '/',
   '/index.html',

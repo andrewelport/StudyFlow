@@ -300,53 +300,47 @@ tr:hover td{background:var(--surface2)}
 .course-tag { display:inline-block; padding: 0.3rem 0.7rem; border-radius: 8px; font-weight: 900; color: white !important; font-size: 0.7rem; letter-spacing: 0.5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
 
 /* Horizontal Date Slider */
+/* ── iOS Calendar-style date strip ─────────────────────────────────────── */
 .horizontal-date-slider {
-  display: flex;
-  overflow-x: auto;
-  gap: 0.75rem;
-  padding: 0.5rem 0.25rem;
-  margin: 0 -0.25rem;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none; /* Firefox */
-  scroll-behavior: smooth;
-  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0;
+  padding: 0.35rem 0 0.5rem;
+  margin: 0;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.5rem;
 }
-.horizontal-date-slider::-webkit-scrollbar { display: none; } /* Safari/Chrome */
 
 .date-slide-item {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-width: 65px;
-  height: 80px;
-  border-radius: 18px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-  box-shadow: 0 2px 10px rgba(0,0,0,0.03);
-  user-select: none;
-  flex-shrink: 0;
+  min-width: 0; width: auto; height: auto;
+  padding: 0.2rem 0;
+  background: none; border: none; border-radius: 0;
+  cursor: pointer; gap: 0.18rem;
+  user-select: none; -webkit-tap-highlight-color: transparent;
+  transition: none; box-shadow: none;
 }
-.date-slide-item.is-today { border-color: var(--accent); }
-.date-slide-item:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
-  border-color: var(--accent-light);
-}
-.date-slide-item:active { transform: scale(0.95); }
+.date-slide-item:hover { transform: none; }
+.date-slide-item:active { opacity: 0.7; }
 .date-slide-item.active {
-  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
-  color: white;
-  border-color: var(--accent-dark);
+  background: none; color: inherit; border-color: transparent;
   box-shadow: 0 6px 20px rgba(79,110,247,0.35);
   transform: translateY(-2px);
 }
-.date-slide-day { font-size: 0.75rem; font-weight: 700; opacity: 0.8; margin-bottom: 0.2rem; text-transform: uppercase; }
-.date-slide-date { font-size: 1.4rem; font-weight: 900; line-height: 1; font-family: var(--mono); }
-.date-slide-item.active .date-slide-day { color: rgba(255,255,255,0.9); }
-.date-slide-item.active .date-slide-date { color: white; }
+.date-slide-day { font-size: 0.6rem; font-weight: 600; color: var(--muted); text-transform: uppercase; line-height: 1; letter-spacing: 0.3px; }
+.date-slide-date {
+  width: 34px; height: 34px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.92rem; font-weight: 600; color: var(--text);
+  transition: background 0.18s, color 0.18s;
+}
+.date-slide-item.is-today:not(.active) .date-slide-date { color: var(--accent); font-weight: 800; }
+.date-slide-item.active .date-slide-date { background: var(--accent); color: #fff; font-weight: 800; }
+.date-slide-item.active .date-slide-day { color: var(--accent); }
 
 /* ── CALENDAR GRID — modern Google Calendar style ── */
 .calendar-grid {
@@ -1166,39 +1160,62 @@ body.scroll-locked { position: fixed; width: 100%; overflow-y: scroll; }
 /* ═══════════════════════════════════
    BOTTOM NAV BAR
 ═══════════════════════════════════ */
+/* ── Bottom Nav — dark glass pill ──────────────────────────────────────── */
 .bottom-nav {
   display: none;
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 350;
-  background: var(--surface); border-top: 1px solid var(--border);
-  height: calc(56px + env(safe-area-inset-bottom, 0px));
+  background: rgba(10, 10, 20, 0.96);
+  border-top: 1px solid rgba(255,255,255,0.07);
+  height: calc(68px + env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
-  box-shadow: 0 -1px 0 var(--border), 0 -8px 24px rgba(0,0,0,0.07);
-  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 -1px 0 rgba(255,255,255,0.04), 0 -16px 48px rgba(0,0,0,0.45);
+  backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
 }
-.bn-items { display: flex; height: 56px; }
+.bn-items {
+  display: flex; height: 68px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+}
+.bn-items::-webkit-scrollbar { display: none; }
 .bn-item {
-  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 3px; background: none; border: none; cursor: pointer; padding: 0;
-  -webkit-tap-highlight-color: transparent; position: relative; transition: transform 0.12s;
+  flex: 1; flex-shrink: 0; min-width: 58px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px; background: none; border: none; cursor: pointer; padding: 0 4px;
+  -webkit-tap-highlight-color: transparent; transition: transform 0.12s;
 }
-.bn-item:active { transform: scale(0.88); }
+.bn-item:active { transform: scale(0.85); }
 .bn-icon {
   display: flex; align-items: center; justify-content: center;
-  width: 28px; height: 28px; color: var(--muted); transition: color 0.18s, transform 0.18s;
-  position: relative;
+  width: 46px; height: 32px; color: rgba(255,255,255,0.38);
+  border-radius: 12px; transition: color 0.2s, background 0.2s;
 }
 .bn-icon svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
-.bn-label { font-family: var(--sans); font-size: 0.58rem; font-weight: 700; color: var(--muted); transition: color 0.18s; line-height: 1; }
-.bn-item.active .bn-icon { color: var(--accent); transform: translateY(-1px) scale(1.08); }
-.bn-item.active .bn-label { color: var(--accent); }
-.bn-item.active .bn-icon::after {
-  content: ''; position: absolute; bottom: -5px;
-  width: 5px; height: 5px; border-radius: 50%; background: var(--accent);
+.bn-label { font-family: var(--sans); font-size: 0.5rem; font-weight: 700; color: rgba(255,255,255,0.28); transition: color 0.2s; line-height: 1; }
+.bn-item.active .bn-icon { background: rgba(107,143,255,0.18); color: #7c9fff; }
+.bn-item.active .bn-label { color: #7c9fff; }
+.bn-item.active .bn-icon::after { display: none; }
+
+/* ── FAB (floating action) ─────────────────────────────────────────────── */
+.nav-fab {
+  position: fixed;
+  bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+  left: 50%; transform: translateX(-50%);
+  width: 54px; height: 54px;
+  background: linear-gradient(145deg, #06d6a0, #4f6ef7);
+  border: none; border-radius: 50%;
+  box-shadow: 0 6px 24px rgba(6,214,160,0.5), 0 0 0 4px rgba(6,214,160,0.12);
+  cursor: pointer; z-index: 360;
+  display: none; align-items: center; justify-content: center;
+  transition: transform 0.18s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.18s;
+  -webkit-tap-highlight-color: transparent;
 }
+.nav-fab:active { transform: translateX(-50%) scale(0.9); box-shadow: 0 3px 14px rgba(6,214,160,0.4); }
+.nav-fab svg { width: 24px; height: 24px; stroke: white; fill: none; stroke-width: 2.8; stroke-linecap: round; }
+
 @media (max-width: 768px) {
   .bottom-nav { display: block; }
-  .main-content { padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
-  .sos-btn-fixed { bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+  .nav-fab { display: flex; }
+  .main-content { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+  .sos-btn-fixed { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* ═══════════════════════════════════
@@ -1328,8 +1345,9 @@ body.scroll-locked { position: fixed; width: 100%; overflow-y: scroll; }
 .day-chip.is-today.selected .day-chip-num { background: var(--accent); color: white; }
 .day-chip.selected .day-chip-name { color: var(--accent); }
 .day-chip-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
-.day-chip-dot.empty { background: transparent; }
+.day-chip-dot.empty { opacity: 0; }
 .day-chip-dot.exam { background: var(--purple); }
+.date-slide-item.active .day-chip-dot { background: rgba(255,255,255,0.7); }
 
 /* ═══════════════════════════════════
    DAY TIMELINE VIEW
@@ -2499,21 +2517,27 @@ body.scroll-locked { position: fixed; width: 100%; overflow-y: scroll; }
   border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 0.75rem;
 }
 .sq-mission-check.done { background: var(--green); border-color: var(--green); color: #fff; }
-/* Achievements */
-.sq-badges-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; }
+/* Achievements — hexagonal badges */
+.sq-badges-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem 0.5rem; padding: 0.25rem 0; }
 .sq-badge {
-  background: var(--surface2); border: 1.5px solid var(--border);
-  border-radius: 14px; padding: 0.65rem 0.4rem; text-align: center; transition: all 0.15s;
+  display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
+  background: none; border: none; padding: 0; cursor: default;
+  transition: transform 0.2s;
 }
-.sq-badge.earned {
-  border-color: #fbbf24; background: linear-gradient(135deg, #fef3c7, #fde68a);
-  box-shadow: 0 3px 10px rgba(251,191,36,0.25);
+.sq-badge.earned { cursor: pointer; }
+.sq-badge.earned:hover { transform: translateY(-3px); }
+.sq-badge-hex {
+  width: 72px; height: 83px;
+  clip-path: polygon(50% 0%,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%);
+  background: var(--surface2);
+  display: flex; align-items: center; justify-content: center;
+  transition: filter 0.25s;
 }
-.sq-badge.earned:hover { transform: scale(1.04); }
-.sq-badge-icon { font-size: 1.35rem; display: block; margin-bottom: 0.25rem; filter: grayscale(1); opacity: 0.3; }
-.sq-badge.earned .sq-badge-icon { filter: none; opacity: 1; }
-.sq-badge-name { font-size: 0.6rem; font-weight: 700; color: var(--muted); line-height: 1.25; }
-.sq-badge.earned .sq-badge-name { color: #92400e; }
+.sq-badge.earned .sq-badge-hex { filter: drop-shadow(0 4px 14px rgba(79,110,247,0.35)); }
+.sq-badge-hex-icon { font-size: 1.85rem; filter: grayscale(1) opacity(0.2); line-height: 1; }
+.sq-badge.earned .sq-badge-hex-icon { filter: none; }
+.sq-badge-name { font-size: 0.58rem; font-weight: 700; color: var(--muted); text-align: center; line-height: 1.35; max-width: 72px; }
+.sq-badge.earned .sq-badge-name { color: var(--text); font-weight: 800; }
 
 /* ═══════════════════════════════════
    HOBBY / PERSONAL GOALS PAGE
@@ -2810,7 +2834,7 @@ body.scroll-locked { position: fixed; width: 100%; overflow-y: scroll; }
 }
 .plsh-name-wrap, .plsh-exam-wrap { display: flex; flex-direction: column; gap: 0.3rem; }
 .plsh-label { font-size: 0.7rem; font-weight: 800; color: var(--muted); }
-.pl-sh-course-row input { padding: 0.6rem 0.75rem; font-size: 0.88rem; border-radius: 9px; }
+.pl-sh-course-row input { padding: 0.6rem 0.75rem; font-size: 0.88rem; border-radius: 9px; width: 100%; }
 .plsh-remove {
   background: var(--red-light);
   color: var(--red);
@@ -4417,7 +4441,12 @@ body.scroll-locked { position: fixed; width: 100%; overflow-y: scroll; }
 
 /* ── Page overflow guard ─────────────────────────────────────────────────── */
 .page { overflow-x: hidden; max-width: 100%; }
+.main-content { overflow-x: hidden; }
 input, textarea, select { max-width: 100%; box-sizing: border-box; }
+.section-box input, .section-box textarea, .section-box select,
+.pl-sh-card input, .pl-sh-card textarea, .pl-sh-card select,
+.aad-form-box input, .aad-form-box textarea, .aad-form-box select { width: 100%; }
+.plsh-name-wrap, .plsh-exam-wrap { min-width: 0; overflow: hidden; }
 
 /* ── Add form boxes (homework + exams) ───────────────────────────────────── */
 .aad-form-box {
@@ -4570,3 +4599,293 @@ input, textarea, select { max-width: 100%; box-sizing: border-box; }
   /* Goal options: 2 columns instead of 3 */
   .pl-sh-goal-row { grid-template-columns: 1fr 1fr; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   PREMIUM DARK GLASS SYSTEM — Frosted Glass + Neon Glow
+   Applied on dark theme (default). Five design principles:
+   1. Frosted Glass   2. Inner Highlight   3. Neon Glow
+   4. Dark Canvas     5. Rounded Corners
+══════════════════════════════════════════════════════════════ */
+
+/* 4. DARK CANVAS — deep navy with ambient color leaks */
+[data-theme="dark"] body {
+  background: #070c1a !important;
+  background-image:
+    radial-gradient(ellipse 70% 50% at 15% 15%, rgba(107,143,255,0.16) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 85% 80%, rgba(139,92,246,0.12) 0%, transparent 55%),
+    radial-gradient(ellipse 40% 30% at 55% 55%, rgba(16,217,141,0.06) 0%, transparent 50%) !important;
+}
+
+/* Update dark theme surface variables to true dark glass */
+[data-theme="dark"] {
+  --bg: #070c1a;
+  --surface: rgba(255,255,255,0.055);
+  --surface2: rgba(255,255,255,0.03);
+  --surface3: rgba(255,255,255,0.08);
+  --border: rgba(255,255,255,0.09);
+  --border2: rgba(255,255,255,0.16);
+  --text: #eef2ff;
+  --muted: #7a8fb5;
+  --accent: #6b8fff;
+  --accent-light: rgba(107,143,255,0.15);
+  --accent-dark: #4f6ef7;
+  --green: #10d98d;
+  --green-light: rgba(16,217,141,0.15);
+  --yellow: #fbbf24;
+  --yellow-light: rgba(251,191,36,0.15);
+  --red: #f87171;
+  --red-light: rgba(248,113,113,0.15);
+  --purple: #a78bfa;
+  --purple-light: rgba(167,139,250,0.15);
+  --shadow: 0 4px 24px rgba(0,0,0,0.5);
+  --shadow-md: 0 8px 32px rgba(0,0,0,0.6);
+  --shadow-lg: 0 16px 48px rgba(0,0,0,0.7);
+}
+
+/* 1 + 2 + 5. FROSTED GLASS + INNER HIGHLIGHT + ROUNDED CORNERS on cards */
+[data-theme="dark"] .section-box {
+  background: rgba(255,255,255,0.055) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border: 1px solid rgba(255,255,255,0.09) !important;
+  border-radius: 24px !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.12),
+    0 8px 32px rgba(0,0,0,0.45) !important;
+}
+
+/* 1. Stat cards — glass */
+[data-theme="dark"] .stat-card {
+  background: rgba(255,255,255,0.05) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 4px 20px rgba(0,0,0,0.4) !important;
+}
+
+/* 3. NEON GLOW on primary buttons */
+[data-theme="dark"] .btn-primary {
+  box-shadow: 0 0 22px rgba(107,143,255,0.45), 0 4px 16px rgba(0,0,0,0.4) !important;
+}
+[data-theme="dark"] .btn-primary:hover {
+  box-shadow: 0 0 36px rgba(107,143,255,0.65), 0 6px 24px rgba(0,0,0,0.5) !important;
+  transform: translateY(-2px);
+}
+[data-theme="dark"] .btn-confirm {
+  box-shadow: 0 0 18px rgba(107,143,255,0.4), 0 4px 14px rgba(0,0,0,0.35);
+}
+
+/* 3. Neon glow on action buttons (green add, purple calendar, blue time) */
+[data-theme="dark"] .sch-act-btn.sch-act-green {
+  box-shadow: 0 0 14px rgba(16,217,141,0.35), 0 2px 8px rgba(0,0,0,0.3);
+}
+[data-theme="dark"] .sch-act-btn.sch-act-purple {
+  box-shadow: 0 0 14px rgba(167,139,250,0.35), 0 2px 8px rgba(0,0,0,0.3);
+}
+[data-theme="dark"] .sch-act-btn.sch-act-blue {
+  box-shadow: 0 0 14px rgba(107,143,255,0.35), 0 2px 8px rgba(0,0,0,0.3);
+}
+
+/* 3. Neon on FAB */
+[data-theme="dark"] .nav-fab {
+  box-shadow: 0 0 28px rgba(6,214,160,0.55), 0 0 56px rgba(6,214,160,0.2), 0 6px 20px rgba(0,0,0,0.5) !important;
+}
+
+/* 1 + 2. Modal glass */
+[data-theme="dark"] .modal-box {
+  background: rgba(8,13,30,0.82) !important;
+  backdrop-filter: blur(40px) !important;
+  -webkit-backdrop-filter: blur(40px) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.12),
+    0 24px 64px rgba(0,0,0,0.75),
+    0 0 0 1px rgba(107,143,255,0.06) !important;
+}
+
+/* 1. Modal overlay — subtle background blur */
+[data-theme="dark"] .modal-overlay {
+  background: rgba(2,5,20,0.75) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* 1 + 2. anc-card, cam-card, rem-card — glass sheets */
+[data-theme="dark"] .anc-card,
+[data-theme="dark"] .cam-card,
+[data-theme="dark"] .rem-card,
+[data-theme="dark"] .hp-setup-card {
+  background: rgba(8,13,30,0.88) !important;
+  backdrop-filter: blur(32px) !important;
+  -webkit-backdrop-filter: blur(32px) !important;
+  border: 1px solid rgba(255,255,255,0.11) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 24px 60px rgba(0,0,0,0.7) !important;
+}
+
+/* 1. Timeline events — glass with inner highlight */
+[data-theme="dark"] .tl-slot {
+  background: rgba(255,255,255,0.04) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255,255,255,0.07) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08) !important;
+}
+[data-theme="dark"] .tl-slot:hover {
+  background: rgba(255,255,255,0.07) !important;
+  border-color: rgba(255,255,255,0.12) !important;
+}
+
+/* 1. pl-sh-card — glass card */
+[data-theme="dark"] .pl-sh-card {
+  background: rgba(255,255,255,0.05) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255,255,255,0.09) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 8px 32px rgba(0,0,0,0.4) !important;
+}
+
+/* 1. Sidebar glass */
+[data-theme="dark"] .sidebar {
+  background: rgba(7,10,22,0.9) !important;
+  backdrop-filter: blur(32px) !important;
+  -webkit-backdrop-filter: blur(32px) !important;
+  border-right: 1px solid rgba(255,255,255,0.08) !important;
+  box-shadow: inset -1px 0 0 rgba(255,255,255,0.05), -8px 0 48px rgba(0,0,0,0.6) !important;
+}
+
+/* 2. Inner highlight on XP hero card */
+[data-theme="dark"] .sq-hero-card {
+  background: linear-gradient(135deg, rgba(30,27,75,0.9) 0%, rgba(49,46,129,0.85) 45%, rgba(15,118,110,0.85) 100%) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.2),
+    0 0 40px rgba(99,102,241,0.25),
+    0 16px 40px rgba(0,0,0,0.5) !important;
+}
+
+/* 3. XP bar neon glow */
+[data-theme="dark"] .sq-xp-bar {
+  box-shadow: 0 0 12px rgba(167,139,250,0.6), 0 0 24px rgba(167,139,250,0.3) !important;
+}
+
+/* 1. Onboarding ob2-card glass */
+[data-theme="dark"] .ob2-wrap,
+[data-theme="dark"] .ob2-slide {
+  background: transparent;
+}
+[data-theme="dark"] .ob2-choice {
+  background: rgba(255,255,255,0.05) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1.5px solid rgba(255,255,255,0.09) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08) !important;
+}
+[data-theme="dark"] .ob2-choice.selected {
+  border-color: rgba(107,143,255,0.5) !important;
+  box-shadow: 0 0 16px rgba(107,143,255,0.3), inset 0 1px 0 rgba(255,255,255,0.12) !important;
+}
+
+/* 3. Neon on streak chip & stat pills */
+[data-theme="dark"] .sq-streak-chip {
+  box-shadow: 0 0 14px rgba(251,191,36,0.3);
+}
+[data-theme="dark"] .sq-stat-gold {
+  box-shadow: 0 0 14px rgba(251,191,36,0.25), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+
+/* 1. Input fields — subtle glass in dark mode */
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] select {
+  background: rgba(255,255,255,0.06) !important;
+  border-color: rgba(255,255,255,0.1) !important;
+  color: var(--text) !important;
+}
+[data-theme="dark"] input:focus,
+[data-theme="dark"] textarea:focus,
+[data-theme="dark"] select:focus {
+  border-color: rgba(107,143,255,0.5) !important;
+  background: rgba(255,255,255,0.09) !important;
+  box-shadow: 0 0 0 3px rgba(107,143,255,0.2), 0 0 14px rgba(107,143,255,0.15) !important;
+}
+
+/* 1. Horizontal date slider — glass strip */
+[data-theme="dark"] .horizontal-date-slider {
+  background: rgba(255,255,255,0.04) !important;
+  border-bottom-color: rgba(255,255,255,0.08) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+/* 3. Today's date highlight — neon accent dot */
+[data-theme="dark"] .date-slide-item.is-today:not(.active) .date-slide-date {
+  color: var(--accent) !important;
+  text-shadow: 0 0 10px rgba(107,143,255,0.6) !important;
+}
+[data-theme="dark"] .date-slide-item.active .date-slide-date {
+  background: var(--accent) !important;
+  box-shadow: 0 0 14px rgba(107,143,255,0.7), 0 0 28px rgba(107,143,255,0.3) !important;
+}
+
+/* 5. Consistent border-radius across sections */
+[data-theme="dark"] .cards-grid .stat-card { border-radius: 22px !important; }
+[data-theme="dark"] .timeline-outer { border-radius: 20px !important; border-color: rgba(255,255,255,0.08) !important; }
+[data-theme="dark"] .timeline-events-area { background: transparent !important; }
+[data-theme="dark"] .timeline-labels { background: rgba(255,255,255,0.03) !important; border-left-color: rgba(255,255,255,0.07) !important; }
+
+/* 2. Neon line at the top of bottom-nav bar */
+[data-theme="dark"] .bottom-nav::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 10%; right: 10%; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(107,143,255,0.5), rgba(167,139,250,0.5), transparent);
+  border-radius: 1px;
+}
+
+/* 1. Task edit sheet glass */
+[data-theme="dark"] .tem-card {
+  background: rgba(8,13,30,0.9) !important;
+  backdrop-filter: blur(32px) !important;
+  -webkit-backdrop-filter: blur(32px) !important;
+  border-top: 1px solid rgba(255,255,255,0.1) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 -16px 48px rgba(0,0,0,0.6) !important;
+}
+
+/* 1. Section-box inside dark modals */
+[data-theme="dark"] .modal-box .section-box,
+[data-theme="dark"] .tem-card .section-box {
+  background: rgba(255,255,255,0.04) !important;
+  border-color: rgba(255,255,255,0.07) !important;
+}
+
+/* 3. Neon on btn-add-anchor (dashed outline button) */
+[data-theme="dark"] .btn-add-anchor {
+  border-color: rgba(107,143,255,0.4) !important;
+  color: var(--accent) !important;
+}
+[data-theme="dark"] .btn-add-anchor:hover {
+  background: rgba(107,143,255,0.1) !important;
+  box-shadow: 0 0 14px rgba(107,143,255,0.2) !important;
+  border-style: solid !important;
+}
+
+/* 2. Inner highlight on auth card */
+[data-theme="dark"] .auth-card {
+  background: rgba(10,14,28,0.88) !important;
+  backdrop-filter: blur(40px) !important;
+  -webkit-backdrop-filter: blur(40px) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.15), 0 24px 64px rgba(0,0,0,0.75) !important;
+}
+
+/* Smooth glow animation on neon elements */
+@keyframes neonPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+[data-theme="dark"] .nav-fab {
+  animation: neonPulse 3s ease-in-out infinite;
+}
+[data-theme="dark"] .nav-fab:active { animation: none; }

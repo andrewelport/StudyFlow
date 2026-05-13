@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="he" dir="rtl">
+<html lang="en" dir="rtl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>StudyFlow  — ה-Waze של הלימודים</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=34">
+<link rel="stylesheet" href="style.css?v=37">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="logo_192.png">
 <meta name="theme-color" content="#4f6ef7">
@@ -1120,6 +1120,11 @@
   </div>
 </div>
 
+<!-- FAB -->
+<button class="nav-fab" id="nav-fab" onclick="showPage('planner',null);updateBottomNav('planner')" aria-label="הוסף משימה">
+  <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+</button>
+
 <!-- BOTTOM NAV BAR -->
 <nav class="bottom-nav" id="bottom-nav">
   <div class="bn-items">
@@ -1401,6 +1406,26 @@
           <svg viewBox="0 0 24 24" width="14" height="14" stroke="var(--muted)" stroke-width="2" fill="none"><polyline points="9 18 15 12 9 6"/></svg>
         </div>
       </div>
+
+      <!-- Backup -->
+      <div class="settings-sec-label">גיבוי נתונים</div>
+      <div class="settings-card">
+        <div class="settings-row settings-row-action" onclick="exportData()">
+          <div class="settings-row-icon" style="background:#f0fdf4;color:#16a34a">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </div>
+          <label class="settings-row-label" style="cursor:pointer">ייצוא נתונים (JSON)</label>
+          <svg viewBox="0 0 24 24" width="14" height="14" stroke="var(--muted)" stroke-width="2" fill="none"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="settings-row settings-row-sep settings-row-action" onclick="document.getElementById('import-file-input').click()">
+          <div class="settings-row-icon" style="background:#eff6ff;color:#3b82f6">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <label class="settings-row-label" style="cursor:pointer">ייבוא נתונים</label>
+          <svg viewBox="0 0 24 24" width="14" height="14" stroke="var(--muted)" stroke-width="2" fill="none"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+      </div>
+      <input type="file" id="import-file-input" accept=".json" style="display:none" onchange="importData(event)">
 
       <!-- Account -->
       <div class="settings-sec-label">חשבון</div>
@@ -1745,7 +1770,7 @@
   </div>
 </div>
 
-<script src="scheduler.js?v=28"></script>
-<script src="app.js?v=34"></script>
+<script src="scheduler.js?v=29"></script>
+<script src="app.js?v=39"></script>
 </body>
 </html>

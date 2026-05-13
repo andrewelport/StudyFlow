@@ -410,7 +410,12 @@ window.onload = () => {
   _validateStreak();
   _pruneOldData();
 
-  document.body.setAttribute('data-theme', S.theme || 'light');
+  // Migrate all users to dark mode unless they explicitly switched to light after v28
+  if (!localStorage.getItem('sf_dark_migrated')) {
+    S.theme = 'dark';
+    localStorage.setItem('sf_dark_migrated', '1');
+  }
+  document.body.setAttribute('data-theme', S.theme || 'dark');
   if (S.userName) { initApp(); return; }
   // First time — show onboarding wizard
   document.getElementById('setup-screen').style.display = '';
@@ -537,7 +542,7 @@ function toggleTheme() {
   S.theme = S.theme === 'dark' ? 'light' : 'dark';
   document.body.setAttribute('data-theme', S.theme);
   const lbl = document.getElementById('theme-btn-label');
-  if (lbl) lbl.textContent = S.theme === 'dark' ? '️ מצב יום' : ' מצב לילה';
+  if (lbl) lbl.textContent = S.theme === 'dark' ? '☀️ מצב יום' : '🌙 מצב לילה';
   save();
 }
 
@@ -634,7 +639,7 @@ function openSettings() {
     }
   }
   const lbl = document.getElementById('theme-btn-label');
-  if (lbl) lbl.textContent = S.theme === 'dark' ? '️ מצב יום' : ' מצב לילה';
+  if (lbl) lbl.textContent = S.theme === 'dark' ? '☀️ מצב יום' : '🌙 מצב לילה';
   // Open AI section if no key configured so user can find where to enter it
   document.querySelectorAll('#settings-modal .acc-section').forEach(s => s.classList.remove('open'));
   const firstAccId = (!S.apiKey) ? 'acc-ai' : 'acc-personal';
@@ -1159,10 +1164,21 @@ function renderProgress(){
   if (bWrap) {
     const earned = ACHIEVEMENTS.filter(a => a.check(S));
     if (el('sq-badge-count')) el('sq-badge-count').textContent = `${earned.length} / ${ACHIEVEMENTS.length}`;
-    bWrap.innerHTML = ACHIEVEMENTS.map(a => {
+    const HEX_COLORS = [
+      ['#4f6ef7','#a78bfa'],['#06b6d4','#16c98d'],['#8b5cf6','#ec4899'],
+      ['#f5a623','#f97316'],['#16c98d','#4f6ef7'],['#f97316','#fbbf24'],
+      ['#06b6d4','#8b5cf6'],['#10b981','#06b6d4'],['#f76060','#f97316'],
+      ['#a78bfa','#4f6ef7'],['#ec4899','#8b5cf6'],['#fbbf24','#f5a623']
+    ];
+    bWrap.innerHTML = ACHIEVEMENTS.map((a, i) => {
       const isEarned = a.check(S);
+      const [c1, c2] = HEX_COLORS[i % HEX_COLORS.length];
+      const hexStyle = isEarned ? `background:linear-gradient(145deg,${c1},${c2})` : '';
+      const shadow = isEarned ? `filter:drop-shadow(0 4px 14px ${c1}55)` : '';
       return `<div class="sq-badge${isEarned ? ' earned' : ''}">
-        <span class="sq-badge-icon">${a.icon}</span>
+        <div class="sq-badge-hex" style="${hexStyle};${shadow}">
+          <span class="sq-badge-hex-icon">${a.icon}</span>
+        </div>
         <div class="sq-badge-name">${a.name}</div>
       </div>`;
     }).join('');
@@ -1729,9 +1745,15 @@ function plShAddCourseRow() {
   div.className = 'pl-sh-course-row';
   div.id = id;
   div.innerHTML = `
-    <input type="text" class="plsh-name" placeholder="שם הקורס *" />
-    <input type="date" class="plsh-exam" />
-    <button onclick="document.getElementById('${id}').remove()" class="btn-sm red" title="הסר"></button>
+    <div class="plsh-name-wrap">
+      <label class="plsh-label">שם הקורס</label>
+      <input type="text" class="plsh-name" placeholder="למשל: חשבון, פסיכולוגיה..." />
+    </div>
+    <div class="plsh-exam-wrap">
+      <label class="plsh-label">תאריך מבחן</label>
+      <input type="date" class="plsh-exam" />
+    </div>
+    <button onclick="document.getElementById('${id}').remove()" class="plsh-remove" title="הסר">✕</button>
   `;
   wrap.appendChild(div);
   div.querySelector('.plsh-name').focus();
@@ -1989,6 +2011,11 @@ function renderHobbyCardsInPlanner() {
   }).join('');
 }
 
+
+function openTimeChart() {
+  renderTimeChart();
+  document.getElementById('time-chart-modal').classList.remove('hidden');
+}
 
 function renderTimeChart() {
   const todayD = new Date();
@@ -5447,7 +5474,7 @@ function _wrDislikeFlow() {
       { v: 'bad_time', l: '⏰ השעות לא מתאימות לי' },
       { v: 'want_course', l: ' רוצה להתמקד בקורס מסוים' },
       { v: 'more_hobbies', l: ' רוצה יותר זמן לתחביבים' },
-      { v: 'too_light', l: ' רוצה יותר שעות לימודק' },
+      { v: 'too_light', l: ' רוצה יותר שעות לימוד' },
     ]);
     _wr.qs.push({ type: '_adjust' });
     _wr.qi = _wr.qs.length - 1;
@@ -6249,18 +6276,20 @@ function renderHomework() {
       list.innerHTML = '<div class="empty-state" style="background:var(--surface2);border-radius:24px;padding:3rem 2rem;"><div class="empty-title" style="font-size:1.4rem;font-weight:900;">אין מטלות פתוחות כרגע</div><div class="empty-sub" style="font-weight:700;">זמן מצוין לנוח או להתחיל ללמוד למבחנים!</div></div>';
     } else {
       list.innerHTML = hws.map(h => {
-        const d = new Date(h.date);
-        const diff = Math.ceil((d - new Date()) / 86400000);
-        const isLate = diff < 0;
-        const color = isLate ? 'var(--red)' : diff <= 3 ? 'var(--yellow)' : 'var(--accent)';
-        const bgColor = isLate ? 'var(--red-light)' : diff <= 3 ? 'var(--yellow-light)' : 'var(--accent-light)';
-        
+        const d = new Date(h.date + 'T12:00:00');
+        const diff = h.date ? Math.ceil((d - new Date()) / 86400000) : null;
+        const isLate = diff !== null && diff < 0;
+        const color = isLate ? 'var(--red)' : (diff !== null && diff <= 3) ? 'var(--yellow)' : 'var(--accent)';
+        const bgColor = isLate ? 'var(--red-light)' : (diff !== null && diff <= 3) ? 'var(--yellow-light)' : 'var(--accent-light)';
+        const daysLabel = diff === null ? 'ללא תאריך הגשה' : isLate ? 'עבר תאריך ההגשה!' : diff === 0 ? 'היום!' : `בעוד ${diff} ימים`;
+        const dateStr = h.date ? ` (${formatPrettyDate(h.date)})` : '';
+
         return `
         <div style="background:var(--surface);border-radius:20px;padding:1.25rem;margin-bottom:1rem;box-shadow:0 12px 24px rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.03);display:flex;align-items:center;justify-content:space-between;transition:transform 0.3s;animation:slideUpFadeIn 0.3s ease-out;">
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.4rem;">
-              <span style="font-size:0.75rem;font-weight:900;background:var(--surface2);color:var(--text);padding:4px 10px;border-radius:12px;">${h.course}</span>
-              <span style="font-size:0.75rem;font-weight:900;background:${bgColor};color:${color};padding:4px 10px;border-radius:12px;">${isLate ? 'עבר תאריך ההגשה!' : `בעוד ${diff} ימים`} (${formatPrettyDate(h.date)})</span>
+              <span style="font-size:0.75rem;font-weight:900;background:var(--surface2);color:var(--text);padding:4px 10px;border-radius:12px;">${h.course || 'ללא קורס'}</span>
+              <span style="font-size:0.75rem;font-weight:900;background:${bgColor};color:${color};padding:4px 10px;border-radius:12px;">${daysLabel}${dateStr}</span>
             </div>
             <div style="font-size:1.15rem;font-weight:900;color:var(--text);margin-bottom:0.25rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${h.name}</div>
             <div style="font-size:0.85rem;font-weight:700;color:var(--muted);">זמן מוערך: ${h.duration} דק'</div>
@@ -6338,6 +6367,37 @@ function toggleCalendarViewModal() {
 }
 
 // ── Window self-registration ──────────────────────────────────────────────────
+function exportData() {
+  const blob = new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `studyflow-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('הנתונים יוצאו בהצלחה ✓');
+}
+
+function importData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const parsed = JSON.parse(ev.target.result);
+      if (typeof parsed !== 'object' || parsed === null) throw new Error('invalid');
+      Object.assign(S, parsed);
+      save();
+      toast('הנתונים יובאו בהצלחה — טוען מחדש...');
+      setTimeout(() => location.reload(), 1200);
+    } catch {
+      toast('קובץ לא תקין — בדוק שזה קובץ גיבוי של StudyFlow');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
 // ES module functions are not in global scope. Assign all public functions to
 // window so that HTML onclick="" handlers can find them.
 window._sfDb = db;
@@ -6420,4 +6480,6 @@ Object.assign(window, {
   // ── Tutor ──
   // ── Settings ──
   toggleTheme, confirmReset, resetSettings,
+  // ── Backup ──
+  exportData, importData,
 });
