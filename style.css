@@ -4387,3 +4387,109 @@ body.scroll-locked { position: fixed; width: 100%; overflow-y: scroll; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ── Remove blue dot under active nav icon ────────────────────────────────── */
+.bn-item.active .bn-icon::after { display: none; }
+
+/* ── Inline form grids (exams, homework) ─────────────────────────────────── */
+.inline-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.inline-form-grid-2 { grid-template-columns: 1fr 1fr; }
+.inline-form-label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--muted);
+  margin-bottom: 0.45rem;
+}
+.inline-form-input {
+  width: 100%;
+  padding: 0.7rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  font-family: var(--sans);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.18s;
+}
+.inline-form-input:focus { border-color: var(--accent); }
+
+/* ── Mobile: comprehensive fixes ─────────────────────────────────────────── */
+@media (max-width: 600px) {
+  /* Inline form grids → single column */
+  .inline-form-grid,
+  .inline-form-grid-2 { grid-template-columns: 1fr; gap: 0.75rem; }
+
+  /* Section boxes: reduce padding so content doesn't overflow */
+  .section-box { padding: 1rem !important; border-radius: 16px !important; }
+
+  /* Bottom nav safe area — push content up enough */
+  .main-content { padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px)); }
+
+  /* anc-card and rem-card: full-screen sheet on mobile */
+  .anc-card, .rem-card, .cam-card, .hp-setup-card {
+    width: 100vw;
+    max-width: 100vw;
+    border-radius: 22px 22px 0 0;
+    max-height: 92vh;
+  }
+
+  /* Modal overlay: slide up from bottom on mobile */
+  .modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  /* Modal-box: full width, round top corners only */
+  .modal-box {
+    width: 100vw;
+    max-width: 100vw;
+    border-radius: 22px 22px 0 0 !important;
+    margin: 0 !important;
+    padding: 1.25rem 1rem 1.5rem !important;
+  }
+
+  /* Prevent background scroll when modal open */
+  .modal-overlay { overscroll-behavior: contain; }
+  .anc-card, .rem-card, .modal-box, .cam-card {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Anchor card body: more breathing room */
+  .anc-card-body, .cam-body, .rem-body { padding: 0.85rem 1rem; gap: 0.75rem; }
+  .anc-card-footer, .cam-footer { padding: 0.75rem 1rem 1rem; }
+
+  /* anc-times-row: wrap on very small screens */
+  .anc-times-row { flex-wrap: wrap; }
+  .anc-times-row > div { flex: 1 1 80px; }
+
+  /* Input sizing: larger tap targets */
+  .anc-input, .inline-form-input, .rem-input {
+    padding: 0.75rem 0.9rem;
+    font-size: 0.95rem;
+  }
+
+  /* Setup onboarding pl-sh-course-row headers: hide on mobile */
+  .pl-sh-courses-header { display: none; }
+  .pl-sh-course-row {
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    background: var(--surface2);
+    border-radius: 10px;
+    padding: 0.6rem;
+    margin-bottom: 0.5rem;
+    gap: 0.35rem;
+  }
+  .pl-sh-course-row .plsh-name { grid-column: 1 / -1; }
+
+  /* Goal options: 2 columns instead of 3 */
+  .pl-sh-goal-row { grid-template-columns: 1fr 1fr; }
+}

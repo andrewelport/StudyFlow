@@ -414,6 +414,7 @@ window.onload = () => {
   if (S.userName) { initApp(); return; }
   // First time — show onboarding wizard
   document.getElementById('setup-screen').style.display = '';
+  const bn = document.getElementById('bottom-nav'); if (bn) bn.style.display = 'none';
   const firstSlide = document.getElementById('ob2-s1');
   if (firstSlide) firstSlide.classList.add('ob2-active');
   _obUpdateProgress();
@@ -902,6 +903,7 @@ function finishOnboarding(){ save(); initApp(); }
 
 function initApp(){
   document.getElementById('setup-screen').style.display='none';
+  const bn = document.getElementById('bottom-nav'); if (bn) bn.style.display = '';
   document.getElementById('app-screen').style.display='block';
   const displayName = S.userName || 'סטודנט';
   const avatarInitial = displayName.trim().split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2) || '?';
