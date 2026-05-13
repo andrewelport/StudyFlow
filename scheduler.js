@@ -1,0 +1,392 @@
+// ── Algorithm Engine (0% AI, 100% Deterministic) ──────────────────────────
+
+const LOAD_PCT = { light: 0.40, balanced: 0.62, heavy: 0.85 };
+
+function timeToMins(t) {
+  if (!t || !t.includes(':')) return 0;
+  const [h, m] = t.split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+function minsToTime(m) {
+  const h  = String(Math.floor(Math.max(0, m) / 60) % 24).padStart(2, '0');
+  const mn = String(Math.max(0, m) % 60).padStart(2, '0');
+  return `${h}:${mn}`;
+}
+
+function _mergeBlocked(blocked) {
+  blocked.sort((a, b) => a.s - b.s);
+  const merged = [];
+  for (const b of blocked) {
+    if (merged.length && b.s <= merged[merged.length - 1].e)
+      merged[merged.length - 1].e = Math.max(merged[merged.length - 1].e, b.e);
+    else merged.push({ s: b.s, e: b.e });
+  }
+  return merged;
+}
+
+function _buildBlocked(dateStr, alreadyPlaced = []) {
+  const dayIdx = new Date(dateStr + 'T12:00').getDay();
+  const wake   = timeToMins(S.wakeTime  || '07:00');
+  const sleep  = timeToMins(S.sleepTime || '23:00');
+
+  const blocked = [{ s: 0, e: wake }, { s: sleep, e: 24 * 60 }];
+
+  (S.anchors || [])
+    .filter(a => parseInt(a.day) === dayIdx)
+    .forEach(a => {
+      const s = timeToMins(a.start) - (a.travelMin || 0);
+      const e = timeToMins(a.end)   + (a.travelMin || 0) + 20; // 20 min rest buffer
+      blocked.push({ s: Math.max(0, s), e: Math.min(24 * 60, e) });
+    });
+
+  alreadyPlaced
+    .filter(t => t.date === dateStr)
+    .forEach(t => {
+      const s   = timeToMins(t.time);
+      const dur = parseInt(String(t.duration).match(/\d+/)?.[0] || 60);
+      blocked.push({ s, e: s + dur + 15 }); // 15 min mandatory break
+    });
+
+  (S.tasks || [])
+    .filter(t => t.date === dateStr && t.done)
+    .forEach(t => {
+      const s   = timeToMins(t.time);
+      const dur = parseInt(String(t.duration).match(/\d+/)?.[0] || 60);
+      blocked.push({ s, e: s + dur });
+    });
+
+  return _mergeBlocked(blocked);
+}
+
+// Determines the optimal start block based on user's focus_time preference
+function getPreferredStartRange(focusTimePref) {
+  if (!focusTimePref) return { min: 0, max: 24*60 };
+  if (focusTimePref.includes('בוקר')) return { min: 6*60, max: 11*60 };
+  if (focusTimePref.includes('צהריים')) return { min: 11*60, max: 15*60 };
+  if (focusTimePref.includes('אחה"צ')) return { min: 14*60, max: 19*60 };
+  if (focusTimePref.includes('ערב')) return { min: 18*60, max: 24*60 };
+  return { min: 0, max: 24*60 };
+}
+
+function findBestFreeSlot(dateStr, alreadyPlaced, blockNeeded, preferredRange) {
+  const merged = _buildBlocked(dateStr, alreadyPlaced);
+  let wake   = timeToMins(S.wakeTime  || '07:00');
+  const sleep  = timeToMins(S.sleepTime || '23:00');
+  
+  // Ignore past hours if today
+  const now = new Date();
+  const todayStr = typeof ld === 'function' ? ld(now) : now.toISOString().split('T')[0];
+  if (dateStr === todayStr) {
+    const currentMins = now.getHours() * 60 + now.getMinutes();
+    wake = Math.max(wake, currentMins + 30);
+  }
+  
+  let validSlots = [];
+  
+  let cursor = wake;
+  for (const block of merged) {
+    if (block.s > cursor && block.s - cursor >= blockNeeded) {
+      validSlots.push({ s: cursor, e: block.s });
+    }
+    cursor = Math.max(cursor, block.e);
+  }
+  if (sleep - cursor >= blockNeeded) {
+    validSlots.push({ s: cursor, e: sleep });
+  }
+
+  if (validSlots.length === 0) return null;
+
+  // Try to find a slot within preferred hours
+  if (preferredRange) {
+    const ideal = validSlots.find(v => v.s >= preferredRange.min && v.s <= preferredRange.max);
+    if (ideal) return ideal.s;
+    const partial = validSlots.find(v => v.e > preferredRange.min && v.s < preferredRange.max);
+    if (partial) return Math.max(partial.s, preferredRange.min);
+  }
+
+  // Fallback to first available
+  return validSlots[0].s;
+}
+
+function getDayFreeMinutes(dateStr) {
+  let wake   = timeToMins(S.wakeTime  || '07:00');
+  const sleep  = timeToMins(S.sleepTime || '23:00');
+  
+  // Ignore past hours if today
+  const now = new Date();
+  const todayStr = typeof ld === 'function' ? ld(now) : now.toISOString().split('T')[0];
+  if (dateStr === todayStr) {
+    const currentMins = now.getHours() * 60 + now.getMinutes();
+    wake = Math.max(wake, currentMins + 30);
+  }
+
+  const merged = _buildBlocked(dateStr);
+
+  let free = 0, cursor = wake;
+  for (const b of merged) {
+    if (b.s > cursor) free += b.s - cursor;
+    cursor = Math.max(cursor, b.e);
+  }
+  if (sleep > cursor) free += sleep - cursor;
+  return Math.max(0, free);
+}
+
+function buildInterleavedQueue(sessionsMap) {
+  const items = Object.entries(sessionsMap)
+    .filter(([, n]) => n > 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, n]) => ({ name, rem: n }));
+
+  const queue = [];
+  while (items.some(i => i.rem > 0)) {
+    let placed = false;
+    for (const item of items) {
+      if (item.rem > 0 && queue[queue.length - 1] !== item.name) {
+        queue.push(item.name); item.rem--; placed = true; break;
+      }
+    }
+    if (!placed) {
+      const best = items.find(i => i.rem > 0);
+      if (best) { queue.push(best.name); best.rem--; }
+      else break;
+    }
+  }
+  return queue;
+}
+
+// Main Algorithm
+function generateWeeklySchedule(answers) {
+  const profile = S.profile || {};
+  const loadPct = LOAD_PCT[answers.load] || 0.62;
+  const today   = typeof ld === 'function' ? ld(new Date()) : new Date().toISOString().split('T')[0];
+
+  // Map Profile -> Block Duration
+  let sessionMin = 60; // default
+  if (profile.focus_span) {
+    if (profile.focus_span.includes('25')) sessionMin = 30;
+    else if (profile.focus_span.includes('45')) sessionMin = 45;
+    else if (profile.focus_span.includes('60')) sessionMin = 60;
+    else if (profile.focus_span.includes('90')) sessionMin = 90;
+  }
+  
+  const breakMin = 15;
+  const blockMin = sessionMin + breakMin;
+  
+  const prefRange = getPreferredStartRange(profile.focus_time);
+
+  const startD = answers.startDate ? new Date(answers.startDate + 'T12:00') : new Date();
+  const endD = answers.endDate ? new Date(answers.endDate + 'T12:00') : new Date(startD.getTime() + 6*86400000);
+  const days = [];
+  for (let d = new Date(startD); d <= endD; d.setDate(d.getDate() + 1)) {
+    days.push(typeof ld === 'function' ? ld(d) : d.toISOString().split('T')[0]);
+  }
+
+  // Phase A: Free pool
+  let totalFreeMin = 0;
+  days.forEach(date => totalFreeMin += getDayFreeMinutes(date));
+
+  if (totalFreeMin < blockMin) {
+    return { tasks: [], stats: { totalFreeMin: 0, studyMin: 0, sessions: 0, reason: 'no_time' } };
+  }
+
+  // Phase B: Quota
+  const studyMin = Math.round(totalFreeMin * loadPct);
+  const totalSessions = Math.max(1, Math.floor(studyMin / blockMin));
+
+  // Phase C: Weights
+  const weights = {};
+  const exams = (S.exams || []).filter(e => e.date >= today);
+
+  (S.courses || []).forEach(c => {
+    let w = answers.courseDifficulty?.[c.name] || 3;
+    const exam = exams.find(e => e.course === c.name);
+    if (exam) {
+      const dLeft = Math.ceil((new Date(exam.date) - new Date()) / 86400000);
+      if (dLeft <= 3)  w *= 2.5;
+      else if (dLeft <= 7)  w *= 1.8;
+      else if (dLeft <= 14) w *= 1.4;
+    }
+    if (profile.exam_fear && profile.exam_fear.includes('לסיים') && w > 3) w *= 1.2;
+    weights[c.name] = Math.max(0.5, w);
+  });
+
+  // Hobby Quota
+  const hobbySessions = {};
+  (answers.selectedHobbies || []).forEach(hName => {
+    const h = (S.hobbies || []).find(x => x.name === hName);
+    hobbySessions[hName] = Math.min(h?.timesPerWeek || 2, 5);
+  });
+  const totalHobbyS = Object.values(hobbySessions).reduce((s, n) => s + n, 0);
+
+  // Homework Quota
+  let totalHwS = 0;
+  (answers.homework || []).forEach(hw => {
+    totalHwS += Math.max(1, Math.ceil(hw.duration / sessionMin));
+  });
+
+  const courseStudyS = Math.max(0, totalSessions - totalHobbyS - totalHwS);
+  const totalWeight = Object.values(weights).reduce((s, w) => s + w, 0) || 1;
+  const sessionsMap = {};
+  
+  const courseNames = Object.keys(weights);
+  let rem = courseStudyS;
+  courseNames.forEach((c, i) => {
+    if (i === courseNames.length - 1) sessionsMap[c] = Math.max(0, rem);
+    else {
+      const n = Math.max(0, Math.round((weights[c] / totalWeight) * courseStudyS));
+      sessionsMap[c] = n;
+      rem = Math.max(0, rem - n);
+    }
+  });
+
+  Object.assign(sessionsMap, hobbySessions);
+
+  // Phase D: Placement
+  const placed = [];
+  const dailyCounts = {};
+  const dailyItemCounts = {};
+  days.forEach(d => { dailyCounts[d] = 0; dailyItemCounts[d] = {}; });
+
+  // Phase D.1: Homework Placement (highest priority)
+  (answers.homework || []).forEach(hw => {
+    const reqS = Math.max(1, Math.ceil(hw.duration / sessionMin));
+    for (let i = 0; i < reqS; i++) {
+      for (const date of days) {
+        if (date > hw.date) continue;
+        const maxPerDay = answers.load === 'heavy' ? 6 : answers.load === 'light' ? 3 : 5;
+        if (dailyCounts[date] >= maxPerDay) continue;
+        const slot = findBestFreeSlot(date, placed, sessionMin + breakMin, prefRange);
+        if (slot !== null) {
+          placed.push({
+            id: Math.random().toString(36).slice(2, 9),
+            course: hw.course, name: hw.name, date,
+            time: minsToTime(slot), duration: `${sessionMin} דק'`,
+            priority: 'קריטי', done: false, missed: false, isHobby: false, isHomework: true
+          });
+          dailyCounts[date]++;
+          break;
+        }
+      }
+    }
+  });
+
+  // Phase D.2: Hobby Placement (second priority — hobbies are commitments, not optional)
+  // Prefer afternoon/evening for hobbies (14:00–22:00)
+  const hobbyPrefRange = { min: 14 * 60, max: 22 * 60 };
+  const hobbyNames = new Set((answers.selectedHobbies || []).filter(h => hobbySessions[h] > 0));
+  const hobbyDayLimit = answers.load === 'heavy' ? 6 : 4; // more relaxed limit for hobbies
+
+  hobbyNames.forEach(hName => {
+    const hobbyDef = (S.hobbies || []).find(h => h.name === hName);
+    const hobbyDur = hobbyDef?.sessionDuration || 45;
+    const hobbyBlock = hobbyDur + breakMin;
+    let sessLeft = hobbySessions[hName] || 0;
+    // Spread evenly: try to maintain at least 1 day gap between sessions
+    let lastPlacedDay = -99;
+    for (const date of days) {
+      if (sessLeft <= 0) break;
+      const dayIdx = days.indexOf(date);
+      // Enforce minimum gap (e.g., not 2 days in a row)
+      if (dayIdx - lastPlacedDay < 2) continue;
+      if (dailyCounts[date] >= hobbyDayLimit) continue;
+      if ((dailyItemCounts[date][hName] || 0) >= 1) continue;
+      // Try preferred range first, then any time
+      let slot = findBestFreeSlot(date, placed, hobbyBlock, hobbyPrefRange);
+      if (slot === null) slot = findBestFreeSlot(date, placed, hobbyBlock, null);
+      if (slot !== null) {
+        placed.push({
+          id: Math.random().toString(36).slice(2, 9),
+          course: hName, name: `אימון ${hName}`, date,
+          time: minsToTime(slot), duration: `${hobbyDur} דק'`,
+          priority: 'תחביב', done: false, missed: false, isHobby: true
+        });
+        dailyCounts[date]++;
+        dailyItemCounts[date][hName] = (dailyItemCounts[date][hName] || 0) + 1;
+        lastPlacedDay = dayIdx;
+        sessLeft--;
+      }
+    }
+    // Second pass: if still sessions left, try again without gap constraint
+    if (sessLeft > 0) {
+      for (const date of days) {
+        if (sessLeft <= 0) break;
+        if ((dailyItemCounts[date][hName] || 0) >= 1) continue;
+        if (dailyCounts[date] >= hobbyDayLimit + 1) continue;
+        let slot = findBestFreeSlot(date, placed, hobbyBlock, null);
+        if (slot !== null) {
+          placed.push({
+            id: Math.random().toString(36).slice(2, 9),
+            course: hName, name: `אימון ${hName}`, date,
+            time: minsToTime(slot), duration: `${hobbyDur} דק'`,
+            priority: 'תחביב', done: false, missed: false, isHobby: true
+          });
+          dailyCounts[date]++;
+          dailyItemCounts[date][hName] = (dailyItemCounts[date][hName] || 0) + 1;
+          sessLeft--;
+        }
+      }
+    }
+  });
+
+  // Phase D.3: Course sessions (interleaved, with time preference per difficulty)
+  // Hard courses try to get placed at peak-time, easy courses at any time
+  const hardPref = prefRange; // user's preferred focus time = hard course time
+  const courseQueue = buildInterleavedQueue(
+    Object.fromEntries(Object.entries(sessionsMap).filter(([k]) => !hobbyNames.has(k)))
+  );
+
+  for (const item of courseQueue) {
+    const isHard = (weights[item] || 3) >= 4;
+    const slotPref = isHard ? hardPref : null; // hard = peak time, easy = any time
+    const blockNeed = sessionMin + breakMin;
+
+    for (const date of days) {
+      const maxPerDay = answers.load === 'heavy' ? 5 : answers.load === 'light' ? 2 : 4;
+      if (dailyCounts[date] >= maxPerDay) continue;
+      const maxSameDay = answers.load === 'heavy' ? 2 : 1;
+      if ((dailyItemCounts[date][item] || 0) >= maxSameDay) continue;
+
+      // Avoid same course on consecutive days (spaced repetition)
+      const yesterday = days[days.indexOf(date) - 1];
+      if (yesterday && (dailyItemCounts[yesterday]?.[item] || 0) >= 1 && answers.load !== 'heavy') continue;
+
+      let slot = findBestFreeSlot(date, placed, blockNeed, slotPref);
+      if (slot === null && slotPref) slot = findBestFreeSlot(date, placed, blockNeed, null); // fallback
+      if (slot !== null) {
+        let taskName = item;
+        if (profile.style) {
+          if (profile.style.includes('תרגילים')) taskName = `תרגול ומטלות: ${item}`;
+          else if (profile.style.includes('וידאו')) taskName = `הרצאות מוקלטות: ${item}`;
+          else if (profile.style.includes('קריאה')) taskName = `סיכום וקריאה: ${item}`;
+        }
+        placed.push({
+          id: Math.random().toString(36).slice(2, 9),
+          course: item, name: taskName, date,
+          time: minsToTime(slot), duration: `${sessionMin} דק'`,
+          priority: isHard ? 'גבוה' : 'בינוני',
+          done: false, missed: false, isHobby: false
+        });
+        dailyCounts[date]++;
+        dailyItemCounts[date][item] = (dailyItemCounts[date][item] || 0) + 1;
+        break;
+      }
+    }
+  }
+
+  // Apply hobby boost if requested (user clicked "more hobbies" in dislike flow)
+  if (answers._hobbyBoost) {
+    // Already placed hobbies above; no extra action needed (they're already prioritized)
+  }
+
+  return {
+    tasks: placed,
+    stats: {
+      totalFreeMin,
+      studyMin: placed.length * sessionMin,
+      sessions: placed.length,
+      reason: placed.length === 0 ? 'no_time' : 'ok'
+    }
+  };
+}
+
