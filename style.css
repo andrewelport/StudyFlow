@@ -4415,6 +4415,47 @@ body.scroll-locked { position: fixed; width: 100%; overflow-y: scroll; }
   text-overflow: ellipsis;
 }
 
+/* ── Page overflow guard ─────────────────────────────────────────────────── */
+.page { overflow-x: hidden; max-width: 100%; }
+input, textarea, select { max-width: 100%; box-sizing: border-box; }
+
+/* ── Add form boxes (homework + exams) ───────────────────────────────────── */
+.aad-form-box {
+  padding: 1.1rem !important;
+  border-radius: 18px !important;
+  margin-bottom: 1.25rem;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow) !important;
+  background: var(--surface) !important;
+}
+.aad-form-box-purple { border-color: rgba(168,85,247,0.2) !important; }
+.aad-form-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  font-weight: 900;
+  color: var(--text);
+  margin-bottom: 1rem;
+}
+.aad-form-title-purple { color: var(--purple); }
+.aad-submit-btn {
+  width: 100%;
+  background: linear-gradient(135deg, var(--accent), var(--purple));
+  color: #fff;
+  border: none;
+  border-radius: 13px;
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  font-weight: 900;
+  padding: 0.85rem;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  margin-top: 0.25rem;
+}
+.aad-submit-btn:active { transform: scale(0.98); opacity: 0.9; }
+.aad-submit-purple { background: linear-gradient(135deg, var(--purple), var(--accent)); }
+
 /* ── Remove blue dot under active nav icon ────────────────────────────────── */
 .bn-item.active .bn-icon::after { display: none; }
 
@@ -4453,6 +4494,15 @@ body.scroll-locked { position: fixed; width: 100%; overflow-y: scroll; }
   /* Inline form grids → single column */
   .inline-form-grid,
   .inline-form-grid-2 { grid-template-columns: 1fr; gap: 0.75rem; }
+
+  /* pl-sh-card tighter on mobile */
+  .pl-sh-card { padding: 1rem; border-radius: 16px; }
+  .pl-sh-section { padding-top: 0.85rem; margin-top: 0.85rem; }
+  .pl-sh-course-row { padding: 0.6rem; gap: 0.4rem; }
+  .pl-sh-course-row input { font-size: 0.85rem; padding: 0.55rem 0.65rem; }
+  .pl-sh-goal-row { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  .pl-sh-goal-opt { padding: 0.65rem 0.5rem; }
+  .pl-sh-goal-desc { display: none; }
 
   /* Section boxes: reduce padding so content doesn't overflow */
   .section-box { padding: 1rem !important; border-radius: 16px !important; }
