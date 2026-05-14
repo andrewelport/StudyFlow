@@ -197,7 +197,13 @@ function uid(){ return Date.now().toString(36) + Math.random().toString(36).slic
 function ld(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function fmtDate(s){ if(!s)return''; const[,m,d]=s.split('-'); const months=['ינו','פבר','מרץ','אפר','מאי','יוני','יולי','אוג','ספט','אוק','נוב','דצמ']; return `${parseInt(d)} ${months[parseInt(m)-1]}`; }
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
-function closeModal(id){ document.getElementById(id).classList.add('hidden'); }
+function closeModal(id){
+  document.getElementById(id).classList.add('hidden');
+  // Release body scroll lock if no modal/sidebar is still open
+  const anyModal = document.querySelectorAll('.modal-overlay:not(.hidden)').length > 0;
+  const sidebarOpen = document.getElementById('sidebar')?.classList.contains('open');
+  if (!anyModal && !sidebarOpen) _setBodyLock(false);
+}
 function selOpt(el){ document.querySelectorAll('.modal-opt').forEach(o => o.classList.remove('sel')); el.classList.add('sel'); selectedOpt = el.textContent.trim(); }
 
 // חולץ JSON חסין קריסות (Fixes JS execution stops)
@@ -646,6 +652,7 @@ function openSettings() {
   const first = document.getElementById(firstAccId);
   if (first) first.classList.add('open');
   document.getElementById('settings-modal').classList.remove('hidden');
+  _setBodyLock(true);
 }
 
 function saveSettings() {
@@ -1223,8 +1230,43 @@ function updateStreak() {
 function renderTreeMini(){ if(document.getElementById('sc-streak')) document.getElementById('sc-streak').textContent = (S.streak || 0); }
 
 // ── POMODORO ──
-let pomoInterval=null, pomoSeconds=90*60, pomoRunning=false, pomoMode='work'; const POMO_WORK=90*60, POMO_BREAK=20*60;
-function renderPomoTaskSelect() { const select = document.getElementById('pomo-task-select'); if(!select) return; const today = ld(new Date()); const pendingTasks = S.tasks.filter(t => t.date === today && !t.done && !t.missed); select.innerHTML = '<option value="">-- בחר משימה (רשות) --</option>' + pendingTasks.map(t => `<option value="${t.id}">${t.time} | ${t.name}</option>`).join(''); }
+let pomoInterval=null, pomoSeconds=90*60, pomoRunning=false, pomoMode='work';
+let POMO_WORK=90*60; const POMO_BREAK=20*60;
+let _pomoCustomMins = 90;
+function renderPomoTaskSelect() {
+  const list = document.getElementById('pomo-cs-list');
+  if (!list) return;
+  const today = ld(new Date());
+  const tasks = S.tasks.filter(t => t.date === today && !t.done && !t.missed);
+  const noneRow = `<div class="pomo-cs-opt" onclick="selectPomoTask('','— בחר משימה (רשות) —')">— בחר משימה (רשות) —</div>`;
+  list.innerHTML = noneRow + tasks.map(t =>
+    `<div class="pomo-cs-opt" onclick="selectPomoTask('${t.id}','${(t.time||'')+'  '+t.name}')">${t.time ? t.time+' | ' : ''}${t.name}</div>`
+  ).join('');
+}
+
+function togglePomoTaskDrop(e) {
+  if (e) e.stopPropagation();
+  const list = document.getElementById('pomo-cs-list');
+  if (!list) return;
+  const isOpen = list.classList.contains('open');
+  if (isOpen) { list.classList.remove('open'); return; }
+  renderPomoTaskSelect();
+  list.classList.add('open');
+  setTimeout(() => {
+    document.addEventListener('click', function _close() {
+      list.classList.remove('open');
+      document.removeEventListener('click', _close);
+    }, { once: true });
+  }, 0);
+}
+
+function selectPomoTask(id, label) {
+  const inp = document.getElementById('pomo-task-select');
+  if (inp) inp.value = id;
+  const lbl = document.getElementById('pomo-cs-label');
+  if (lbl) lbl.textContent = label;
+  document.getElementById('pomo-cs-list')?.classList.remove('open');
+}
 function _pomoSaveSession() {
   const taskSel = document.getElementById('pomo-task-select');
   sessionStorage.setItem('pomo-session', JSON.stringify({
@@ -1261,8 +1303,10 @@ function _pomoRestoreSession() {
     const m = String(Math.floor(remaining/60)).padStart(2,'0'), sec = String(remaining%60).padStart(2,'0');
     if (displayEl) displayEl.textContent = `${m}:${sec}`;
     if (s.taskId) {
-      const sel = document.getElementById('pomo-task-select');
-      if (sel) sel.value = s.taskId;
+      const inp = document.getElementById('pomo-task-select');
+      if (inp) inp.value = s.taskId;
+      const task = S.tasks.find(t => String(t.id) === String(s.taskId));
+      if (task) { const lbl = document.getElementById('pomo-cs-label'); if (lbl) lbl.textContent = (task.time ? task.time + ' | ' : '') + task.name; }
     }
     toast('הפוקוס שוחזר — לחץ ▶ להמשיך');
   } catch (_) {}
@@ -1358,9 +1402,10 @@ function pomoReset(){
   focusLockClose();
   sessionStorage.removeItem('pomo-session');
   pomoMode='work';
+  POMO_WORK = _pomoCustomMins * 60;
   pomoSeconds=POMO_WORK;
   const displayEl = document.getElementById('pomo-display');
-  if (displayEl) displayEl.textContent='90:00';
+  if (displayEl) displayEl.textContent=`${String(_pomoCustomMins).padStart(2,'0')}:00`;
   const progEl = document.getElementById('pomo-prog');
   if (progEl) progEl.style.width='0%';
 }
@@ -2501,7 +2546,8 @@ function selectScheduleDay(ds) {
   renderDayTimeline(ds);
 }
 
-const TL_HOUR_PX = 64, TL_PX_MIN = 64 / 60, TL_START_H = 7, TL_END_H = 23;
+let TL_HOUR_PX = 64, TL_PX_MIN = 64 / 60;
+const TL_START_H = 7, TL_END_H = 23;
 let _nowLineTimer = null;
 
 function renderDayTimeline(dateStr) {
@@ -2650,6 +2696,7 @@ function renderDayTimeline(dateStr) {
   // ── Scroll to now / first event ───────────────────────────────────────────
   const outerEl = document.getElementById(uid_tl);
   if (outerEl) {
+    _initPinchZoom(outerEl);
     let scrollTarget = 0;
     if (isToday) {
       const nowD = new Date();
@@ -2674,6 +2721,32 @@ function renderDayTimeline(dateStr) {
   // ── Drag-to-reschedule ────────────────────────────────────────────────────
   const eventsArea = content.querySelector('.timeline-events-area');
   if (eventsArea) _initDragReschedule(eventsArea, dateStr);
+}
+
+function zoomTimeline(delta) {
+  TL_HOUR_PX = Math.min(160, Math.max(40, TL_HOUR_PX + delta));
+  TL_PX_MIN = TL_HOUR_PX / 60;
+  if (schedViewDay) renderDayTimeline(schedViewDay);
+}
+
+function _initPinchZoom(el) {
+  let initDist = 0, initPx = TL_HOUR_PX;
+  el.addEventListener('touchstart', e => {
+    if (e.touches.length === 2) {
+      initDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      initPx = TL_HOUR_PX;
+    }
+  }, { passive: true });
+  el.addEventListener('touchmove', e => {
+    if (e.touches.length !== 2) return;
+    const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    const scale = d / initDist;
+    TL_HOUR_PX = Math.min(160, Math.max(40, Math.round(initPx * scale)));
+    TL_PX_MIN = TL_HOUR_PX / 60;
+  }, { passive: true });
+  el.addEventListener('touchend', e => {
+    if (initDist > 0) { renderDayTimeline(schedViewDay); initDist = 0; }
+  }, { passive: true });
 }
 
 // ── Timeline helpers ──────────────────────────────────────────────────────────
@@ -5958,7 +6031,18 @@ function focusLockCheckAnswer() {
   }
 }
 
+function selectPomoDuration(mins, btn) {
+  _pomoCustomMins = mins;
+  document.querySelectorAll('.pomo-dur-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const startBtn = document.getElementById('btn-focus-start-main');
+  if (startBtn) startBtn.textContent = `התחל סשן ${mins} דקות `;
+}
+
 function openFocusMode() {
+  POMO_WORK = _pomoCustomMins * 60;
+  pomoSeconds = POMO_WORK;
+  pomoMode = 'work';
   pomoStart();
 }
 
@@ -6434,7 +6518,7 @@ Object.assign(window, {
   // ── Schedule ──
   changeWeek, renderSchedule, selectScheduleDay, renderDayTimeline, toggleScheduleView,
   changeCalMonth, renderMonthCalendar, selectMonthDay, toggleCalendarViewModal,
-  openManualTaskModal, saveManualTask, openTimeChart, renderTimeChart,
+  openManualTaskModal, saveManualTask, openTimeChart, renderTimeChart, zoomTimeline,
   _getUrgencyClass, _detectFocusBlocks,
   // ── Today / tasks ──
   renderTodayTasks, quickMarkDone, openTaskQuickActions,
@@ -6470,7 +6554,8 @@ Object.assign(window, {
   addPlannerCourse, deletePlannerCourse, openAddCourseModal, openAdvancedPlanForCourse,
   openCapacityNegotiation, openRecalcForCollision,
   // ── Pomodoro ──
-  pomoStart, pomoPause, pomoReset, renderPomoTaskSelect, openFocusMode,
+  pomoStart, pomoPause, pomoReset, renderPomoTaskSelect, openFocusMode, selectPomoDuration,
+  togglePomoTaskDrop, selectPomoTask,
   // ── Focus lock ──
   focusLockOpen, focusLockClose, focusLockCheckAnswer, focusLockShowChallenge, focusLockHideChallenge,
   // ── Recalc ──
