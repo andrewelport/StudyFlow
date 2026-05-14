@@ -1,6 +1,27 @@
 // ── LOCAL-ONLY MODE (StudyFlow Free) ─────────────────────────────────────────
 // No Supabase in the free version — all data lives in localStorage.
 const LS_KEY = 'sf_free_v1';
+
+function animateCount(el, target) {
+  if (!el) return;
+  var start = 0, duration = 600, startTime = null;
+  function step(ts) {
+    if (!startTime) startTime = ts;
+    var p = Math.min((ts - startTime) / duration, 1);
+    var ease = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(start + (target - start) * ease);
+    if (p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function _todayGreeting(name) {
+  var h = new Date().getHours();
+  if (h < 12) return 'בוקר טוב, ' + name;
+  if (h < 17) return 'צהריים טובים, ' + name;
+  if (h < 21) return 'ערב טוב, ' + name;
+  return 'לילה טוב, ' + name;
+}
 // Stub db so any residual db.* call silently does nothing.
 const db = {
   auth: {
@@ -416,14 +437,14 @@ window.onload = () => {
   _validateStreak();
   _pruneOldData();
 
-  // Migrate all users to dark mode unless they explicitly switched to light after v28
-  if (!localStorage.getItem('sf_dark_migrated')) {
-    S.theme = 'dark';
-    localStorage.setItem('sf_dark_migrated', '1');
+  // For new users: follow the OS preference
+  if (!S.theme) {
+    S.theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
-  document.body.setAttribute('data-theme', S.theme || 'dark');
+  [document.documentElement, document.body].forEach(function(el){el.setAttribute('data-theme', S.theme);});
   if (S.userName) { initApp(); return; }
-  // First time — show onboarding wizard
+  // Onboarding: follow OS preference too
+  [document.documentElement, document.body].forEach(function(el){el.setAttribute('data-theme', S.theme);});
   document.getElementById('setup-screen').style.display = '';
   const bn = document.getElementById('bottom-nav'); if (bn) bn.style.display = 'none';
   const firstSlide = document.getElementById('ob2-s1');
@@ -486,7 +507,7 @@ function updateHeaderStats() {
   const weekStart = new Date(); weekStart.setDate(weekStart.getDate() - weekStart.getDay());
   const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6);
   const weekExams = S.exams.filter(e => e.date >= ld(weekStart) && e.date <= ld(weekEnd)).length;
-  if (document.getElementById('sc-exams')) document.getElementById('sc-exams').textContent = weekExams;
+  if (document.getElementById('sc-exams')) animateCount(document.getElementById('sc-exams'), weekExams);
   renderTreeMini();
   renderNextTaskCountdown();
   // urgent exam banner
@@ -546,7 +567,7 @@ function renderNextTaskCountdown() {
 
 function toggleTheme() {
   S.theme = S.theme === 'dark' ? 'light' : 'dark';
-  document.body.setAttribute('data-theme', S.theme);
+  [document.documentElement, document.body].forEach(function(el){el.setAttribute('data-theme', S.theme);});
   const lbl = document.getElementById('theme-btn-label');
   if (lbl) lbl.textContent = S.theme === 'dark' ? '☀️ מצב יום' : '🌙 מצב לילה';
   save();
@@ -564,11 +585,10 @@ function resetSettings() { confirmReset(); }
 
 // ── SIDEBAR TOGGLE ──
 function _setBodyLock(locked) {
+  if (window.innerWidth > 768) return; // desktop doesn't need iOS scroll lock
   if (locked) {
     const y = window.scrollY;
     document.body.dataset.scrollY = y;
-    // Set top inline FIRST — before the class adds position:fixed — so iOS Safari
-    // never paints a frame with position:fixed but top:0 (which causes the flash).
     document.body.style.top = `-${y}px`;
     document.body.classList.add('scroll-locked');
   } else {
@@ -736,7 +756,7 @@ function _obUpdateProgress() {
   const counter = document.getElementById('ob2-counter');
   const backBtn = document.getElementById('ob2-back');
   if (fill) fill.style.width = pct + '%';
-  if (counter) counter.textContent = _obStep + ' / ' + _OB_TOTAL;
+  if (counter) counter.textContent = _obStep + ' מתוך ' + _OB_TOTAL;
   if (backBtn) backBtn.classList.toggle('hidden', _obStep === 1);
 }
 
@@ -922,7 +942,7 @@ function initApp(){
   document.getElementById('sb-name').textContent = displayName;
   document.getElementById('sb-avatar').textContent = avatarInitial;
   const now=new Date(); const days=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת']; const months=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
-  document.getElementById('today-greeting').textContent=`שלום, ${displayName} `;
+  document.getElementById('today-greeting').textContent=_todayGreeting(displayName);
   document.getElementById('today-sub').textContent=`יום ${days[now.getDay()]}, ${now.getDate()} ב${months[now.getMonth()]} ${now.getFullYear()}`;
 
   // Auto-open sidebar on desktop (wide screens)
@@ -932,6 +952,13 @@ function initApp(){
     // On desktop push content to the right of the sidebar
     document.querySelector('.main-content').style.marginRight = '265px';
   }
+
+  // Initialize focus timer to match onboarding preference
+  const profileBtn = Array.from(document.querySelectorAll('.pomo-dur-btn')).find(b => {
+    const m = (b.getAttribute('onclick') || '').match(/\d+/);
+    return m && parseInt(m[0]) === _profileDuration();
+  });
+  selectPomoDuration(_profileDuration(), profileBtn || null);
 
   checkPastDueTasks();
   renderAll();
@@ -949,6 +976,8 @@ function showPage(name,btn){
   const pageEl = document.getElementById('page-'+name);
   if (!pageEl) { console.warn('showPage: page not found:', 'page-'+name); return; }
   pageEl.classList.add('active');
+  pageEl.classList.add('page-fade');
+  setTimeout(()=>pageEl.classList.remove('page-fade'), 200);
   if(btn)btn.classList.add('active');
   window.scrollTo({top:0,behavior:'instant'});
   if(name==='schedule'){
@@ -1230,9 +1259,16 @@ function updateStreak() {
 function renderTreeMini(){ if(document.getElementById('sc-streak')) document.getElementById('sc-streak').textContent = (S.streak || 0); }
 
 // ── POMODORO ──
-let pomoInterval=null, pomoSeconds=90*60, pomoRunning=false, pomoMode='work';
-let POMO_WORK=90*60; const POMO_BREAK=20*60;
+function _profileDuration() {
+  const span = S.profile && S.profile.focus_span || '';
+  if (span.includes('25')) return 25;
+  if (span.includes('30')) return 45; // "30–45" → 45' button
+  if (span.includes('60')) return 60;
+  return 90;
+}
+let pomoInterval=null, pomoRunning=false, pomoMode='work';
 let _pomoCustomMins = 90;
+let POMO_WORK=90*60, pomoSeconds=POMO_WORK; const POMO_BREAK=20*60;
 function renderPomoTaskSelect() {
   const list = document.getElementById('pomo-cs-list');
   if (!list) return;
@@ -1812,6 +1848,7 @@ function plShAddHobby() {
   if (inp) inp.value = '';
   document.getElementById('hqm-goal').value = '';
   document.getElementById('hobby-quick-modal').classList.remove('hidden');
+  _setBodyLock(true);
   setTimeout(() => (document.getElementById('hqm-name') || document.getElementById('hqm-goal')).focus(), 100);
 }
 
@@ -1954,6 +1991,7 @@ function openAddCourseModal() {
   document.getElementById('cam-name').value = '';
   document.getElementById('cam-exam-date').value = '';
   modal.classList.remove('hidden');
+  _setBodyLock(true);
   setTimeout(() => document.getElementById('cam-name').focus(), 100);
 }
 
@@ -2060,6 +2098,7 @@ function renderHobbyCardsInPlanner() {
 function openTimeChart() {
   renderTimeChart();
   document.getElementById('time-chart-modal').classList.remove('hidden');
+  _setBodyLock(true);
 }
 
 function renderTimeChart() {
@@ -2657,7 +2696,7 @@ function renderDayTimeline(dateStr) {
     const hobbyClass = ev.isHobby ? 'ev-hobby' : '';
     const allClasses = [statusClass, urgencyClass, hobbyClass].filter(Boolean).join(' ');
     const priorityDot = ev.priority === 'גבוה' ? `<span style="width:6px;height:6px;border-radius:50%;background:var(--red);display:inline-block;margin-left:4px;vertical-align:middle;flex-shrink:0"></span>` : '';
-    const checkBtn = !ev.done && !ev.missed ? `<button class="tl-ev-check" onclick="event.stopPropagation();quickMarkDone('${ev.id}')" title="סיים"><svg viewBox="0 0 24 24" width="10" height="10"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="3" fill="none"/></svg></button>` : '';
+    const checkBtn = '';
     const statusDot = ev.done ? `<span class="tl-ev-status-dot done"></span>` : ev.missed ? `<span class="tl-ev-status-dot missed"></span>` : '';
     const timeLine = height > 40 ? `<div class="tl-ev-sub">${ev.time}${ev.durMins ? ` · ${ev.durMins} דק'` : ''}${ev.course && height > 56 ? ` · ${ev.course}` : ''}</div>` : '';
     const notesLine = ev.notes && height > 62 ? `<div style="font-size:0.62rem;color:var(--muted);margin-top:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${ev.notes}</div>` : '';
@@ -2684,7 +2723,7 @@ function renderDayTimeline(dateStr) {
     const bH = Math.max(0, bBot - bTop - 2);
     if (bH < 20) return;
     const labelTop = bTop + bH / 2;
-    bracketsHtml += `<div class="tl-focus-bracket" style="top:${bTop}px;height:${bH}px;width:8px"></div><div class="tl-focus-label" style="top:${labelTop}px">בלוק למידה</div>`;
+    bracketsHtml += '';
   });
 
   // ── Assemble DOM ──────────────────────────────────────────────────────────
@@ -2783,59 +2822,8 @@ function _detectFocusBlocks(events) {
 }
 
 function _initDragReschedule(eventsArea, dateStr) {
-  let dragEl = null, ghostEl = null, startY = 0, origTop = 0, origH = 0;
-
-  eventsArea.querySelectorAll('.tl-ev[data-task-id]').forEach(el => {
-    el.addEventListener('pointerdown', e => {
-      if (e.target.tagName === 'BUTTON' || e.target.tagName === 'SVG' || e.target.tagName === 'POLYLINE') return;
-      if (el.classList.contains('ev-done') || el.classList.contains('anchor-ev')) return;
-      e.preventDefault();
-      dragEl = el; startY = e.clientY;
-      origTop = parseInt(el.style.top) || 0; origH = el.offsetHeight;
-      el.classList.add('dragging');
-      el.setPointerCapture(e.pointerId);
-
-      ghostEl = document.createElement('div');
-      ghostEl.className = 'tl-drag-ghost';
-      ghostEl.style.cssText = `top:${origTop}px;height:${origH}px;right:${el.style.right};width:${el.style.width}`;
-      eventsArea.appendChild(ghostEl);
-    }, { passive: false });
-
-    el.addEventListener('pointermove', e => {
-      if (!dragEl || dragEl !== el) return;
-      const dy = e.clientY - startY;
-      const rawTop = Math.max(0, origTop + dy);
-      const snappedMins = Math.round((rawTop / TL_PX_MIN + TL_START_H * 60) / 15) * 15;
-      const snappedTop = (snappedMins - TL_START_H * 60) * TL_PX_MIN;
-      el.style.top = rawTop + 'px';
-      if (ghostEl) {
-        ghostEl.style.top = snappedTop + 'px';
-        const h = Math.floor(snappedMins / 60), m = String(snappedMins % 60).padStart(2, '0');
-        ghostEl.textContent = `${String(h).padStart(2,'0')}:${m}`;
-      }
-    });
-
-    el.addEventListener('pointerup', e => {
-      if (!dragEl || dragEl !== el) return;
-      el.classList.remove('dragging');
-      if (ghostEl) { ghostEl.remove(); ghostEl = null; }
-      const dy = e.clientY - startY;
-      if (Math.abs(dy) < 8) { dragEl = null; return; }
-      const rawTop = Math.max(0, origTop + dy);
-      const snappedMins = Math.round((rawTop / TL_PX_MIN + TL_START_H * 60) / 15) * 15;
-      const h = Math.floor(snappedMins / 60), m = snappedMins % 60;
-      const taskId = el.dataset.taskId;
-      const task = S.tasks.find(t => String(t.id) === String(taskId));
-      if (task && snappedMins >= TL_START_H*60 && snappedMins < TL_END_H*60) {
-        task.time = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
-        save(); renderDayTimeline(dateStr);
-        toast(`⏱ הוזז ל-${task.time}`);
-      } else {
-        el.style.top = origTop + 'px';
-      }
-      dragEl = null;
-    });
-  });
+  // Dragging disabled — unreliable on mobile touch
+  // To re-enable: restore pointer event listeners here
 }
 
 function quickMarkDone(taskId) {
@@ -2897,6 +2885,7 @@ function doneTask(id) {
   document.getElementById('rating-feedback').value = '';
   document.querySelectorAll('.star-b').forEach(b => b.classList.remove('lit', 'preview'));
   document.getElementById('rating-modal').classList.remove('hidden');
+  _setBodyLock(true);
 }
 
 function previewStars(n) {
@@ -2967,7 +2956,7 @@ function undoTask(id){
   } 
 }
 function deleteTask(id){ S.tasks=S.tasks.filter(t=>String(t.id)!==String(id)); save(); renderAll(); toast('נמחקה'); }
-function missTask(id){ missedTaskId=id; const t=S.tasks.find(t=>String(t.id)===String(id)); document.getElementById('missed-task-name').textContent=`משימה: "${t?.name||''}"`; document.getElementById('missed-modal').classList.remove('hidden'); }
+function missTask(id){ missedTaskId=id; const t=S.tasks.find(t=>String(t.id)===String(id)); document.getElementById('missed-task-name').textContent=`משימה: "${t?.name||''}"`; document.getElementById('missed-modal').classList.remove('hidden'); _setBodyLock(true); }
 function confirmMissed(){ if(!missedTaskId)return; const t=S.tasks.find(t=>String(t.id)===String(missedTaskId)); if(t){t.missed=true;t.done=false;t.missedReason=selectedOpt||'לא צוין';} save(); closeModal('missed-modal'); renderAll(); }
 
 function _checkWeeklyReviewBanner() {
@@ -2987,9 +2976,9 @@ function renderTodayTasks(){
   _checkWeeklyReviewBanner();
   const today = ld(new Date()); const dayIdx = new Date().getDay();
   let tt = S.tasks.filter(t => t.date === today);
-  document.getElementById('sc-tasks').textContent = tt.length;
-  document.getElementById('sc-done').textContent = tt.filter(t=>t.done).length;
-  document.getElementById('sc-missed').textContent = tt.filter(t=>t.missed).length;
+  animateCount(document.getElementById('sc-tasks'), tt.length);
+  animateCount(document.getElementById('sc-done'), tt.filter(t=>t.done).length);
+  animateCount(document.getElementById('sc-missed'), tt.filter(t=>t.missed).length);
   renderNextTaskCountdown();
   let items = tt.map(t=>({...t, _isTask:true}));
   const dayAnchors = (S.anchors||[]).filter(a=>parseInt(a.day)===dayIdx);
@@ -3273,6 +3262,7 @@ function openReminders() {
   if (!S.reminders) S.reminders = [];
   renderReminders();
   document.getElementById('reminders-modal')?.classList.remove('hidden');
+  _setBodyLock(true);
 }
 
 function addReminder() {
@@ -3345,6 +3335,7 @@ function showAddAnchorModal(){
   const todayInput = document.getElementById('anc-onetime-date');
   if (todayInput) todayInput.value = ld(new Date());
   document.getElementById('anchor-modal').classList.remove('hidden');
+  _setBodyLock(true);
   setTimeout(() => document.getElementById('anc-name').focus(), 100);
 }
 
@@ -3375,6 +3366,7 @@ function editAnchor(id) {
     document.getElementById('anc-days-selector').classList.add('hidden');
   }
   document.getElementById('anchor-modal').classList.remove('hidden');
+  _setBodyLock(true);
 }
 
 // ── MISSING FUNCTIONS (previously undefined) ──
@@ -3385,11 +3377,13 @@ function openManualTaskModal(id) {
   document.getElementById('edit-t-name').value = t?.name || '';
   document.getElementById('edit-t-course').value = t?.course || '';
   document.getElementById('edit-t-date').value = t?.date || ld(new Date());
-  document.getElementById('edit-t-time').value = t?.time || '09:00';
-  document.getElementById('edit-t-dur').value = t?.duration ? parseInt(t.duration) : 90;
+  const nowH = new Date(); const nowTime = String(nowH.getHours()).padStart(2,'0') + ':' + String(nowH.getMinutes()).padStart(2,'0');
+  document.getElementById('edit-t-time').value = t?.time || nowTime;
+  document.getElementById('edit-t-dur').value = t?.duration ? parseInt(t.duration) : _profileDuration();
   document.getElementById('edit-t-notes').value = t?.notes || '';
   modal.dataset.editId = id || '';
   modal.classList.remove('hidden');
+  _setBodyLock(true);
 }
 
 function saveManualTask() {
@@ -4783,6 +4777,7 @@ function hpOpenReport() {
   const note = document.getElementById('hrm-note');
   if (note) note.value = '';
   document.getElementById('hobby-report-modal')?.classList.remove('hidden');
+  _setBodyLock(true);
 }
 
 function hpReportSave() {
@@ -6351,13 +6346,17 @@ function renderHomework() {
       ...(S.tasks || []).map(t => t.course).filter(Boolean)
     ])].filter(Boolean);
     sel.innerHTML = '<option value="">-- בחר קורס --</option>' + courses.map(c => `<option value="${c}">${c}</option>`).join('');
+    const noCourseMsg = document.getElementById('hw-no-course-msg');
+    if (noCourseMsg) noCourseMsg.style.display = courses.length === 0 ? '' : 'none';
   }
 
   const list = document.getElementById('hw-list');
   if (list) {
     const hws = (S.homework || []).filter(h => !h.done).sort((a,b) => a.date.localeCompare(b.date));
+    var emptyEl = document.getElementById('hw-empty-state');
+    if (emptyEl) emptyEl.style.display = hws.length === 0 ? '' : 'none';
     if (hws.length === 0) {
-      list.innerHTML = '<div class="empty-state" style="background:var(--surface2);border-radius:24px;padding:3rem 2rem;"><div class="empty-title" style="font-size:1.4rem;font-weight:900;">אין מטלות פתוחות כרגע</div><div class="empty-sub" style="font-weight:700;">זמן מצוין לנוח או להתחיל ללמוד למבחנים!</div></div>';
+      list.innerHTML = '';
     } else {
       list.innerHTML = hws.map(h => {
         const d = new Date(h.date + 'T12:00:00');
