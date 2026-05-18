@@ -2842,7 +2842,8 @@ function closeTaskActionSheetOld() {
   // kept for reference to not break line numbers
 }
 
-function _initDaySwipe() {
+function _initDaySwipe() { return; // DISABLED BY USER
+
   const el = document.getElementById('day-timeline-view');
   if (!el) return;
   if (_swipeController) _swipeController.abort();
@@ -4413,9 +4414,14 @@ function _hpRenderHobby(idx) {
   if (el('hp-sessions-count')) el('hp-sessions-count').textContent = done;
   if (el('hp-freq-count')) el('hp-freq-count').textContent = hobby.timesPerWeek + ' פעמים/שבוע';
   if (el('hp-next-date')) {
-    el('hp-next-date').textContent = upcoming[0]
-      ? upcoming[0].date + (upcoming[0].time ? ' · ' + upcoming[0].time : '')
-      : 'לא מתוכנן';
+    if (upcoming[0]) {
+      const dParts = upcoming[0].date.split('-');
+      const dStr = dParts.length === 3 ? `${dParts[2]}/${dParts[1]}` : upcoming[0].date;
+      el('hp-next-date').innerHTML = `<div style="font-size:1.25rem; line-height:1;">${dStr}</div>` + 
+        (upcoming[0].time ? `<div style="font-size:0.75rem; margin-top:4px; font-weight:700; opacity:0.85; letter-spacing:0.5px;">${upcoming[0].time}</div>` : '');
+    } else {
+      el('hp-next-date').innerHTML = '<div style="font-size:1.25rem; line-height:1;">—</div>';
+    }
   }
 
   _hpRenderTrack(hobby, done);
@@ -4719,37 +4725,75 @@ async function findHobbySlots() {
     overlay.id = 'hobby-approve-slots-overlay';
     overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);';
     
-    const tasksHtml = newTasks.map(t => `<div style="background:var(--surface2);padding:0.75rem;border-radius:12px;margin-bottom:0.5rem;display:flex;justify-content:space-between;align-items:center;"><div style="font-weight:800;color:var(--text);">${typeof formatPrettyDate==='function'?formatPrettyDate(t.date):t.date}</div><div style="color:var(--accent);font-weight:900;">${t.time} (${t.duration})</div></div>`).join('');
+    const selectedSlots = new Array(newTasks.length).fill(true);
+
+    const renderTasksHtml = () => newTasks.map((t, idx) => {
+      const isSelected = selectedSlots[idx];
+      const bg = isSelected ? 'var(--brand)' : 'var(--surface2)';
+      const color = isSelected ? '#fff' : 'var(--text)';
+      const accent = isSelected ? 'rgba(255,255,255,0.9)' : 'var(--accent)';
+      const checkIcon = isSelected 
+        ? '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>' 
+        : '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle></svg>';
+      
+      return `<div class="hp-slot-toggle" data-idx="${idx}" style="background:${bg}; color:${color}; padding:0.9rem; border-radius:14px; margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center; cursor:pointer; transition:all 0.15s ease; user-select:none;">
+        <div style="display:flex; align-items:center; gap:0.75rem;">
+          ${checkIcon}
+          <div style="font-size:1.05rem; font-weight:800;">${typeof formatPrettyDate==='function'?formatPrettyDate(t.date):t.date}</div>
+        </div>
+        <div style="color:${accent}; font-weight:700;">${t.time} (${t.duration})</div>
+      </div>`;
+    }).join('');
 
     const modal = document.createElement('div');
-    modal.style.cssText = 'background:var(--surface);width:90%;max-width:400px;border-radius:24px;padding:2rem;box-shadow:0 24px 48px rgba(0,0,0,0.2);display:flex;flex-direction:column;gap:1.5rem;animation:slideUpFadeIn 0.3s cubic-bezier(0.34,1.56,0.64,1);';
-    modal.innerHTML = `
-      <div style="text-align:center;">
-        <div style="width:4rem;height:4rem;margin:0 auto 1rem;border-radius:16px;background:linear-gradient(135deg, var(--accent), var(--purple));color:white;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 16px rgba(79,110,247,0.3);">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-        </div>
-        <h2 style="font-size:1.5rem;font-weight:900;color:var(--text);margin-bottom:0.25rem;">מצאתי ${newTasks.length} חלונות זמן!</h2>
-        <p style="color:var(--muted);font-size:0.9rem;">האם תרצה להוסיף את האימונים הבאים ללו"ז שלך?</p>
-      </div>
-      <div>${tasksHtml}</div>
-      <div style="display:flex;gap:0.75rem;">
-        <button class="btn-primary" id="hp-approve-btn" style="flex:1;background:var(--green);border:none;border-radius:14px;padding:1rem;font-size:1.1rem;font-weight:900;box-shadow:0 8px 16px rgba(22,201,141,0.25);">הוסף ללו"ז</button>
-        <button class="btn-cancel" onclick="document.getElementById('hobby-approve-slots-overlay').remove()" style="flex:1;border-radius:14px;padding:1rem;font-size:1.1rem;font-weight:900;background:var(--surface2);color:var(--muted);border:none;">בטל</button>
-      </div>
-    `;
+    modal.style.cssText = 'background:var(--surface);width:90%;max-width:440px;border-radius:24px;padding:1.5rem;box-shadow:0 24px 48px rgba(0,0,0,0.2);display:flex;flex-direction:column;gap:1.2rem;animation:slideUpFadeIn 0.3s cubic-bezier(0.34,1.56,0.64,1); max-height:85vh; overflow-y:auto; overscroll-behavior-y:contain;';
     
-    overlay.appendChild(modal);
-    document.body.appendChild(overlay);
+    const updateModalHtml = () => {
+      const count = selectedSlots.filter(Boolean).length;
+      modal.innerHTML = `
+        <div style="text-align:center;">
+          <div style="width:3.5rem;height:3.5rem;margin:0 auto 1rem;border-radius:16px;background:linear-gradient(135deg, var(--brand), var(--purple));color:white;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 16px rgba(79,110,247,0.3);">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+          </div>
+          <h2 style="font-size:1.4rem;font-weight:900;color:var(--text);margin-bottom:0.25rem;">מצאתי ${newTasks.length} חלונות זמן!</h2>
+          <p style="color:var(--muted);font-size:0.95rem;">סמן אילו אימונים תרצה להוסיף ללו"ז:</p>
+        </div>
+        <div id="hp-slots-container">${renderTasksHtml()}</div>
+        <div style="display:flex;gap:0.75rem;margin-top:0.5rem">
+          <button class="btn-primary" id="hp-approve-btn" style="flex:1.5;background:var(--brand);border:none;border-radius:14px;padding:1rem;font-size:1.1rem;font-weight:900;box-shadow:0 8px 16px rgba(92,110,245,0.25); color:white; ${count===0?'opacity:0.5; pointer-events:none;':''}">הוסף ${count} ללו"ז</button>
+          <button class="btn-cancel" id="hp-cancel-btn" style="flex:1;border-radius:14px;padding:1rem;font-size:1.1rem;font-weight:900;background:var(--surface2);color:var(--text);border:none;">בטל</button>
+        </div>
+      `;
 
-    document.getElementById('hp-approve-btn').onclick = () => {
-      newTasks.forEach(t => S.tasks.push(t));
-      if(typeof save==='function')save(); 
-      if(typeof renderAll==='function')renderAll(); 
-      if(typeof _hpRenderHobby==='function')_hpRenderHobby(_hobbyActiveIdx);
-      document.getElementById('hobby-approve-slots-overlay').remove();
-      if(typeof toast==='function')toast(`✅ נוספו ${newTasks.length} פעילויות "${hobby.name}" ללו"ז!`);
+      modal.querySelectorAll('.hp-slot-toggle').forEach(el => {
+        el.onclick = () => {
+          const idx = parseInt(el.dataset.idx);
+          selectedSlots[idx] = !selectedSlots[idx];
+          updateModalHtml();
+        };
+      });
+
+      modal.querySelector('#hp-cancel-btn').onclick = () => {
+        document.getElementById('hobby-approve-slots-overlay').remove();
+      };
+
+      const btn = modal.querySelector('#hp-approve-btn');
+      if (btn) {
+        btn.onclick = () => {
+          const chosen = newTasks.filter((_, i) => selectedSlots[i]);
+          chosen.forEach(t => S.tasks.push(t));
+          if(typeof save==='function')save(); 
+          if(typeof renderAll==='function')renderAll(); 
+          if(typeof _hpRenderHobby==='function')_hpRenderHobby(_hobbyActiveIdx);
+          document.getElementById('hobby-approve-slots-overlay').remove();
+          if(typeof toast==='function')toast(`✅ נוספו ${chosen.length} פעילויות "${hobby.name}" ללו"ז!`);
+        };
+      }
     };
 
+    updateModalHtml();
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
   } catch (e) {
     if(typeof toast==='function')toast('שגיאה: ' + e.message);
   } finally {
@@ -6046,6 +6090,8 @@ function openFocusMode() {
 
 // Action Sheet Logic
 function openTaskActionSheet(taskId) {
+  document.body.style.overflow = 'hidden';
+
   const t = S.tasks.find(x => String(x.id) === String(taskId));
   if (!t) return;
   document.getElementById('task-action-title').textContent = t.name;
@@ -6070,6 +6116,8 @@ function openTaskActionSheet(taskId) {
 }
 
 function closeTaskActionSheet() {
+  document.body.style.overflow = '';
+
   const bd = document.getElementById('task-action-backdrop');
   if (bd) { bd.style.pointerEvents = 'none'; bd.classList.remove('open'); }
   const panel = document.getElementById('task-sheet-panel');
@@ -6080,6 +6128,8 @@ function closeTaskActionSheet() {
 let _tesTaskId = null, _tesAISuggestion = null;
 
 function openTaskEditSheet(id) {
+  document.body.style.overflow = 'hidden';
+
   const t = S.tasks.find(x => String(x.id) === String(id));
   if (!t) return;
   _tesTaskId = id; _tesAISuggestion = null;
@@ -6101,6 +6151,8 @@ function openTaskEditSheet(id) {
 }
 
 function closeTaskEditSheet() {
+  document.body.style.overflow = '';
+
   document.getElementById('tes-backdrop').classList.remove('open');
   document.getElementById('tes-panel').classList.remove('open');
   _tesTaskId = null; _tesAISuggestion = null;
@@ -6567,4 +6619,87 @@ Object.assign(window, {
   toggleTheme, confirmReset, resetSettings,
   // ── Backup ──
   exportData, importData,
+});
+
+
+
+/* --- DRAG TO DISMISS LOGIC --- */
+document.addEventListener('DOMContentLoaded', () => {
+  const sheets = [
+    { panelId: 'task-sheet-panel', closeFn: closeTaskActionSheet },
+    { panelId: 'tes-panel', closeFn: closeTaskEditSheet },
+    { panelId: 'time-chart-modal-box', closeFn: () => closeModal('time-chart-modal') }
+  ];
+
+  sheets.forEach(({panelId, closeFn}) => {
+    const panel = document.getElementById(panelId);
+    if (!panel) return;
+    
+    let startY = 0;
+    let currentY = 0;
+    let isDragging = false;
+
+    panel.addEventListener('touchstart', (e) => {
+      // Don't interfere if they are scrolling inside an input or select
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+      
+      startY = e.touches[0].clientY;
+      currentY = startY;
+      isDragging = true;
+      panel.style.transition = 'none'; // Remove transition for 1:1 finger tracking
+    }, { passive: true });
+
+    panel.addEventListener('touchmove', (e) => {
+      if (!isDragging) return;
+      currentY = e.touches[0].clientY;
+      const deltaY = currentY - startY;
+      
+      // Only drag downwards
+      if (deltaY > 0) {
+        panel.style.transform = `translateY(calc(env(safe-area-inset-bottom, 0px) + ${deltaY}px))`;
+        e.preventDefault(); // Prevent background scrolling
+      }
+    }, { passive: false });
+
+    panel.addEventListener('touchend', (e) => {
+      if (!isDragging) return;
+      isDragging = false;
+      const deltaY = currentY - startY;
+      
+      panel.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1)';
+      
+      if (deltaY > 100) {
+        // Dragged far enough to dismiss
+        closeFn();
+        setTimeout(() => { panel.style.transform = ''; }, 300);
+      } else {
+        // Snap back
+        panel.style.transform = '';
+      }
+    });
+  });
+});
+
+
+
+/* --- BULLETPROOF GLOBAL MODAL SCROLL LOCK --- */
+document.addEventListener('DOMContentLoaded', () => {
+  const checkModals = () => {
+    // If any modal is open, lock the body
+    const anyOpen = document.querySelectorAll('.modal-overlay:not(.hidden), .action-sheet-modal.open').length > 0;
+    if (anyOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+  };
+
+  // Observe all modal overlays for class changes
+  const observer = new MutationObserver(checkModals);
+  document.querySelectorAll('.modal-overlay').forEach(el => {
+    observer.observe(el, { attributes: true, attributeFilter: ['class'] });
+  });
+  
+  // Call once on load just in case
+  checkModals();
 });
