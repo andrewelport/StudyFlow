@@ -4,11 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>StudyFlow  — ה-Waze של הלימודים</title>
-<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=60">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=84">
+<link rel="stylesheet" href="style_v6.css?v=16">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="logo_192.png">
-<meta name="theme-color" content="#080d1e">
+<meta name="theme-color" content="#5C6EF5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1C1C1E" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="StudyFlow">
@@ -22,6 +28,29 @@
 </script>
 </head>
 <body>
+<!-- Loading progress bar (Fantastical-style splash) -->
+<div id="sf-load-bar"></div>
+<!-- ═══ SPLASH / HERO SCREEN ═══ -->
+<div id="sf-splash">
+  <div class="spl-blob spl-blob-1"></div>
+  <div class="spl-blob spl-blob-2"></div>
+  <div class="spl-blob spl-blob-3"></div>
+  <div class="spl-center">
+    <div class="spl-icon-wrap">
+      <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M38 18v12M10 18l14-7 14 7-14 7z" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M18 24v8c2 3 10 3 12 0v-8" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="spl-name">StudyFlow</div>
+    <div class="spl-tag">ה-Waze של הלימודים</div>
+  </div>
+  <div class="spl-cta-area">
+    <button class="spl-btn-start" onclick="sfShowAuth()">התחל בחינם</button>
+    <button class="spl-btn-signin" onclick="sfShowAuthSignin()">כבר יש לי חשבון — כניסה</button>
+  </div>
+</div>
+
 <!-- AUTH OVERLAY — hidden in local-only mode -->
 <div id="auth-overlay" style="display:none">
   <div class="auth-card">
@@ -111,6 +140,31 @@
       <div class="ob2-counter" id="ob2-counter">1 / 8</div>
     </div>
 
+    <!-- Step 0: Attribution (first step after auth, before name) -->
+    <div class="ob2-slide" id="ob2-s0">
+      <div class="ob2-illus ob2-illus-sm">
+        <svg viewBox="0 0 160 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="40" cy="40" r="26" fill="var(--accent-light)" stroke="var(--accent)" stroke-width="1.5" opacity="0.7"/>
+          <circle cx="90" cy="40" r="18" fill="var(--green-light)" stroke="var(--green)" stroke-width="1.5" opacity="0.7"/>
+          <circle cx="130" cy="40" r="12" fill="var(--yellow-light)" stroke="var(--yellow)" stroke-width="1.5" opacity="0.7"/>
+          <circle cx="40" cy="40" r="8" fill="var(--accent)" opacity="0.4"/>
+          <path d="M58 30 Q70 20 80 30" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.5"/>
+          <path d="M100 30 Q115 22 120 30" stroke="var(--green)" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.5"/>
+        </svg>
+      </div>
+      <div class="ob2-title">מאיפה שמעת עלינו?</div>
+      <div class="ob2-sub">עוזר לנו להגיע ליותר סטודנטים כמוך 🙏</div>
+      <div class="sf-attr-chips" id="sf-attr-chips">
+        <button class="sf-attr-chip" data-val="tiktok" onclick="sfChipSel(this,'sf-attr-chips')">📱 TikTok / Instagram</button>
+        <button class="sf-attr-chip" data-val="friend" onclick="sfChipSel(this,'sf-attr-chips')">👥 חבר המליץ</button>
+        <button class="sf-attr-chip" data-val="google" onclick="sfChipSel(this,'sf-attr-chips')">🔍 Google</button>
+        <button class="sf-attr-chip" data-val="teacher" onclick="sfChipSel(this,'sf-attr-chips')">👨‍🏫 מורה / מרצה</button>
+        <button class="sf-attr-chip" data-val="other" onclick="sfChipSel(this,'sf-attr-chips')">אחר</button>
+      </div>
+      <button class="ob2-next-btn" onclick="sfAttrNext()">המשך</button>
+      <button class="ob2-skip-lnk" onclick="sfGoToS1()">דלג</button>
+    </div>
+
     <!-- Step 1: Welcome + Name -->
     <div class="ob2-slide" id="ob2-s1">
       <div class="ob2-illus">
@@ -135,7 +189,8 @@
         <input type="text" id="inp-name" class="ob2-inp ob2-inp-lg" placeholder="מה שמך?" maxlength="50" autocomplete="given-name" onkeydown="if(event.key==='Enter')obStep(2)"/>
         <input type="text" id="inp-inst" class="ob2-inp" placeholder="מוסד לימודים (אופציונלי)" maxlength="80" autocomplete="organization"/>
       </div>
-      <button class="ob2-next-btn" onclick="obStep(2)">המשך</button>
+      <button class="ob2-next-btn" onclick="obStep(2)">המשך — שאלות מותאמות אישית</button>
+      <button class="ob2-skip-lnk" onclick="sfQuickJoin()">כניסה מהירה ← (שם בלבד)</button>
     </div>
 
     <!-- Step 2: Wake / Sleep time -->
@@ -192,7 +247,7 @@
           </select>
         </div>
       </div>
-      <button class="ob2-next-btn" onclick="obStep(3)">המשך</button>
+      <button class="ob2-next-btn" onclick="obStep(4)">המשך</button>
     </div>
 
     <!-- Step 3: Fixed anchors -->
@@ -269,6 +324,7 @@
         </button>
       </div>
       <button class="ob2-next-btn" onclick="obStep(5)">המשך</button>
+      <button class="ob2-skip-lnk" onclick="obStep(8)">דלג לסיום →</button>
     </div>
 
     <!-- Step 5: Focus span -->
@@ -454,7 +510,10 @@
     <button class="hamburger-btn" id="hamburger-btn" onclick="toggleSidebar()" aria-label="תפריט">
       <span></span><span></span><span></span>
     </button>
-    <div class="mobile-logo">StudyFlow</div>
+    <div class="hdr-center">
+      <div class="hdr-page-name" id="hdr-page-name">היום</div>
+      <div class="hdr-date" id="hdr-date"></div>
+    </div>
     <button class="mobile-settings-btn" onclick="openSettings()" aria-label="הגדרות">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
     </button>
@@ -472,7 +531,7 @@
       <div class="sidebar-sub">ה-Waze של הלימודים </div>
       <button class="nav-item active" onclick="showPage('today',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span> <span>היום</span></button>
       <button class="nav-item" onclick="showPage('planner',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span> <span>מתכנן לו"ז</span></button>
-      <button class="nav-item" onclick="showPage('schedule',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></span> <span>לו"ז שבועי</span></button>
+      <button class="nav-item" onclick="showPage('schedule',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></span> <span>הלו״ז שלי</span></button>
       <button class="nav-item" onclick="showPage('homework',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></span> <span>מטלות</span></button>
       <button class="nav-item" onclick="showPage('exams',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span> <span>מבחנים</span></button>
       <button class="nav-item" onclick="showPage('anchors',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="5" r="3"/><line x1="12" y1="22" x2="12" y2="8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/></svg></span> <span>עוגנים קבועים</span></button>
@@ -691,8 +750,8 @@
       <div class="page" id="page-schedule">
         <div class="sch-page-hdr">
           <div class="sch-hdr-left">
-            <div class="page-title">לו"ז שבועי</div>
-            <div class="page-sub">החלק כדי לנווט בין ימים</div>
+            <div class="page-title">הלו״ז שלי</div>
+            <div class="page-sub">בחר יום לצפייה</div>
           </div>
           <div class="sch-week-nav">
             <button class="sch-nav-btn" onclick="changeWeek(-1)">
@@ -856,19 +915,36 @@
           <div class="page-sub">עלה ברמות · צבור הישגים · שבור שיאים</div>
         </div>
 
+        <!-- Duolingo-style week activity canvas -->
+        <div class="section-box sq-canvas-strip">
+          <div class="sq-canvas-header">
+            <span class="sq-canvas-title">פעילות השבוע</span>
+            <span class="sq-canvas-xp"><span id="sq-week-xp">0</span> XP</span>
+          </div>
+          <div class="sq-canvas-days">
+            <div class="sq-canvas-day"><div class="sq-cd-pip" id="sq-d0"></div><span>א</span></div>
+            <div class="sq-canvas-day"><div class="sq-cd-pip" id="sq-d1"></div><span>ב</span></div>
+            <div class="sq-canvas-day"><div class="sq-cd-pip" id="sq-d2"></div><span>ג</span></div>
+            <div class="sq-canvas-day"><div class="sq-cd-pip" id="sq-d3"></div><span>ד</span></div>
+            <div class="sq-canvas-day"><div class="sq-cd-pip" id="sq-d4"></div><span>ה</span></div>
+            <div class="sq-canvas-day"><div class="sq-cd-pip" id="sq-d5"></div><span>ו</span></div>
+            <div class="sq-canvas-day"><div class="sq-cd-pip" id="sq-d6"></div><span>ש</span></div>
+          </div>
+        </div>
+
         <!-- XP Hero -->
         <div class="sq-hero-card">
           <div class="sq-ring-wrap">
             <svg class="sq-ring-svg" viewBox="0 0 140 140">
-              <circle cx="70" cy="70" r="56" stroke="rgba(255,255,255,0.12)" stroke-width="10" fill="none"/>
-              <circle id="sq-ring-fill" cx="70" cy="70" r="56" stroke="url(#sqGrad)" stroke-width="10" fill="none"
+              <circle cx="70" cy="70" r="56" stroke="rgba(0,0,0,0.07)" stroke-width="11" fill="none"/>
+              <circle id="sq-ring-fill" cx="70" cy="70" r="56" stroke="url(#sqGrad)" stroke-width="11" fill="none"
                 stroke-linecap="round" transform="rotate(-90 70 70)"
                 stroke-dasharray="351.9" stroke-dashoffset="351.9"
-                style="transition:stroke-dashoffset 1.2s cubic-bezier(0.34,1.56,0.64,1);filter:drop-shadow(0 0 8px rgba(167,139,250,0.7))"/>
+                style="transition:stroke-dashoffset 1.2s cubic-bezier(0.34,1.56,0.64,1);filter:drop-shadow(0 0 10px rgba(88,204,2,0.55))"/>
               <defs>
                 <linearGradient id="sqGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stop-color="#a78bfa"/>
-                  <stop offset="100%" stop-color="#38ef7d"/>
+                  <stop offset="0%" stop-color="#58CC02"/>
+                  <stop offset="100%" stop-color="#A3E635"/>
                 </linearGradient>
               </defs>
             </svg>
@@ -1791,5 +1867,93 @@
 
 <script src="scheduler.js?v=29"></script>
 <script src="app.js?v=56"></script>
-</body>
-</html>
+<script>
+/* ── Timeline: 80px/hour (airy spacing) ── */
+try { TL_HOUR_PX = 80; TL_PX_MIN = 80/60; } catch(e) {}
+
+/* ── Dynamic header: page name + date ── */
+(function(){
+  var PAGE_NAMES = {
+    'today':'היום','schedule':'לוח זמנים','homework':'מטלות',
+    'exams':'מבחנים','progress':'התקדמות','planner':'מתכנן',
+    'anchors':'עוגנים','weekly-review':'סיכום שבועי','settings':'הגדרות','hobby':'תחביבים'
+  };
+  var DAYS_HE = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+  var MONTHS_HE = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+  function formatDate(){
+    var d=new Date();
+    return DAYS_HE[d.getDay()]+', '+d.getDate()+' ב'+MONTHS_HE[d.getMonth()];
+  }
+  function syncHeader(){
+    var active=document.querySelector('.page.active');
+    if(!active) return;
+    var id=active.id.replace('page-','');
+    var nameEl=document.getElementById('hdr-page-name');
+    if(nameEl) nameEl.textContent=PAGE_NAMES[id]||id;
+  }
+  var dateEl=document.getElementById('hdr-date');
+  if(dateEl) dateEl.textContent=formatDate();
+  var obs=new MutationObserver(syncHeader);
+  document.querySelectorAll('.page').forEach(function(p){
+    obs.observe(p,{attributes:true,attributeFilter:['class']});
+  });
+  syncHeader();
+})();
+
+/* ── SPLASH & ATTRIBUTION HELPERS ── */
+function sfShowAuth() {
+  var spl = document.getElementById('sf-splash');
+  if (!spl) return;
+  spl.classList.add('spl-exit');
+  setTimeout(function(){ spl.classList.add('spl-gone'); }, 290);
+}
+function sfShowAuthSignin() {
+  // Free version: no Supabase — go to name step so user sets up locally.
+  var spl = document.getElementById('sf-splash');
+  if (spl) { spl.classList.add('spl-exit'); setTimeout(function(){ spl.classList.add('spl-gone'); }, 290); }
+  sfGoToS1();
+}
+function sfQuickJoin() {
+  // One-step join: validate name, skip all onboarding questions, enter app.
+  var name = (document.getElementById('inp-name')?.value || '').trim();
+  if (!name) { if (window.toast) toast('נא למלא את שמך'); return; }
+  obStep(8);          // validates + writes S.userName
+  finishOnboarding(); // save + launch app immediately
+}
+function sfChipSel(btn, groupId) {
+  document.querySelectorAll('#' + groupId + ' .sf-attr-chip').forEach(function(b){ b.classList.remove('sf-sel'); });
+  btn.classList.toggle('sf-sel', !btn.classList.contains('sf-sel'));
+}
+function sfGoToS1() {
+  /* Direct DOM transition s0→s1, bypassing obStep() which would
+     validate name (since _obStep===1 is already set by app.js) */
+  var s0 = document.getElementById('ob2-s0');
+  var s1 = document.getElementById('ob2-s1');
+  if (s0) s0.classList.remove('ob2-active');
+  if (s1) s1.classList.add('ob2-active');
+}
+function sfAttrNext() {
+  var sel = document.querySelector('#sf-attr-chips .sf-attr-chip.sf-sel');
+  if (sel) {
+    try {
+      var s = JSON.parse(localStorage.getItem('sf_free_v1') || '{}');
+      s.attribution = sel.dataset.val;
+      localStorage.setItem('sf_free_v1', JSON.stringify(s));
+    } catch(e) {}
+  }
+  sfGoToS1();
+}
+/* After app.js window.onload: show attribution step (s0) instead of s1 for new users */
+window.addEventListener('load', function() {
+  var hasUser = false;
+  try { var parsed = JSON.parse(localStorage.getItem('sf_free_v1') || '{}'); hasUser = !!parsed.userName; } catch(e) {}
+  var spl = document.getElementById('sf-splash');
+  if (hasUser) { if (spl) spl.classList.add('spl-gone'); return; }
+  var s1 = document.getElementById('ob2-s1');
+  var s0 = document.getElementById('ob2-s0');
+  if (s1) s1.classList.remove('ob2-active');
+  if (s0) s0.classList.add('ob2-active');
+});
+</script>
+
+  </body>

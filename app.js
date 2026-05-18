@@ -2678,31 +2678,32 @@ function renderDayTimeline(dateStr) {
     const height = Math.max(28, ev.durMins * TL_PX_MIN - 2);
     const colW = 100 / ev._totalCols;
     const rightPct = ev._col * colW;
-    const delay = `animation-delay:${idx * 0.055}s;`;
+    const delay = "animation-delay:" + (idx * 0.055) + "s;";
+
+    // Clean, Notion Calendar-style background (15% opacity)
+    const bg = ev.color + '33';
+    
+    // Base inline style for all events
+    const inlineStyle = "top:" + top + "px; height:" + height + "px; right:" + rightPct + "%; width:calc(" + colW + "% - 3px); background:" + bg + "; border-right: 4px solid " + ev.color + "; " + delay;
 
     if (ev._type === 'anchor') {
-      const ancNotesHtml = ev._notes && height > 52 ? `<div style="font-size:0.56rem;color:${ev.color};opacity:0.75;margin-top:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${ev._notes}</div>` : '';
-      const onetimePip = ev._onetime ? `<span style="font-size:0.5rem;background:${ev.color}20;color:${ev.color};border-radius:99px;padding:0.05rem 0.3rem;margin-right:3px">חד פעמי</span>` : '';
-      eventsHtml += `<div class="tl-ev anchor-ev" style="top:${top}px;height:${height}px;right:${rightPct}%;width:calc(${colW}% - ${GUTTER}px);background:${ev.color}15;border-color:${ev.color};${delay}"><div class="tl-ev-bar" style="background:${ev.color}"></div><div class="tl-ev-body"><div class="tl-ev-name" style="color:${ev.color}">${onetimePip}${ev.name}</div><div class="tl-ev-sub" style="color:${ev.color};opacity:0.7">${ev.time} – ${ev._end}</div>${ancNotesHtml}</div></div>`;
+      const ancNotesHtml = ev._notes && height > 52 ? '<div class="top5-ev-notes">' + ev._notes + '</div>' : '';
+      const onetimePip = ev._onetime ? '<span class="top5-pip" style="background:' + ev.color + '30; color:' + ev.color + '">חד פעמי</span>' : '';
+      eventsHtml += '<div class="top5-ev anchor-ev" style="' + inlineStyle + '"><div class="top5-ev-body"><div class="top5-ev-name">' + onetimePip + ev.name + '</div><div class="top5-ev-time">' + ev.time + ' – ' + ev._end + '</div>' + ancNotesHtml + '</div></div>';
       return;
     }
     if (ev._type === 'exam') {
-      eventsHtml += `<div class="tl-ev anchor-ev" style="top:${top}px;height:${height}px;right:${rightPct}%;width:calc(${colW}% - ${GUTTER}px);background:rgba(139,92,246,0.12);border-color:#8b5cf6;${delay}"><div class="tl-ev-bar" style="background:#8b5cf6"></div><div class="tl-ev-body"><div class="tl-ev-name" style="color:#8b5cf6;font-weight:900"> ${ev.name}</div><div class="tl-ev-time" style="color:#8b5cf6">מבחן</div></div></div>`;
+      eventsHtml += '<div class="top5-ev exam-ev" style="' + inlineStyle.replace(ev.color, '#8b5cf6').replace(bg, 'rgba(139,92,246,0.22)') + '"><div class="top5-ev-body"><div class="top5-ev-name" style="color:#8b5cf6"> ' + ev.name + '</div><div class="top5-ev-time" style="color:#8b5cf6">מבחן קרוב!</div></div></div>';
       return;
     }
+    
     // Task event
-    const urgencyClass = _getUrgencyClass(ev, dateStr);
     const statusClass = ev.done ? 'ev-done' : ev.missed ? 'ev-missed' : '';
-    const hobbyClass = ev.isHobby ? 'ev-hobby' : '';
-    const allClasses = [statusClass, urgencyClass, hobbyClass].filter(Boolean).join(' ');
-    const priorityDot = ev.priority === 'גבוה' ? `<span style="width:6px;height:6px;border-radius:50%;background:var(--red);display:inline-block;margin-left:4px;vertical-align:middle;flex-shrink:0"></span>` : '';
-    const checkBtn = '';
-    const statusDot = ev.done ? `<span class="tl-ev-status-dot done"></span>` : ev.missed ? `<span class="tl-ev-status-dot missed"></span>` : '';
-    const timeLine = height > 40 ? `<div class="tl-ev-sub">${ev.time}${ev.durMins ? ` · ${ev.durMins} דק'` : ''}${ev.course && height > 56 ? ` · ${ev.course}` : ''}</div>` : '';
-    const notesLine = ev.notes && height > 62 ? `<div style="font-size:0.62rem;color:var(--muted);margin-top:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${ev.notes}</div>` : '';
-    const bg = `linear-gradient(135deg,${ev.color}1e,${ev.color}0c)`;
-
-    eventsHtml += `<div class="tl-ev ${allClasses}" data-task-id="${ev.id}" style="top:${top}px;height:${height}px;right:${rightPct}%;width:calc(${colW}% - ${GUTTER}px);background:${bg};border-color:${ev.color};${delay};position:relative" onclick="openTaskQuickActions('${ev.id}')"><div class="tl-ev-bar" style="background:linear-gradient(180deg,${ev.color},${ev.color}bb)"></div><div class="tl-ev-body"><div class="tl-ev-name ${ev.done?'tl-ev-done-text':''}">${priorityDot}${ev.name}</div>${timeLine}${notesLine}</div>${statusDot}${checkBtn}</div>`;
+    const priorityDot = ev.priority === 'גבוה' ? '<span class="top5-priority-dot"></span>' : '';
+    const timeLine = height > 40 ? '<div class="top5-ev-time">' + ev.time + (ev.durMins ? ' · ' + ev.durMins + ' דק\'' : '') + (ev.course && height > 56 ? ' · ' + ev.course : '') + '</div>' : '';
+    const notesLine = ev.notes && height > 62 ? '<div class="top5-ev-notes">' + ev.notes + '</div>' : '';
+    
+    eventsHtml += '<div class="top5-ev ' + statusClass + '" data-task-id="' + ev.id + '" style="' + inlineStyle + '" onclick="openTaskQuickActions(\'' + ev.id + '\')"><div class="top5-ev-body"><div class="top5-ev-name">' + priorityDot + ev.name + '</div>' + timeLine + notesLine + '</div></div>';
   });
 
   // ── Reminder chips (rendered on top, do not affect column layout) ─────────

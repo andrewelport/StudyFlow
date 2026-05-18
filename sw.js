@@ -1,13 +1,8 @@
-const CACHE = 'studyflow-v51';
+const CACHE = 'studyflow-v97';
 const PRECACHE = [
-  '/',
-  '/index.html',
-  '/app.js',
-  '/scheduler.js',
-  '/style.css',
-  '/manifest.json',
   '/logo_192.png',
   '/logo_512.png',
+  '/manifest.json',
 ];
 
 self.addEventListener('install', e => {
@@ -29,21 +24,35 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = e.request.url;
-  // Skip API calls — never cache these
+  // Never cache API calls
   if (url.includes('supabase') || url.includes('groq.com') || url.includes('netlify/functions')) return;
-  // Skip cross-origin fonts/CDN — let browser handle normally
+  // Let browser handle cross-origin (fonts, CDN)
   if (!url.startsWith(self.location.origin) && !url.includes('fonts.googleapis') && !url.includes('fonts.gstatic')) return;
 
-  e.respondWith(
-    caches.match(e.request).then(cached => {
-      // Serve cached immediately, refresh in background (stale-while-revalidate)
-      const fresh = fetch(e.request).then(res => {
+  // NETWORK-FIRST for HTML/CSS/JS — always serve fresh, fall back to cache offline
+  if (url.includes('.html') || url.includes('.css') || url.includes('.js') ||
+      url.endsWith('/') || url === self.location.origin) {
+    e.respondWith(
+      fetch(e.request).then(res => {
         if (res.ok && (res.type === 'basic' || res.type === 'cors')) {
           caches.open(CACHE).then(c => c.put(e.request, res.clone()));
         }
         return res;
-      }).catch(() => cached);
-      return cached || fresh;
+      }).catch(() => caches.match(e.request))
+    );
+    return;
+  }
+
+  // Cache-first for images/fonts (rarely change)
+  e.respondWith(
+    caches.match(e.request).then(cached => {
+      if (cached) return cached;
+      return fetch(e.request).then(res => {
+        if (res.ok && (res.type === 'basic' || res.type === 'cors')) {
+          caches.open(CACHE).then(c => c.put(e.request, res.clone()));
+        }
+        return res;
+      });
     })
   );
 });
