@@ -6090,7 +6090,7 @@ function openFocusMode() {
 
 // Action Sheet Logic
 function openTaskActionSheet(taskId) {
-  document.body.style.overflow = 'hidden';
+  
 
   const t = S.tasks.find(x => String(x.id) === String(taskId));
   if (!t) return;
@@ -6116,7 +6116,7 @@ function openTaskActionSheet(taskId) {
 }
 
 function closeTaskActionSheet() {
-  document.body.style.overflow = '';
+  
 
   const bd = document.getElementById('task-action-backdrop');
   if (bd) { bd.style.pointerEvents = 'none'; bd.classList.remove('open'); }
@@ -6128,7 +6128,7 @@ function closeTaskActionSheet() {
 let _tesTaskId = null, _tesAISuggestion = null;
 
 function openTaskEditSheet(id) {
-  document.body.style.overflow = 'hidden';
+  
 
   const t = S.tasks.find(x => String(x.id) === String(id));
   if (!t) return;
@@ -6151,7 +6151,7 @@ function openTaskEditSheet(id) {
 }
 
 function closeTaskEditSheet() {
-  document.body.style.overflow = '';
+  
 
   document.getElementById('tes-backdrop').classList.remove('open');
   document.getElementById('tes-panel').classList.remove('open');
@@ -6682,24 +6682,3 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-/* --- BULLETPROOF GLOBAL MODAL SCROLL LOCK --- */
-document.addEventListener('DOMContentLoaded', () => {
-  const checkModals = () => {
-    // If any modal is open, lock the body
-    const anyOpen = document.querySelectorAll('.modal-overlay:not(.hidden), .action-sheet-modal.open').length > 0;
-    if (anyOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-  };
-
-  // Observe all modal overlays for class changes
-  const observer = new MutationObserver(checkModals);
-  document.querySelectorAll('.modal-overlay').forEach(el => {
-    observer.observe(el, { attributes: true, attributeFilter: ['class'] });
-  });
-  
-  // Call once on load just in case
-  checkModals();
-});

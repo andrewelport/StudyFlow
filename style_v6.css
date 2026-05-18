@@ -2201,3 +2201,92 @@ html[data-theme="dark"] body .anc-travel-chip:not(.anc-travel-sel) {
 .sq-level-emoji {
   display: none !important; /* Forces it not to push text down */
 }
+
+
+/* ─── IOS KEYBOARD-SAFE SCROLL LOCK ────────────────────── */
+/* Instead of overflow:hidden on body, we use touch-action and overscroll 
+   on the overlays to prevent background scrolling naturally */
+.modal-overlay {
+  overscroll-behavior: contain !important;
+  touch-action: pan-y !important; /* Allow vertical scroll in modal, but stop background drag */
+}
+
+/* For action sheets, we already did touch-action: none. */
+
+
+/* ─── SETUP SCREEN FULL WIDTH FIX ───────────────────────── */
+/* Forces the onboarding screen to completely fill the phone screen 
+   without any grey margins on the sides. */
+#setup-screen {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: 100vw !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: var(--surface, #ffffff) !important;
+  z-index: 99999 !important; /* Above everything */
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+#setup-screen .ob2-wrap {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-height: 100vh !important;
+  margin: 0 !important;
+  padding: 1.5rem 1.25rem !important;
+  box-sizing: border-box !important;
+  background: transparent !important;
+}
+
+/* Ensure the slides inside take full width too */
+#setup-screen .ob2-slide {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+
+/* ─── ACTION SHEET FLUSH FIX ────────────────────────────── */
+/* Forces action sheets (bottom-anchored modals) to sit perfectly flush 
+   with the bottom edge of the screen without floating gaps. */
+.modal-overlay {
+  padding-bottom: 0 !important; /* Remove the global padding that pushed them up */
+}
+
+/* Specific rule for the Task Edit Modal (tem-card) and generic Action Sheets */
+.tem-card, .asm-card, .action-sheet-modal .modal-box {
+  margin-top: auto !important;
+  margin-bottom: 0 !important; /* Flush with bottom */
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 20px)) !important; /* Internal padding for safe area */
+}
+
+
+/* ─── IOS NATIVE DATE/TIME BLEED FIX ────────────────────── */
+/* Forces iOS Safari to treat Date and Time inputs exactly like normal text inputs,
+   restoring their borders, rounding, and preventing them from bleeding out. */
+input[type="date"], input[type="time"] {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 100% !important;
+  box-sizing: border-box !important;
+  display: block !important;
+  margin: 0 !important;
+  
+  /* Restore the lost .tem-input styles */
+  border: 1.5px solid var(--border) !important;
+  border-radius: 12px !important;
+  padding: 0.7rem 0.9rem !important;
+  background: var(--surface2) !important;
+  color: var(--text) !important;
+  font-family: inherit !important;
+}
