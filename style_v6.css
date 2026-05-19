@@ -2016,8 +2016,8 @@ input, textarea, select {
   padding: 0 !important;
   direction: ltr !important;
   cursor: pointer;
-  width: auto !important;
-  max-width: 100% !important;
+  width: 100% !important;
+  min-width: 0 !important;
   margin: 0 !important;
   box-sizing: border-box !important;
 }
@@ -2289,4 +2289,165 @@ input[type="date"], input[type="time"] {
   background: var(--surface2) !important;
   color: var(--text) !important;
   font-family: inherit !important;
+}
+
+/* ─── HOBBY QUICK MODAL — scrollable on small screens ─── */
+.hqm-card {
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+/* ─── HOMEWORK ROW COLUMN HEADER ─── */
+.plsh-hw-head {
+  display: flex;
+  gap: 6px;
+  padding: 0 2px 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+.plsh-hw-head span { flex: 1; }
+.plsh-hw-head span:last-child { flex: 0 0 28px; }
+
+/* ─── SETUP GUIDE CARD ─── */
+.sf-guide {
+  background: linear-gradient(135deg, #5C6EF5 0%, #7c3aed 100%);
+  border-radius: 16px;
+  padding: 1rem 1rem 0.75rem;
+  margin-bottom: 1rem;
+  color: #fff;
+  box-shadow: 0 6px 24px rgba(92,110,245,0.35);
+}
+.sf-guide-title {
+  font-size: 1rem;
+  font-weight: 800;
+  margin-bottom: 0.65rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.sf-guide-close {
+  background: rgba(255,255,255,0.2);
+  border: none;
+  color: #fff;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+  font-size: 0.65rem;
+  flex-shrink: 0;
+  padding: 0;
+}
+.sf-guide-step {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid rgba(255,255,255,0.12);
+  font-size: 0.85rem;
+}
+.sf-guide-check {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 0.7rem;
+}
+.sf-guide-check.done {
+  background: rgba(255,255,255,0.9);
+  border-color: transparent;
+  color: #5C6EF5;
+  font-weight: 900;
+}
+.sf-guide-step-label {
+  flex: 1;
+  line-height: 1.35;
+}
+.sf-guide-opt {
+  font-size: 0.72rem;
+  opacity: 0.72;
+  font-weight: 400;
+}
+.sf-guide-go {
+  background: rgba(255,255,255,0.18);
+  border: none;
+  color: #fff;
+  border-radius: 8px;
+  padding: 5px 11px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+.sf-guide-step.done .sf-guide-go { opacity: 0.4; pointer-events: none; }
+
+/* ─── FEATURE TOUR SHEET ─── */
+.sf-tour-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.52);
+  z-index: 8500;
+  display: flex;
+  align-items: flex-end;
+}
+.sf-tour-sheet {
+  background: var(--bg);
+  border-radius: 20px 20px 0 0;
+  padding: 1.4rem 1.25rem 2rem;
+  width: 100%;
+  direction: rtl;
+  box-shadow: 0 -8px 40px rgba(0,0,0,0.18);
+}
+.sf-tour-dots {
+  display: flex;
+  gap: 5px;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+}
+.sf-tour-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--border);
+  transition: all 0.25s;
+}
+.sf-tour-dot.active {
+  background: var(--accent);
+  width: 18px;
+  border-radius: 3px;
+}
+.sf-tour-icon { font-size: 2.6rem; text-align: center; margin-bottom: 0.45rem; }
+.sf-tour-title { font-size: 1.15rem; font-weight: 800; text-align: center; margin-bottom: 0.4rem; }
+.sf-tour-desc { font-size: 0.88rem; color: var(--muted); text-align: center; line-height: 1.6; margin-bottom: 1.3rem; }
+.sf-tour-btn {
+  width: 100%;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  padding: 0.88rem;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+.sf-tour-skip {
+  display: block;
+  text-align: center;
+  margin-top: 0.65rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+  cursor: pointer;
+  background: none;
+  border: none;
+  width: 100%;
+  font-family: inherit;
+  padding: 0;
 }

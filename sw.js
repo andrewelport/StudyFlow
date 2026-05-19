@@ -1,4 +1,4 @@
-const CACHE = 'studyflow-v111';
+const CACHE = 'studyflow-v124';
 const PRECACHE = [
   '/logo_192.png',
   '/logo_512.png',
