@@ -725,16 +725,6 @@ function obStep(n) {
     S.wakeTime = document.getElementById('inp-wake')?.value || '08:00';
     S.sleepTime = document.getElementById('inp-sleep')?.value || '22:00';
   }
-  if (_obStep === 3) {
-    const incompleteRows = Array.from(document.querySelectorAll('.anchor-builder-row')).filter(row => {
-      const hasName = (row.querySelector('input[type="text"]')?.value || '').trim();
-      const hasDays = row.querySelectorAll('.ob-day-btn.active').length > 0;
-      return hasName && !hasDays;
-    });
-    if (incompleteRows.length) { toast('בחר לפחות יום אחד לכל עוגן'); return; }
-    S.anchors = collectAnchors();
-    save();
-  }
   if (_obStep === 7) {
     // Finalize profile before summary step
     S.profile = {
@@ -943,7 +933,14 @@ function selectProfileOpt(el, qId, isOther) {
     profileAnswers[qId] = el.textContent.trim();
   }
 }
-function finishOnboarding(){ save(); initApp(); }
+function finishOnboarding(){
+  save();
+  initApp();
+  // Start feature tour for new users — delay to ensure DOM is ready
+  setTimeout(function() {
+    if (typeof sfStartTour === 'function') sfStartTour();
+  }, 800);
+}
 
 function initApp(){
   document.getElementById('setup-screen').style.display='none';
