@@ -174,12 +174,12 @@ body[data-theme="dark"] {
 .mobile-header {
   position: sticky !important;
   top: 0 !important;
-  z-index: 200 !important;
-  height: 56px !important;
+  z-index: 9500 !important;
+  min-height: 56px !important;
   display: flex;
   align-items: center !important;
   justify-content: space-between !important;
-  padding: 0 16px !important;
+  padding: env(safe-area-inset-top, 0px) 16px 0 16px !important;
   background: rgba(255,255,255,0.95) !important;
   backdrop-filter: blur(20px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
@@ -1809,8 +1809,13 @@ input, textarea, select {
 /* Ensures modals always sit ON TOP of the bottom nav (which has z-index 9999) 
    and have enough bottom padding so buttons are never cut off. */
 .modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
   z-index: 10000 !important;
   padding-bottom: env(safe-area-inset-bottom, 20px) !important;
+  pointer-events: auto !important;
 }
 
 .modal-box {
@@ -2208,7 +2213,7 @@ html[data-theme="dark"] body .anc-travel-chip:not(.anc-travel-sel) {
    on the overlays to prevent background scrolling naturally */
 .modal-overlay {
   overscroll-behavior: contain !important;
-  touch-action: pan-y !important; /* Allow vertical scroll in modal, but stop background drag */
+  touch-action: none !important; /* Stop background drag */
 }
 
 /* For action sheets, we already did touch-action: none. */
@@ -2296,6 +2301,10 @@ input[type="date"], input[type="time"] {
   max-height: 90vh !important;
   overflow-y: auto !important;
   -webkit-overflow-scrolling: touch !important;
+  width: 100% !important;
+  max-width: 500px !important;
+  margin: 0 auto !important;
+  box-sizing: border-box !important;
 }
 
 /* ─── HOMEWORK ROW COLUMN HEADER ─── */
@@ -2450,4 +2459,56 @@ input[type="date"], input[type="time"] {
   width: 100%;
   font-family: inherit;
   padding: 0;
+}
+
+/* ─── BUG FIXES ───────────────────────────────────────────── */
+
+/* Bug 1: Hobby input in first-setup wizard had no visual styling */
+.pl-sh-hobby-add input {
+  flex: 1 !important;
+  border: 1.5px solid var(--border, #e0e0e0) !important;
+  border-radius: 10px !important;
+  padding: 0.55rem 0.85rem !important;
+  font-family: inherit !important;
+  font-size: 0.88rem !important;
+  background: var(--surface, #fff) !important;
+  color: var(--text, #1a1a2e) !important;
+  outline: none !important;
+  min-width: 0 !important;
+}
+.pl-sh-hobby-add input:focus {
+  border-color: var(--accent, #4f6ef7) !important;
+}
+
+/* Bug 2: hp-setup-card was using 100vw (overflows padded main-content on mobile) */
+@media (max-width: 768px) {
+  .hp-setup-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    border-radius: 18px !important;
+    margin: 0 !important;
+  }
+}
+
+/* Bug 5: Homework row on mobile — CSS order caused duration to appear before name */
+@media (max-width: 480px) {
+  .plsh-hw-head { display: none !important; }
+  .pl-sh-hw-row {
+    grid-template-columns: 1fr auto auto !important;
+    grid-template-rows: auto auto !important;
+  }
+  .pl-sh-hw-row .plsh-hw-name {
+    grid-column: 1 !important; grid-row: 1 !important; order: unset !important;
+  }
+  .pl-sh-hw-row .plsh-hw-dur {
+    grid-column: 2 !important; grid-row: 1 !important; order: unset !important;
+  }
+  .pl-sh-hw-row .plsh-remove {
+    grid-column: 3 !important; grid-row: 1 !important; order: unset !important;
+  }
+  .pl-sh-hw-row .plsh-hw-course {
+    grid-column: 1 / -1 !important; grid-row: 2 !important;
+    max-width: 100% !important; order: unset !important;
+  }
 }

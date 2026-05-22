@@ -3521,6 +3521,11 @@ body.scroll-locked { position: fixed; width: 100%; overflow-y: scroll; }
   color: white;
 }
 
+/* User type toggle */
+.ob2-usertype-row { display:flex; gap:0.6rem; margin-bottom:1.2rem; }
+.ob2-ut-btn { flex:1; padding:0.6rem 0.5rem; border:2px solid var(--border,#e0e0e0); border-radius:12px; background:var(--surface); color:var(--muted); font-size:0.88rem; font-weight:700; font-family:inherit; cursor:pointer; transition:border-color 0.15s,background 0.15s,color 0.15s; }
+.ob2-ut-btn.ob2-ut-sel { border-color:var(--accent,#4f6ef7); background:rgba(79,110,247,0.08); color:var(--accent,#4f6ef7); }
+
 /* Next / skip buttons */
 .ob2-next-btn {
   width: 100%;
@@ -4097,6 +4102,98 @@ body.scroll-locked { position: fixed; width: 100%; overflow-y: scroll; }
   .rcm-body { padding: 0.8rem 1rem 0.4rem; }
   .rcm-actions { padding: 0.4rem 1rem 1rem; }
   .rcm-choice-btn { padding: 0.65rem 0.85rem; }
+}
+
+/* ── Recalc V2 — proposal checkbox rows ── */
+.rcm-proposals {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  max-height: 42vh;
+  overflow-y: auto;
+  margin-bottom: 0.5rem;
+}
+.rcm-proposal-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.55rem 0.8rem;
+  border-radius: 10px;
+  background: var(--bg2, #f4f6f9);
+  border: 1.5px solid transparent;
+  direction: rtl;
+  transition: border-color 0.15s;
+}
+.rcm-proposal-row:has(.rcm-pcb:checked) { border-color: #3b82f6; background: rgba(59,130,246,0.07); }
+.rcm-proposal-row.rcm-no-slot { opacity: 0.55; }
+.rcm-pcb-wrap { flex-shrink: 0; cursor: pointer; }
+.rcm-pcb { width: 18px; height: 18px; cursor: pointer; accent-color: #3b82f6; }
+.rcm-proposal-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+}
+.rcm-proposal-name {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--text, #1a1a2e);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rcm-slot-time { font-size: 0.78rem; color: #3b82f6; font-weight: 600; }
+.rcm-slot-no   { font-size: 0.78rem; color: #ef4444; }
+.rcm-no-slots-msg {
+  text-align: center;
+  color: #b45309;
+  font-size: 0.83rem;
+  font-weight: 600;
+  padding: 0.45rem 0.75rem;
+  background: rgba(245,166,35,0.1);
+  border: 1px solid rgba(245,166,35,0.3);
+  border-radius: 8px;
+  margin-bottom: 0.4rem;
+}
+.rcm-approve-btn {
+  width: 100%;
+  padding: 0.75rem;
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, transform 0.1s;
+}
+.rcm-approve-btn:hover { background: #2563eb; transform: translateY(-1px); }
+.rcm-other-btn {
+  width: 100%;
+  padding: 0.6rem;
+  background: transparent;
+  color: var(--muted, #888);
+  border: 1.5px solid var(--border, #e0e0e0);
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+.rcm-other-btn:hover { background: var(--bg2, #f4f6f9); }
+.rcm-cancel-btn {
+  width: 100%;
+  padding: 0.45rem;
+  background: transparent;
+  color: var(--muted, #aaa);
+  border: none;
+  font-size: 0.84rem;
+  cursor: pointer;
+  font-family: inherit;
 }
 
 /* ג”€ג”€ Anchor Page (anc-page-*) ג”€ג”€ */

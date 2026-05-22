@@ -6,8 +6,8 @@
 <title>StudyFlow  — ה-Waze של הלימודים</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=84">
-<link rel="stylesheet" href="style_v6.css?v=32">
+<link rel="stylesheet" href="style.css?v=86">
+<link rel="stylesheet" href="style_v6.css?v=34">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -198,6 +198,10 @@
         <input type="text" id="inp-name" class="ob2-inp ob2-inp-lg" placeholder="מה שמך?" maxlength="50" autocomplete="given-name" onkeydown="if(event.key==='Enter')obStep(2)"/>
         <input type="text" id="inp-inst" class="ob2-inp" placeholder="מוסד לימודים (אופציונלי)" maxlength="80" autocomplete="organization"/>
       </div>
+      <div class="ob2-usertype-row">
+        <button type="button" class="ob2-ut-btn ob2-ut-sel" id="ob2-ut-uni" onclick="sfObSetType('university',this)">🎓 סטודנט/ית</button>
+        <button type="button" class="ob2-ut-btn" id="ob2-ut-hs" onclick="sfObSetType('highschool',this)">🏫 תלמיד/ה תיכון</button>
+      </div>
       <button class="ob2-next-btn" onclick="obStep(2)">המשך — הגדרה מלאה</button>
       <button class="ob2-skip-lnk" onclick="sfQuickJoin()">כניסה מהירה ← שם בלבד</button>
     </div>
@@ -338,7 +342,7 @@
         </button>
       </div>
       <button class="ob2-next-btn" onclick="obStep(5)">המשך</button>
-      <button class="ob2-skip-lnk" onclick="obStep(8)">דלג לסיום →</button>
+      <button class="ob2-skip-lnk" onclick="obStep(5)">דלג →</button>
       <div class="ob2-skip-note">ניתן לשנות הכל בהגדרות בכל עת</div>
     </div>
 
@@ -391,6 +395,7 @@
         </button>
       </div>
       <button class="ob2-next-btn" onclick="obStep(6)">המשך</button>
+      <button class="ob2-skip-lnk" onclick="obStep(6)">דלג →</button>
     </div>
 
     <!-- Step 6: Learning style -->
@@ -445,6 +450,7 @@
         </button>
       </div>
       <button class="ob2-next-btn" onclick="obStep(7)">המשך</button>
+      <button class="ob2-skip-lnk" onclick="obStep(7)">דלג →</button>
     </div>
 
     <!-- Step 7: Exam fear -->
@@ -491,6 +497,7 @@
         </button>
       </div>
       <button class="ob2-next-btn" onclick="obStep(8)">המשך</button>
+      <button class="ob2-skip-lnk" onclick="obStep(8)">דלג →</button>
     </div>
 
     <!-- Step 8: Done -->
@@ -655,8 +662,8 @@
 
       <div class="page" id="page-planner">
         <div class="page-header">
-          <div class="page-title">הקורסים שלי</div>
-          <div class="page-sub">קורסים · תחביבים · סמסטר</div>
+          <div class="page-title">הלימודים שלי</div>
+          <div class="page-sub">קורסים · מקצועות · תחביבים</div>
         </div>
 
         <!-- START HERE: First-time setup wizard (shown only when no courses) -->
@@ -665,19 +672,19 @@
             <div class="pl-sh-hero">
               <div class="pl-sh-emoji">🎓</div>
               <div class="pl-sh-title">כאן מתחילים!</div>
-              <div class="pl-sh-desc">הגדר את הקורסים שלך והמערכת תבנה לוז שבועי מותאם אישית לשבוע הראשון</div>
+              <div class="pl-sh-desc">הגדר את הלימודים שלך והמערכת תבנה לוז שבועי מותאם אישית לשבוע הראשון</div>
             </div>
 
             <!-- Section 1: Courses -->
             <div class="pl-sh-section">
-              <div class="pl-sh-sec-title">📚 הקורסים שלי בסמסטר</div>
+              <div class="pl-sh-sec-title">📚 הקורסים / המקצועות שלי</div>
               <div class="pl-sh-courses-header">
-                <span style="font-size:0.72rem;color:var(--muted);font-weight:700">שם הקורס</span>
+                <span style="font-size:0.72rem;color:var(--muted);font-weight:700">שם הקורס / מקצוע</span>
                 <span style="font-size:0.72rem;color:var(--muted);font-weight:700">תאריך מבחן</span>
                 <span></span>
               </div>
               <div id="pl-sh-course-rows"></div>
-              <button class="btn-add-anchor" onclick="plShAddCourseRow()" style="margin-top:0.5rem">+ הוסף קורס</button>
+              <button class="btn-add-anchor" onclick="plShAddCourseRow()" style="margin-top:0.5rem">+ הוסף קורס / מקצוע</button>
             </div>
 
             <!-- Section 2: Hobbies (optional) -->
@@ -732,7 +739,7 @@
         <!-- COURSES SECTION (shown after setup) -->
         <div id="pl-courses-section">
           <div class="pl-sec-hdr">
-            <span class="pl-sec-title"> הקורסים שלי</span>
+            <span class="pl-sec-title"> הלימודים שלי</span>
             <button class="pl-sec-add" onclick="openAddCourseModal()">+ הוסף</button>
           </div>
           <div id="pl-course-cards-wrap" class="pl-cards-grid"></div>
@@ -1431,20 +1438,24 @@
   </div>
 </div>
 
-<div class="modal-overlay hidden" id="recalc-overlay" onclick="if(event.target===this)closeRecalc()">
-  <div class="rcm-card">
-    <div class="rcm-header">
-      <div class="rcm-icon-wrap" id="rcm-icon">⚠️</div>
-      <div class="rcm-header-text">
-        <div class="rcm-title" id="chat-header-title">התנגשות בלו"ז</div>
-        <div class="rcm-sub" id="chat-header-sub"></div>
+<div class="modal-overlay hidden" id="recalc-overlay" onclick="if(event.target===this)closeRecalc()" style="display:flex; align-items:flex-start; justify-content:center; padding:40px 0; overflow-y:auto;">
+  <div class="rcm-card" style="background:var(--surface); border-radius:24px; padding:24px; width:90%; max-width:400px; box-shadow:0 20px 40px rgba(0,0,0,0.15); display:flex; flex-direction:column; gap:16px; margin:auto; position:relative; max-height:none; overflow:visible;">
+    <div class="rcm-header" style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div class="rcm-icon-wrap" id="rcm-icon" style="background:var(--accent-light); color:var(--accent); width:48px; height:48px; border-radius:16px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(92,110,245,0.15);">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div class="rcm-header-text">
+          <div class="rcm-title" id="chat-header-title" style="font-size:1.35rem; font-weight:900; color:var(--text); letter-spacing:-0.02em; line-height:1.2;">התנגשות בלו"ז</div>
+          <div class="rcm-sub" id="chat-header-sub" style="font-size:0.9rem; font-weight:600; color:var(--muted); margin-top:2px;">משימות שנדרסו על ידי עוגן</div>
+        </div>
       </div>
-      <button class="rcm-close" onclick="closeRecalc()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      <button class="rcm-close" onclick="closeRecalc()" style="background:var(--surface2); border:none; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--muted); cursor:pointer; transition:background 0.2s, color 0.2s;" onmouseover="this.style.background='var(--surface3)'; this.style.color='var(--text)';" onmouseout="this.style.background='var(--surface2)'; this.style.color='var(--muted)';">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-    <div class="rcm-body" id="recalc-chat"></div>
-    <div class="rcm-actions" id="recalc-actions-zone"></div>
+    <div class="rcm-body" id="recalc-chat" style="display:flex; flex-direction:column; gap:12px;"></div>
+    <div class="rcm-actions" id="recalc-actions-zone" style="display:flex; flex-direction:column; gap:8px;"></div>
   </div>
 </div>
 
@@ -1758,7 +1769,7 @@
     <div class="cam-body">
       <div>
         <label class="anc-label">שם הקורס *</label>
-        <input type="text" id="cam-name" class="anc-input" placeholder="חשבון דיפרנציאלי, פסיכולוגיה..." />
+        <input type="text" id="cam-name" class="anc-input" placeholder="חשבון דיפרנציאלי, פסיכולוגיה..." maxlength="80" />
       </div>
       <div>
         <label class="anc-label">תאריך מבחן *</label>
@@ -1900,8 +1911,8 @@
   </div>
 </div>
 
-<script src="scheduler.js?v=29"></script>
-<script src="app_v58.js"></script>
+<script src="scheduler.js?v=30"></script>
+<script src="app_v58.js?v=6"></script>
 <script>
 /* ── Timeline: 80px/hour (airy spacing) ── */
 try { TL_HOUR_PX = 80; TL_PX_MIN = 80/60; } catch(e) {}
@@ -1952,10 +1963,16 @@ function sfShowAuthSignin() {
   if (spl) { spl.classList.add('spl-exit'); setTimeout(function(){ spl.classList.add('spl-gone'); }, 290); }
   sfGoToS1();
 }
+function sfObSetType(type, btn) {
+  S.userType = type;
+  document.querySelectorAll('.ob2-ut-btn').forEach(function(b) { b.classList.remove('ob2-ut-sel'); });
+  btn.classList.add('ob2-ut-sel');
+}
 function sfQuickJoin() {
   // One-step join: validate name, skip all onboarding questions, enter app.
   var name = (document.getElementById('inp-name')?.value || '').trim();
   if (!name) { if (window.toast) toast('נא למלא את שמך'); return; }
+  S.userType = S.userType || 'university';
   obStep(8);          // validates + writes S.userName
   finishOnboarding(); // save + launch app immediately
 }
@@ -2011,6 +2028,7 @@ function sfAttrNext() {
 window.addEventListener('load', function() {
   var hasUser = false;
   try { var parsed = JSON.parse(localStorage.getItem('sf_free_v1') || '{}'); hasUser = !!parsed.userName; } catch(e) {}
+  if (typeof S !== 'undefined') S.userType = S.userType || 'university';
   var spl = document.getElementById('sf-splash');
   if (hasUser) { if (spl) spl.classList.add('spl-gone'); return; }
   // app.js already set setup-screen display:''. Re-hide it — splash covers UI,
@@ -2170,9 +2188,24 @@ function sfAncPickColor(dot, color) {
 function sfAncToggleDay(btn) {
   var day = parseInt(btn.dataset.day);
   var recCb = document.getElementById('anc-recurring');
+  var modal = document.getElementById('anchor-modal');
+  var isEditMode = modal && modal.dataset.editId;
 
-  // If currently in single-day mode, carry the selected day into the checkbox system
-  // before switching to multi-day, so it isn't lost.
+  if (isEditMode) {
+    // In edit mode: exclusive single-day selection — clear all pills first
+    document.querySelectorAll('.anc-day-pill').forEach(function(p) { p.classList.remove('anc-day-active'); });
+    document.querySelectorAll('#anc-days-selector input').forEach(function(c) { c.checked = false; });
+    btn.classList.add('anc-day-active');
+    var cb2 = document.querySelector('#anc-days-selector input[value="' + day + '"]');
+    if (cb2) cb2.checked = true;
+    if (recCb) recCb.checked = false;
+    var daySelectEl2 = document.getElementById('anc-day');
+    if (daySelectEl2) daySelectEl2.value = String(day);
+    document.getElementById('anc-per-day-times')?.classList.add('hidden');
+    return;
+  }
+
+  // Add mode: carry the single-day selection into multi-day before toggling
   if (recCb && !recCb.checked) {
     var daySelect = document.getElementById('anc-day');
     var currentDay = daySelect ? parseInt(daySelect.value) : 0;
@@ -2679,6 +2712,222 @@ window.addEventListener('load', function() {
     }
   };
 });
+
+/* ── Bug 3: scroll weekly-review messages into view on mobile ── */
+window.addEventListener('load', function() {
+  var _orig = window._wrMsg;
+  if (typeof _orig !== 'function') return;
+  window._wrMsg = function(text, isUser) {
+    _orig(text, isUser);
+    setTimeout(function() {
+      var choices = document.getElementById('wr-choices');
+      var msgs = document.getElementById('wr-msgs');
+      var target = (choices && !choices.classList.contains('hidden')) ? choices : (msgs ? msgs.lastElementChild : null);
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 60);
+  };
+});
+
+/* ── Recalc V2 — selective checkbox reschedule ── */
+(function() {
+  'use strict';
+  var _bl = new Set();
+  var _proposals = [];
+  var _rcV2Mode = null;
+  var _exhausted = false;
+  var _TIMES = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00'];
+
+  function _todayStr() {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+
+  function _findOneSlot() {
+    if (typeof _endOfWeek !== 'function') return null;
+    var endWeek = _endOfWeek();
+    var todayStr = _todayStr();
+    var wakeH  = parseInt((S.wakeTime  || '08:00').split(':')[0]);
+    var sleepH = parseInt((S.sleepTime || '23:00').split(':')[0]);
+    var d = new Date(todayStr + 'T12:00:00');
+    while (true) {
+      var dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+      if (dateStr > endWeek) break;
+      var dow = d.getDay();
+      d.setDate(d.getDate() + 1);
+      if (dow === 6) continue;
+      for (var ti = 0; ti < _TIMES.length; ti++) {
+        var slot = _TIMES[ti];
+        var h = parseInt(slot);
+        if (h < wakeH || h >= sleepH) continue;
+        var key = dateStr + '|' + slot;
+        if (_bl.has(key)) continue;
+        var sm = h * 60;
+        var busy = false;
+        var anchors = S.anchors || [];
+        for (var ai = 0; !busy && ai < anchors.length; ai++) {
+          var a = anchors[ai];
+          if (a.oneTimeDate) { if (a.oneTimeDate !== dateStr) continue; }
+          else { if (parseInt(a.day) !== dow) continue; if (a.endDate && dateStr > a.endDate) continue; }
+          var as2 = parseInt((a.start||'00:00').split(':')[0])*60 - (a.travelMin||0);
+          var ae2 = parseInt((a.end  ||'00:00').split(':')[0])*60 + (a.travelMin||0);
+          if (sm < ae2 && (sm + 90) > as2) busy = true;
+        }
+        if (busy) continue;
+        var tasks = S.tasks || [];
+        for (var ki = 0; !busy && ki < tasks.length; ki++) {
+          var t = tasks[ki];
+          if (t.date !== dateStr || t.done || t.missed) continue;
+          var tst = parseInt((t.time||'00:00').split(':')[0])*60 + parseInt((t.time||'00:00').split(':')[1]);
+          var ten = tst + parseInt(t.duration||90);
+          if (sm < ten && (sm + 90) > tst) busy = true;
+        }
+        if (busy) continue;
+        return { date: dateStr, time: slot };
+      }
+    }
+    return null;
+  }
+
+  function _buildProposals(tasks) {
+    return tasks.map(function(task) {
+      var slot = _findOneSlot();
+      if (slot) _bl.add(slot.date + '|' + slot.time);
+      return { task: task, slot: slot, checked: !!slot };
+    });
+  }
+
+  function _fmtDate(ds) {
+    if (typeof formatPrettyDate === 'function') return formatPrettyDate(ds);
+    return ds;
+  }
+
+  function _renderV2UI() {
+    var zone = document.getElementById('recalc-actions-zone');
+    if (!zone) return;
+    var hasChecked  = _proposals.some(function(p) { return p.checked && p.slot; });
+    var hasUnchecked = _proposals.some(function(p) { return !p.checked; });
+    var rows = _proposals.map(function(p, i) {
+      var name = p.task.course || p.task.name || 'משימה';
+      if (p.slot) {
+        return '<div class="rcm-proposal-row">' +
+          '<label class="rcm-pcb-wrap"><input type="checkbox" class="rcm-pcb"' +
+          (p.checked ? ' checked' : '') +
+          ' onchange="window._sfRcToggle(' + i + ',this.checked)"></label>' +
+          '<div class="rcm-proposal-info">' +
+          '<span class="rcm-proposal-name">' + name + '</span>' +
+          '<span class="rcm-slot-time">' + _fmtDate(p.slot.date) + ' · ' + p.slot.time + '</span>' +
+          '</div></div>';
+      }
+      return '<div class="rcm-proposal-row rcm-no-slot">' +
+        '<label class="rcm-pcb-wrap"><input type="checkbox" class="rcm-pcb" disabled></label>' +
+        '<div class="rcm-proposal-info">' +
+        '<span class="rcm-proposal-name">' + name + '</span>' +
+        '<span class="rcm-slot-no">לא נמצא זמן פנוי</span>' +
+        '</div></div>';
+    }).join('');
+
+    var noSlotsMsg = (_exhausted && hasUnchecked) ?
+      '<div class="rcm-no-slots-msg">לא נמצאו זמנים פנויים נוספים בשבוע זה</div>' : '';
+
+    zone.innerHTML =
+      '<div class="rcm-proposals">' + rows + '</div>' +
+      noSlotsMsg +
+      '<button class="rcm-approve-btn" onclick="window._sfRcApprove()">' +
+        (hasChecked ? 'אישור והמשך' : 'סגור ואל תשבץ') +
+      '</button>' +
+      (!_exhausted && hasUnchecked ? '<button class="rcm-other-btn" onclick="window._sfRcFindOther()">חפש זמנים אחרים</button>' : '') +
+      '<button class="rcm-cancel-btn" onclick="closeRecalc()">ביטול</button>';
+  }
+
+  window._sfRcToggle = function(i, checked) {
+    if (_proposals[i]) _proposals[i].checked = !!checked;
+    _exhausted = false;
+    _renderV2UI();
+  };
+
+  window._sfRcApprove = function() {
+    var approved = _proposals.filter(function(p) { return p.checked && p.slot; });
+    var rejected  = _proposals.filter(function(p) { return !p.checked || !p.slot; });
+    if (_rcV2Mode === 'collision') {
+      approved.forEach(function(p) {
+        S.tasks.push(Object.assign({}, p.task, {
+          id: uid(), date: p.slot.date, time: p.slot.time, done: false, missed: false
+        }));
+      });
+    } else {
+      approved.forEach(function(p) {
+        var found = (S.tasks || []).find(function(x) { return x.id === p.task.id; });
+        if (found) { found.date = p.slot.date; found.time = p.slot.time; found.missed = false; delete found.missedReason; }
+      });
+    }
+    save(); renderAll();
+    var msg = '';
+    if (approved.length) msg += approved.length + ' משימות שובצו מחדש';
+    if (rejected.length) {
+      if (msg) msg += ' · ';
+      msg += rejected.length + (_rcV2Mode === 'collision' ? ' נמחקו' : ' נשארו כפוספסות');
+    }
+    if (!msg) msg = 'לא בוצע שינוי';
+    var zone = document.getElementById('recalc-actions-zone');
+    var chat = document.getElementById('recalc-chat');
+    if (zone) zone.innerHTML = '<div class="rcm-result success"><span class="rcm-result-icon">✅</span><span>' + msg + '</span></div><button class="rcm-close-action" onclick="closeRecalc()">סגור</button>';
+    if (chat) chat.innerHTML = '';
+    _proposals = []; _rcV2Mode = null; _bl.clear(); _exhausted = false;
+  };
+
+  window._sfRcFindOther = function() {
+    var anyNew = false;
+    _proposals.forEach(function(p) {
+      if (p.checked) return;
+      var slot = _findOneSlot();
+      if (slot) {
+        _bl.add(slot.date + '|' + slot.time);
+        p.slot = slot; p.checked = true; anyNew = true;
+      } else {
+        p.slot = null; p.checked = false;
+      }
+    });
+    _exhausted = !anyNew;
+    _renderV2UI();
+  };
+
+  window.openRecalcForCollision = function(anchor, tasks) {
+    _bl.clear(); _exhausted = false; _rcV2Mode = 'collision';
+    _rcPendingTasks = tasks;
+    openRecalc('collision');
+    var totalMins = tasks.reduce(function(s, t) { return s + parseInt(t.duration||90); }, 0);
+    var chat = document.getElementById('recalc-chat');
+    if (chat) chat.innerHTML =
+      '<div class="rcm-conflict-info"><div class="rcm-conflict-anchor">העוגן <strong>"' + anchor.name +
+      '"</strong> דרס ' + tasks.length + ' משימ' + (tasks.length === 1 ? 'ה' : 'ות') +
+      ' (~' + (Math.round(totalMins / 60 * 10) / 10) + ' שעות)</div></div>' +
+      '<div class="rcm-question">בחר מה לשבץ מחדש:</div>';
+    _proposals = _buildProposals(tasks);
+    _renderV2UI();
+  };
+
+  window.checkPastDueTasks = function() {
+    var todayStr = _todayStr();
+    var missed = [];
+    (S.tasks || []).forEach(function(t) {
+      if (t.date < todayStr && !t.done && !t.missed) {
+        t.missed = true; t.missedReason = 'לא בוצע (עבר)'; missed.push(t);
+      }
+    });
+    if (!missed.length) return;
+    _bl.clear(); _exhausted = false; _rcV2Mode = 'morning';
+    _rcPendingTasks = missed;
+    save();
+    openRecalc('morning');
+    var chat = document.getElementById('recalc-chat');
+    if (chat) chat.innerHTML =
+      '<div class="rcm-conflict-info"><div class="rcm-conflict-anchor">נשארו ' + missed.length +
+      ' משימ' + (missed.length === 1 ? 'ה' : 'ות') + ' לא גמורות מהימים האחרונים</div></div>' +
+      '<div class="rcm-question">בחר מה לשבץ מחדש:</div>';
+    _proposals = _buildProposals(missed);
+    _renderV2UI();
+  };
+})();
 </script>
 
   </body>

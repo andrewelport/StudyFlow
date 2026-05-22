@@ -351,8 +351,29 @@ function generateWeeklySchedule(answers) {
       const yesterday = days[days.indexOf(date) - 1];
       if (yesterday && (dailyItemCounts[yesterday]?.[item] || 0) >= 1 && answers.load !== 'heavy') continue;
 
-      let slot = findBestFreeSlot(date, placed, blockNeed, slotPref);
-      if (slot === null && slotPref) slot = findBestFreeSlot(date, placed, blockNeed, null); // fallback
+      // Check if there is an exam for this course on this date
+      const courseExam = exams.find(e => e.course === item && e.date === date);
+      let examMin = null;
+      if (courseExam) {
+        const rawMin = parseInt((courseExam.time||'00:00').split(':')[0])*60 + parseInt((courseExam.time||'00:00').split(':')[1]);
+        // Default to 08:00 when no exam time is set, to avoid skipping the entire exam day
+        examMin = rawMin === 0 ? 8*60 : rawMin;
+      }
+
+      // If it's an exam day, only allow slots that finish BEFORE the exam starts
+      let localPref = slotPref;
+      if (examMin !== null) {
+        if (examMin <= blockNeed) continue; // No time to study before the exam on this day
+        if (localPref) {
+          localPref = { min: localPref.min, max: Math.min(localPref.max, examMin - blockNeed) };
+          if (localPref.min >= localPref.max) localPref = { min: 0, max: examMin - blockNeed };
+        } else {
+          localPref = { min: 0, max: examMin - blockNeed };
+        }
+      }
+
+      let slot = findBestFreeSlot(date, placed, blockNeed, localPref);
+      if (slot === null && localPref && examMin === null) slot = findBestFreeSlot(date, placed, blockNeed, null); // fallback (only if not restricted by exam)
       if (slot !== null) {
         let taskName = item;
         if (profile.style) {

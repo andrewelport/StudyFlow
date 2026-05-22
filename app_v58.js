@@ -444,7 +444,7 @@ function _pruneOldData() {
 // ── INIT & ONBOARDING ──
 window.onload = () => {
   const saved = localStorage.getItem(LS_KEY);
-  if (saved) { try { Object.assign(S, JSON.parse(saved)); } catch(e) {} }
+  if (saved) { try { Object.assign(S, JSON.parse(saved)); } catch(e) { localStorage.removeItem(LS_KEY); } }
 
   _validateStreak();
   _pruneOldData();
@@ -697,6 +697,7 @@ function saveSettings() {
   const apiKey = apiKeyEl ? apiKeyEl.value.replace(/\s+/g, '') : '';
   if (name) S.userName = name;
   if (inst) S.institution = inst;
+  if (wake >= sleep) { toast('שעת השינה חייבת להיות לאחר ההתעוררות'); return; }
   S.wakeTime = wake;
   S.sleepTime = sleep;
   S.apiKey = apiKey;
@@ -722,8 +723,11 @@ function obStep(n) {
     S.institution = (document.getElementById('inp-inst')?.value || '').trim();
   }
   if (_obStep === 2) {
-    S.wakeTime = document.getElementById('inp-wake')?.value || '08:00';
-    S.sleepTime = document.getElementById('inp-sleep')?.value || '22:00';
+    const wake2 = document.getElementById('inp-wake')?.value || '08:00';
+    const sleep2 = document.getElementById('inp-sleep')?.value || '22:00';
+    if (wake2 >= sleep2) { toast('שעת השינה חייבת להיות לאחר ההתעוררות'); return; }
+    S.wakeTime = wake2;
+    S.sleepTime = sleep2;
   }
   if (_obStep === 7) {
     // Finalize profile before summary step
@@ -1071,6 +1075,7 @@ async function callAI({ messages, temperature = 0.7, json = false, maxTokens = 4
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages, temperature, json, maxTokens })
       });
+      if (res.status === 503) throw new Error('תכונות AI אינן זמינות בגרסה החינמית');
       if (res.status === 429) throw new Error('חריגת מגבלת AI — נסה שוב בעוד דקה');
       if (res.status === 401) throw new Error('מפתח API לא תקין — עדכן בהגדרות ️');
       if (res.status === 500) {
@@ -1283,10 +1288,19 @@ function renderPomoTaskSelect() {
   if (!list) return;
   const today = ld(new Date());
   const tasks = S.tasks.filter(t => t.date === today && !t.done && !t.missed);
-  const noneRow = `<div class="pomo-cs-opt" onclick="selectPomoTask('','— בחר משימה (רשות) —')">— בחר משימה (רשות) —</div>`;
-  list.innerHTML = noneRow + tasks.map(t =>
-    `<div class="pomo-cs-opt" onclick="selectPomoTask('${t.id}','${(t.time||'')+'  '+t.name}')">${t.time ? t.time+' | ' : ''}${t.name}</div>`
-  ).join('');
+  list.innerHTML = '';
+  const noneRow = document.createElement('div');
+  noneRow.className = 'pomo-cs-opt';
+  noneRow.textContent = '— בחר משימה (רשות) —';
+  noneRow.addEventListener('click', () => selectPomoTask('', '— בחר משימה (רשות) —'));
+  list.appendChild(noneRow);
+  tasks.forEach(t => {
+    const row = document.createElement('div');
+    row.className = 'pomo-cs-opt';
+    row.textContent = (t.time ? t.time + ' | ' : '') + t.name;
+    row.addEventListener('click', () => selectPomoTask(t.id, (t.time || '') + '  ' + t.name));
+    list.appendChild(row);
+  });
 }
 
 function togglePomoTaskDrop(e) {
@@ -1334,7 +1348,7 @@ function _pomoRestoreSession() {
   if (!raw) return;
   try {
     const s = JSON.parse(raw);
-    if (!s.running) return;
+    if (!s.running || !s.startWall || typeof s.secondsAtSave !== 'number') return;
     const elapsed = Math.floor((Date.now() - s.startWall) / 1000);
     const remaining = s.secondsAtSave - elapsed;
     if (remaining <= 0) {
@@ -1887,9 +1901,18 @@ function plShHobbyQuickSave() {
 function _plShRenderHobbies() {
   const wrap = document.getElementById('pl-sh-hobby-chips');
   if (!wrap) return;
-  wrap.innerHTML = (S.hobbies || []).map(h =>
-    `<span class="pl-sh-hobby-chip">${h.name}<span onclick="S.hobbies=S.hobbies.filter(x=>x.id!=='${h.id}');_plShRenderHobbies()" class="pl-sh-chip-x">×</span></span>`
-  ).join('');
+  wrap.innerHTML = '';
+  (S.hobbies || []).forEach(h => {
+    const chip = document.createElement('span');
+    chip.className = 'pl-sh-hobby-chip';
+    chip.textContent = h.name;
+    const x = document.createElement('span');
+    x.className = 'pl-sh-chip-x';
+    x.textContent = '×';
+    x.addEventListener('click', () => { S.hobbies = S.hobbies.filter(hb => hb.id !== h.id); _plShRenderHobbies(); });
+    chip.appendChild(x);
+    wrap.appendChild(chip);
+  });
 }
 
 function plShSelectGoal(el) {
@@ -2008,8 +2031,9 @@ function addPlannerCourse() {
   const name = document.getElementById('cam-name').value.trim();
   const examDate = document.getElementById('cam-exam-date').value;
   if (!name) { toast('הכנס שם קורס'); return; }
+  if (name.length > 80) { toast('שם קורס ארוך מדי (מקסימום 80 תווים)'); return; }
   if (!examDate) { toast('הכנס תאריך מבחן'); return; }
-  if (new Date(examDate) < new Date()) { toast('️ תאריך מבחן לא יכול להיות בעבר'); return; }
+  if (new Date(examDate + 'T12:00') < new Date()) { toast('️ תאריך מבחן לא יכול להיות בעבר'); return; }
   if (!S.courses) S.courses = [];
   if (S.courses.find(c => c.name === name)) { toast('קורס זה כבר קיים'); return; }
   S.courses.push({ id: uid(), name, examDate, hoursPerWeek: 6 });
@@ -3992,19 +4016,21 @@ function checkPastDueTasks() {
         save();
         openRecalc('morning');
         const taskList = missedTasks.map(t =>
-          `<div class="rcm-task-row"><span class="rcm-task-course">${t.course||t.name}</span><span class="rcm-task-when">${formatPrettyDate(t.date)}</span></div>`
+          `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.03); padding:0.8rem 1rem; border-radius:12px; margin-bottom:0.4rem; border:1px solid rgba(0,0,0,0.02);">
+            <span style="font-weight:800; color:var(--text); font-size:1rem;">${t.course||t.name}</span>
+            <span style="background:var(--red-light); color:var(--red); font-weight:800; font-size:0.8rem; padding:0.25rem 0.6rem; border-radius:8px; display:inline-flex; align-items:center; gap:0.2rem;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> ${formatPrettyDate(t.date)}</span>
+          </div>`
         ).join('');
         document.getElementById('recalc-chat').innerHTML = `
-          <div class="rcm-conflict-info">
-            <div class="rcm-conflict-anchor">נשארו ${missedTasks.length} משימ${missedTasks.length===1?'ה':'ות'} לא גמורות מהימים האחרונים</div>
-            <div class="rcm-task-list">${taskList}</div>
+          <div style="background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:1.2rem; margin-bottom:1rem; box-shadow:0 8px 24px rgba(0,0,0,0.04);">
+            <div style="font-size:1.1rem; font-weight:900; color:var(--text); margin-bottom:1rem; display:flex; align-items:center; gap:0.5rem;">
+              <span style="background:var(--red-light); color:var(--red); padding:0.4rem; border-radius:10px; display:flex; align-items:center; justify-content:center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+              <span>נשארו ${missedTasks.length} משימ${missedTasks.length===1?'ה':'ות'} שלא גמורות מהימים האחרונים</span>
+            </div>
+            <div>${taskList}</div>
           </div>
-          <div class="rcm-question">מה לעשות עם המשימות?</div>`;
+          <div style="font-size:1.15rem; font-weight:900; color:var(--text); text-align:center; margin-bottom:1rem; margin-top:0.5rem;">מה תרצה לעשות עם המשימות?</div>`;
         document.getElementById('recalc-actions-zone').innerHTML = `
-          <button class="rcm-choice-btn rcm-choice-blue" onclick="_rcDoRescheduleMissed('tomorrow')">
-            <div class="rcm-choice-icon">📅</div>
-            <div class="rcm-choice-text"><div class="rcm-choice-title">דחה למחר</div><div class="rcm-choice-sub">כל המשימות יועברו לחלון הפנוי הראשון מחר</div></div>
-          </button>
           <button class="rcm-choice-btn rcm-choice-green" onclick="_rcDoRescheduleMissed('spread')">
             <div class="rcm-choice-icon">📆</div>
             <div class="rcm-choice-text"><div class="rcm-choice-title">פזר על השבוע</div><div class="rcm-choice-sub">המשימות יתפזרו על השבוע הקרוב</div></div>
@@ -4028,7 +4054,7 @@ function _endOfWeek() {
 }
 
 // Finds up to maxCount free slots between fromDateStr and limitDateStr (inclusive)
-function _findSlotsInRange(fromDateStr, limitDateStr, maxCount) {
+function _findSlotsInRange(fromDateStr, limitDateStr, maxCount, ignoreSlots = []) {
   const validTimes = ["08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00"];
   const wakeH  = parseInt((S.wakeTime||'08:00').split(':')[0]);
   const sleepH = parseInt((S.sleepTime||'23:00').split(':')[0]);
@@ -4041,13 +4067,20 @@ function _findSlotsInRange(fromDateStr, limitDateStr, maxCount) {
     const dow = d.getDay();
     d.setDate(d.getDate() + 1);
     if (dow === 6) continue;
+    
+    const isToday = dateStr === ld(new Date());
+    const currentMins = new Date().getHours() * 60 + new Date().getMinutes();
+    
     for (const slot of validTimes) {
       if (results.length >= maxCount) break;
       const h = parseInt(slot.split(':')[0]);
       if (h < wakeH || h >= sleepH) continue;
-      const key = `${dateStr}|${slot}`;
-      if (usedKeys.has(key)) continue;
+      
       const sm = h * 60;
+      if (isToday && sm <= currentMins) continue;
+      const key = `${dateStr}|${slot}`;
+      if (usedKeys.has(key) || ignoreSlots.includes(key)) continue;
+      
       const anchorBusy = (S.anchors||[]).some(a => {
         if (a.oneTimeDate) { if (a.oneTimeDate !== dateStr) return false; }
         else { if (parseInt(a.day) !== dow) return false; if (a.endDate && dateStr > a.endDate) return false; }
@@ -4087,18 +4120,40 @@ function _findNextFreeSlot(fromDateStr) {
 
 function _rcShowTextInput() { /* no-op in free version — no AI text input */ }
 
-function _rcShowResult(html, type = 'success') {
+function _rcShowResult(html, type = 'success', showAlternativeBtn = false) {
   const zone = document.getElementById('recalc-actions-zone');
-  const icon = type === 'deleted' ? '🗑️' : '✅';
-  zone.innerHTML = `<div class="rcm-result ${type}"><span class="rcm-result-icon">${icon}</span><span>${html}</span></div>
-    <button class="rcm-close-action" onclick="closeRecalc()">סגור</button>`;
+  let iconHtml = '';
+  if (type === 'deleted') {
+    iconHtml = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>';
+  } else {
+    iconHtml = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+  }
+  
+  const altBtn = showAlternativeBtn ? `<button class="btn-sm" style="width:100%; margin-bottom:0.5rem; background:var(--surface2); color:var(--text); border:1px solid var(--border); border-radius:12px; padding:0.8rem; font-weight:800; cursor:pointer;" onclick="_rcDoSpreadAlternative()">חפש זמנים אחרים</button>` : '';
+  zone.innerHTML = `<div class="rcm-result ${type}"><span class="rcm-result-icon">${iconHtml}</span><span style="flex:1">${html}</span></div>
+    ${altBtn}
+    <button class="rcm-close-action" onclick="window._rcConfirmAndClose()" style="background:var(--accent); color:var(--surface); font-weight:800;">אישור והמשך</button>`;
 }
+
+window._rcConfirmAndClose = function() {
+  const checkboxes = Array.from(document.querySelectorAll('.rcm-task-cb'));
+  if (checkboxes.length > 0) {
+    const uncheckedIds = checkboxes.filter(cb => !cb.checked).map(cb => cb.value);
+    if (uncheckedIds.length > 0) {
+      // Remove the tasks that the user left unchecked
+      S.tasks = S.tasks.filter(t => !uncheckedIds.includes(t.id));
+      save(); renderAll();
+      _toast(`נמחקו ${uncheckedIds.length} משימות שלא סומנו.`);
+    }
+  }
+  closeRecalc();
+};
 
 function _rcShowNoRoom() {
   const zone = document.getElementById('recalc-actions-zone');
-  zone.innerHTML = `<div class="rcm-result deleted"><span class="rcm-result-icon">⚠️</span><span>אין מקום פנוי בשבוע הנוכחי — אפשר רק למחוק</span></div>
+  zone.innerHTML = `<div class="rcm-result deleted"><span class="rcm-result-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span><span>אין מקום פנוי בשבוע הנוכחי — אפשר רק למחוק</span></div>
     <button class="rcm-choice-btn rcm-choice-red" onclick="_rcDoIgnore()" style="margin-top:0.4rem">
-      <div class="rcm-choice-icon">🗑️</div>
+      <div class="rcm-choice-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></div>
       <div class="rcm-choice-text"><div class="rcm-choice-title">מחק אותן</div><div class="rcm-choice-sub">הסר את המשימות לצמיתות</div></div>
     </button>
     <button class="rcm-close-action" onclick="closeRecalc()">ביטול</button>`;
@@ -4118,26 +4173,112 @@ function _rcDoMoveNextDay() {
     results.push(`• <b>${t.course||t.name}</b> → ${slot.date} ${slot.time}`);
   });
   save(); renderAll();
-  _rcShowResult(`📅 ${results.length} משימות שובצו ביום הפנוי הבא:<br><br><div style="font-size:0.82rem;text-align:right;font-weight:400">${results.join('<br>')}</div>`);
+  _rcShowResult(`<div style="font-size:0.82rem;text-align:right;font-weight:400">${results.join('<br>')}</div>`);
 }
 
-function _rcDoSpreadWeek() {
-  const today = ld(new Date());
-  const endWeek = _endOfWeek();
-  const slots = _findSlotsInRange(today, endWeek, _rcPendingTasks.length);
-  if (!slots.length) { _rcShowNoRoom(); return; }
+function _rcDoSpreadWeek(isAlternative = false) {
+  if (!isAlternative) {
+    window._rcIgnoredSlots = new Set();
+  }
+  
+  let minDate = ld(new Date());
+  if (_rcPendingTasks && _rcPendingTasks.length > 0) {
+    if (_rcPendingTasks[0].date > minDate) {
+      minDate = _rcPendingTasks[0].date;
+    }
+  }
+  const today = minDate;
+  const d = new Date(today + 'T12:00:00');
+  d.setDate(d.getDate() + 6);
+  const endWeek = ld(d);
+  
+  const ignoreArr = Array.from(window._rcIgnoredSlots || []);
+  const slots = _findSlotsInRange(today, endWeek, _rcPendingTasks.length, ignoreArr);
+  
+  if (!slots.length) {
+    if (ignoreArr.length > 0) {
+      // Restore the rejected tasks back to the schedule since we couldn't find alternatives
+      _rcPendingTasks.forEach(t => S.tasks.push(t));
+      save(); renderAll();
+      alert("לא נמצאו זמנים פנויים נוספים בשבוע זה. אנא השאר מסומנות את האפשרויות שאתה רוצה, או הסר סימון כדי למחוק אותן ולחץ על 'אישור והמשך'.");
+    } else {
+      _rcShowNoRoom();
+    }
+    return;
+  }
   const results = [];
   const skipped = [];
+  const addedIds = [];
   _rcPendingTasks.forEach((t, i) => {
     const slot = slots[i];
-    if (!slot) { skipped.push(t.course||t.name); return; }
-    S.tasks.push({...t, id: uid(), date: slot.date, time: slot.time, done: false, missed: false});
-    results.push(`• <b>${t.course||t.name}</b> → ${slot.date} ${slot.time}`);
+    if (!slot) { 
+      skipped.push(t.course||t.name);
+      if (!S.deletedCollisions) S.deletedCollisions = [];
+      S.deletedCollisions.push({ name: t.name, course: t.course||t.name, date: t.date, deletedAt: new Date().toISOString() });
+      return; 
+    }
+    const newId = uid();
+    addedIds.push(newId);
+    S.tasks.push({...t, id: newId, date: slot.date, time: slot.time, done: false, missed: false});
+    results.push(`
+      <label style="background:var(--surface); border:1px solid var(--border); padding:0.6rem 0.8rem; border-radius:12px; margin-bottom:0.4rem; display:flex; gap:0.6rem; align-items:flex-start; cursor:pointer; transition:0.2s ease;">
+        <input type="checkbox" class="rcm-task-cb" value="${newId}" checked style="margin-top:0.3rem; accent-color:var(--accent); width:18px; height:18px; cursor:pointer;">
+        <div style="flex:1; display:flex; flex-direction:column; gap:0.4rem;">
+          <div style="font-weight:800; color:var(--text); font-size:0.95rem;">${t.course||t.name}</div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="background:var(--accent-light); color:var(--accent); font-weight:800; font-size:0.75rem; padding:0.2rem 0.6rem; border-radius:8px;">${formatPrettyDate(slot.date)}</span>
+            <span style="font-family:var(--mono); font-weight:900; font-size:0.8rem; color:var(--text); background:var(--surface2); padding:0.2rem 0.5rem; border-radius:6px;">${slot.time}</span>
+          </div>
+        </div>
+      </label>
+    `);
   });
   save(); renderAll();
-  const skipNote = skipped.length ? `<br><span style="color:#ef4444;font-size:0.8rem">⚠️ לא נמצא מקום ל: ${skipped.join(', ')}</span>` : '';
-  _rcShowResult(`📆 ${results.length} משימות פוזרו עד סוף השבוע (${endWeek}):<br><br><div style="font-size:0.82rem;text-align:right;font-weight:400">${results.join('<br>')}</div>${skipNote}`);
+  
+  // Add newly used slots to the global ignored set so next time we won't use them
+  if (!window._rcIgnoredSlots) window._rcIgnoredSlots = new Set();
+  slots.forEach(s => window._rcIgnoredSlots.add(s.date + '|' + s.time));
+  
+  window._rcLastSpreadState = { addedIds };
+  
+  const skipNote = skipped.length ? `<div style="color:var(--red); font-size:0.85rem; font-weight:700; margin-top:0.5rem;">לא נמצא מקום ל: ${skipped.join(', ')}</div>` : '';
+  
+  _rcShowResult(`
+    <div style="font-weight:900; margin-bottom:0.8rem; font-size:1.05rem; color:var(--text);">פוזרו ${results.length} משימות:</div>
+    <div>${results.join('')}</div>
+    ${skipNote}
+  `, 'success', true);
 }
+
+window._rcDoSpreadAlternative = function() {
+  try {
+    const checkboxes = Array.from(document.querySelectorAll('.rcm-task-cb'));
+    if (!checkboxes.length) return;
+    
+    const uncheckedIds = checkboxes.filter(cb => !cb.checked).map(cb => cb.value);
+    
+    if (uncheckedIds.length === 0) {
+      alert("אנא הורד את הסימון (V) מהמשימות שתרצה למצוא עבורן שעות אחרות.");
+      return;
+    }
+    
+    // Identify rejected tasks
+    const rejectedTasks = S.tasks.filter(t => uncheckedIds.includes(t.id));
+    
+    // Remove rejected tasks from S.tasks
+    S.tasks = S.tasks.filter(t => !uncheckedIds.includes(t.id));
+    
+    // The rejected tasks become the new pending tasks
+    _rcPendingTasks = rejectedTasks.map(t => {
+      // Revert date/time so they don't break logic, although _rcDoSpreadWeek overwrites them
+      return { ...t, date: t.date, time: t.time };
+    });
+    
+    _rcDoSpreadWeek(true);
+  } catch(e) {
+    alert("שגיאה בחיפוש זמנים אחרים: " + e.message);
+  }
+};
 
 function _rcDoIgnore() {
   if (!S.deletedCollisions) S.deletedCollisions = [];
@@ -4194,45 +4335,56 @@ function openRecalcForCollision(anchor, tasks) {
   openRecalc('collision');
   const totalMins = tasks.reduce((sum,t)=>sum+parseInt(t.duration||90),0);
   const taskList = tasks.map(t =>
-    `<div class="rcm-task-row"><span class="rcm-task-course">${t.course||t.name}</span><span class="rcm-task-when">${formatPrettyDate(t.date)}${t.time?' · '+t.time:''}</span></div>`
+    `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.03); padding:0.8rem 1rem; border-radius:12px; margin-bottom:0.4rem; border:1px solid rgba(0,0,0,0.02);">
+      <span style="font-weight:800; color:var(--text); font-size:1rem;">${t.course||t.name}</span>
+      <span style="display:inline-flex; align-items:center; gap:0.4rem;">
+        <span style="background:var(--accent-light); color:var(--accent); font-weight:800; font-size:0.8rem; padding:0.2rem 0.6rem; border-radius:8px;">${formatPrettyDate(t.date)}</span>
+        <span style="font-family:var(--mono); font-weight:900; font-size:0.85rem; color:var(--text); background:white; padding:0.2rem 0.6rem; border-radius:8px; border:1px solid var(--border);">${t.time||''}</span>
+      </span>
+    </div>`
   ).join('');
   document.getElementById('recalc-chat').innerHTML = `
-    <div class="rcm-conflict-info">
-      <div class="rcm-conflict-anchor">העוגן <strong>"${anchor.name}"</strong> נדרס עם ${tasks.length} משימ${tasks.length===1?'ה':'ות'} (~${Math.round(totalMins/60*10)/10} שעות)</div>
-      <div class="rcm-task-list">${taskList}</div>
+    <div style="background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:1.2rem; margin-bottom:1rem; box-shadow:0 8px 24px rgba(0,0,0,0.04);">
+      <div style="font-size:1.1rem; font-weight:900; color:var(--text); margin-bottom:1rem; display:flex; align-items:center; gap:0.5rem; line-height:1.3;">
+        <span style="background:var(--orange-light); color:var(--orange); padding:0.4rem; border-radius:10px; display:flex; align-items:center; justify-content:center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+        <span>העוגן <strong style="color:var(--brand)">"${anchor.name}"</strong> נדרס עם ${tasks.length} משימ${tasks.length===1?'ה':'ות'}</span>
+      </div>
+      <div>${taskList}</div>
+      <div style="margin-top:1rem; color:var(--muted); font-size:0.85rem; font-weight:700; display:flex; justify-content:space-between; align-items:center;">
+        <span>סה"כ זמן שנדרס</span>
+        <span style="background:var(--surface2); padding:0.2rem 0.6rem; border-radius:6px;">~${Math.round(totalMins/60*10)/10} שעות</span>
+      </div>
     </div>
-    <div class="rcm-question">מה לעשות עם המשימות שנדרסו?</div>`;
+    <div style="font-size:1.15rem; font-weight:900; color:var(--text); text-align:center; margin-bottom:1rem; margin-top:0.5rem;">מה לעשות עם המשימות שנדרסו?</div>`;
 
-  // Check what's actually available this week before showing options
-  const today = ld(new Date());
-  const endWeek = _endOfWeek();
+  // Check what's actually available over the next 7 days from the collision date
+  let minDate = ld(new Date());
+  if (tasks.length > 0 && tasks[0].date > minDate) {
+    minDate = tasks[0].date;
+  }
+  const today = minDate;
+  const d = new Date(today + 'T12:00:00');
+  d.setDate(d.getDate() + 6); // 7 day window
+  const endWeek = ld(d);
+
   const tomorrow = ld(new Date(Date.now() + 86400000));
-  const tomorrowInWeek = tomorrow <= endWeek;
   const weekSlots = _findSlotsInRange(today, endWeek, tasks.length);
   const canSpread = weekSlots.length > 0;
-  const canNextDay = tomorrowInWeek && _findSlotsInRange(tomorrow, endWeek, 1).length > 0;
-
-  const nextDayBtn = canNextDay ? `
-    <button class="rcm-choice-btn rcm-choice-blue" onclick="_rcDoMoveNextDay()">
-      <div class="rcm-choice-icon">📅</div>
-      <div class="rcm-choice-text"><div class="rcm-choice-title">הזז ליום הפנוי הבא</div><div class="rcm-choice-sub">מחר עד סוף השבוע (${endWeek})</div></div>
-    </button>` : '';
 
   const spreadBtn = canSpread ? `
     <button class="rcm-choice-btn rcm-choice-green" onclick="_rcDoSpreadWeek()">
-      <div class="rcm-choice-icon">📆</div>
-      <div class="rcm-choice-text"><div class="rcm-choice-title">פזר על שארית השבוע</div><div class="rcm-choice-sub">היום עד ${endWeek} — ${weekSlots.length} חלון${weekSlots.length===1?'':'ות'} פנוי${weekSlots.length===1?'':'ים'}</div></div>
+      <div class="rcm-choice-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></div>
+      <div class="rcm-choice-text"><div class="rcm-choice-title">פזר בשבוע שלאחר המשימה</div><div class="rcm-choice-sub" dir="rtl">בין ה-<span dir="ltr">${formatPrettyDate(today)}</span> ל-<span dir="ltr">${formatPrettyDate(endWeek)}</span> — ${weekSlots.length} חלונות פנויים</div></div>
     </button>` : '';
 
-  const noRoomNote = !canNextDay && !canSpread
-    ? `<div class="rcm-result deleted" style="margin-bottom:0.4rem"><span class="rcm-result-icon">⚠️</span><span>הלוז מלא עד סוף השבוע — אפשר רק למחוק</span></div>` : '';
+  const noRoomNote = !canSpread
+    ? `<div class="rcm-result deleted" style="margin-bottom:0.4rem"><span class="rcm-result-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span><span>הלוז מלא בשבוע הקרוב — אפשר רק למחוק</span></div>` : '';
 
   document.getElementById('recalc-actions-zone').innerHTML = `
     ${noRoomNote}
-    ${nextDayBtn}
     ${spreadBtn}
     <button class="rcm-choice-btn rcm-choice-red" onclick="_rcDoIgnore()">
-      <div class="rcm-choice-icon">🗑️</div>
+      <div class="rcm-choice-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></div>
       <div class="rcm-choice-text"><div class="rcm-choice-title">מחק אותן</div><div class="rcm-choice-sub">הסר את המשימות לצמיתות (ייכלל בסיכום שבועי)</div></div>
     </button>`;
 }
@@ -5116,6 +5268,10 @@ function renderWeeklyReview() {
 }
 
 async function _wrGenerate() {
+  if (!(S.courses || []).length) {
+    _wrMsg('⚠️ אין קורסים — <button class="wr-btn-inline" onclick="showPage(\'exams\',null)">הוסף קורס</button> כדי לייצר לו"ז');
+    return;
+  }
   _wrMsg('⏳ מחשב לו"ז מותאם אישית (ללא צורך באינטרנט)...');
   _wrProg((_wr.qs.length||1) + 1);
 
@@ -5226,7 +5382,7 @@ function _wrInit() {
     _wrMsg(`שלום ${S.userName}! \nברוך הבא — נבנה יחד את לוז השבוע הראשון שלך (${range.start} – ${range.end}).`);
   } else {
     const deletedNote = _wr.deletedCollisionSummary ? `\n\n${_wr.deletedCollisionSummary}` : '';
-    _wrMsg(`שלום ${S.userName}!  זמן לתכנן — לאיזה שבוע?${deletedNote}`);
+    _wrMsg(`שלום ${S.userName}!${deletedNote}`);
   }
   setTimeout(() => _wrNext(), 700);
 }
@@ -5236,6 +5392,7 @@ function _wrNext() {
   const q = _wr.qs[_wr.qi];
 
   if (q.type === '_week_choice') {
+    _wrMsg(`זמן לתכנן — לאיזה שבוע נרצה לבנות לו"ז?`);
     const nowDow = new Date().getDay();
     const nextSun = new Date(); nextSun.setDate(nextSun.getDate() + (nowDow === 0 ? 7 : 7 - nowDow));
     const nextSat = new Date(nextSun); nextSat.setDate(nextSun.getDate() + 6);
