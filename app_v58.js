@@ -898,7 +898,7 @@ function collectAnchors(){
         start = times[0]?.value || defaultStart;
         end = times[1]?.value || defaultEnd;
       }
-      if (start >= end) return;
+      if (start >= end) { if (typeof toast === 'function') toast(`⚠️ ${name}: שעת ההתחלה חייבת להיות לפני שעת הסיום`); return; }
       const foreverCb = row.querySelector('.ob-anchor-forever');
       const endDate = (!foreverCb || foreverCb.checked) ? null : (row.querySelector('.ob-anchor-end')?.value || null);
       results.push({ id: uid(), name, day: d, start, end, travelMin, color, endDate });
@@ -1986,35 +1986,13 @@ function plShBuildFirstWeek() {
   });
   save();
   const coursesNames = newCourses.map(c => c.name);
-  // Build _wr state for first-week generation — skip Q&A, use defaults
-  _wr = {
-    qs: [], qi: 0,
-    answers: {
-      courses: Object.fromEntries(coursesNames.map(n => [n, { u: 'ok', cov: 'little', mat: 'lots' }])),
-      hobbies: {},
-      load: _plShGoal || 'ok',
-      goal: _plShGoal,
-      homework: hwItems,
-      priority: null
-    },
-    coursesLastWeek: coursesNames,
-    activeHobbies: S.hobbies || [],
-    pendingPlan: null
-  };
-  // Navigate WITHOUT triggering renderWeeklyReview (which would overwrite _wr)
+  
+  // Navigate to weekly review page to start the Q&A process properly
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-weekly-review')?.classList.add('active');
   updateBottomNav('weekly-review');
-  document.getElementById('wr-done')?.classList.add('hidden');
-  document.getElementById('wr-active')?.classList.remove('hidden');
-  document.getElementById('wr-msgs').innerHTML = '';
-  document.getElementById('wr-msgs').classList.remove('hidden');
-  document.getElementById('wr-choices').innerHTML = '';
-  document.getElementById('wr-choices').classList.add('hidden');
-  document.getElementById('wr-result').classList.add('hidden');
-  _wrProg(0);
-  _wrMsg(` מצוין ${S.userName}! בונה לוז לשבוע הראשון שלך...\nקורסים: ${coursesNames.join(', ')}`);
-  setTimeout(() => _wrGenerate(), 800);
+  _wrForceRebuild = true;
+  renderWeeklyReview();
 }
 
 function openAddCourseModal() {
@@ -3751,6 +3729,7 @@ function saveAnchorManual(){
     if (start >= end) { toast('⚠️ שעת ההתחלה חייבת להיות לפני שעת הסיום'); return; }
     const [sh, sm] = start.split(':').map(Number); const [eh, em] = end.split(':').map(Number);
     if ((eh*60+em)-(sh*60+sm) > 16*60) { toast('⚠️ משמרת לא יכולה להיות יותר מ-16 שעות'); return; }
+    { const wm = (S.wakeTime||'08:00').split(':').map(Number); const slm = (S.sleepTime||'22:00').split(':').map(Number); const wakeMin = wm[0]*60+wm[1]; const sleepMin = slm[0]*60+slm[1]; if (sh*60+sm < wakeMin || eh*60+em > sleepMin) toast('💡 שים לב: העוגן מחוץ לשעות הערות שלך'); }
     const updatedAnchor = { ...S.anchors[idx], name, day, start, end, travelMin, color, endDate, notes };
     if (isOneTime) { updatedAnchor.oneTimeDate = oneTimeDate; updatedAnchor.day = new Date(oneTimeDate+'T12:00:00').getDay(); }
     else { delete updatedAnchor.oneTimeDate; }
@@ -3979,31 +3958,8 @@ function renderExamDashboard(id) {
     </div>`;
 }
 function recalcExamFocus(course, perfPct, timePct, daysLeft) {
-  openRecalc('exam');
-  const courseTasks = S.tasks.filter(t => t.course === course);
-  const lowRated = courseTasks.filter(t => t.rating && parseInt(t.rating) <= 3).map(t=>`${t.name}: ${t.rating} — "${t.feedback||''}"`).join(', ');
-  const chat = document.getElementById('recalc-chat');
-  const todayForSlots = ld(new Date());
-  const examEntry = S.exams.find(e => e.course === course);
-  const freeSlots = getAvailableSlots(todayForSlots, examEntry?.date || todayForSlots, 5);
-  const dayNames = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
-  const anchorSummary = (S.anchors||[]).map(a=>`יום ${dayNames[parseInt(a.day)]}: ${a.start}–${a.end}`).join(', ') || 'אין';
-  const msg = `הערכת מצב למבחן ב-"${course}": נשארו ${daysLeft} ימים. עברו ${timePct}% מהזמן אבל השלמתי רק ${perfPct}% מהמשימות. ${lowRated ? `משימות שהלכו קשה: ${lowRated}.` : ''} מה האסטרטגיה המומלצת להדביק את הפער?`;
-  recalcHistory[0] = {role:'system', content: `אתה יועץ אקדמי מומחה לקורס "${course}".
-נתונים: ימים נותרו=${daysLeft}, זמן שעבר=${timePct}%, השלמת משימות=${perfPct}%.
-כל משימות הקורס: ${JSON.stringify(courseTasks)}.
-משימות עם דירוג נמוך: ${lowRated||'אין'}.
-זמנים פנויים לשיבוץ: ${freeSlots.text||'אין'}.
-עוגנים קיימים (אסור לחפוף): ${anchorSummary}.
-חוקים:
-(1) נתח את הפער — האם הקצב מספיק?
-(2) הצע שיטות למידה ספציפיות: חזרה מרווחת, שליפה אקטיבית, שילוב נושאים.
-(3) כשאתה ממליץ להוסיף משימות — תאר אותן בבירור ב-reply, ואז כלול אותן ב-actions.add. הסטודנט יראה הצעה ויחליט אם לאשר.
-(4) השתמש אך ורק בזמנים הפנויים — אל תחפוף עם עוגנים קיימים ואל תקבע בעבר.
-(5) שעות תקינות בלבד: 08:00,09:00,10:00,11:00,12:00,13:00,14:00,15:00,16:00,17:00,18:00,19:00,20:00.`};
-  chat.innerHTML = `<div class="chat-msg user"><div class="chat-bubble">${escapeHtml(msg)}</div></div>`;
-  document.getElementById('recalc-input').value = msg;
-  sendRecalc();
+  // AI exam advisor — not available in free version; use scheduleExamCrunch instead
+  toast('ייעוץ AI אינו זמין בגרסה החינמית. השתמש במצב חירום להוספת משימות.');
 }
 function removeExam(id){ S.exams = S.exams.filter(e => String(e.id)!==String(id)); save(); renderExams(); }
 
@@ -5857,7 +5813,7 @@ function confirmWeeklyPlan() {
 }
 
 async function sendRecalc() {
-  const inp = document.getElementById('recalc-input'); const msg = inp.value.trim(); if(!msg) return; inp.value = '';
+  const inp = document.getElementById('recalc-input'); if (!inp) return; const msg = inp.value.trim(); if(!msg) return; inp.value = '';
   const chat = document.getElementById('recalc-chat');
   chat.innerHTML += `<div class="chat-msg user"><div class="chat-bubble">${msg}</div></div><div class="chat-msg ai" id="recalc-loading"><div class="chat-bubble"><span class="ai-thinking">מחשב אופטימיזציה...</span></div></div>`;
   chat.scrollTop = chat.scrollHeight;
