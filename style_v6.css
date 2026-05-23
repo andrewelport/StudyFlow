@@ -160,14 +160,16 @@ body[data-theme="dark"] {
 }
 .page.active { display: block !important; }
 
-/* Schedule page — only intentional internal scroll container */
+/* Timeline — unified with page scroll, no separate rectangle */
 .timeline-outer {
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-  -webkit-overflow-scrolling: touch !important;
+  overflow: visible !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
   touch-action: pan-y !important;
-  max-height: calc(100dvh - 212px) !important;
-  min-height: 250px !important;
+  -webkit-overflow-scrolling: touch !important;
 }
 
 /* ─── MOBILE HEADER ─────────────────────────────────────────── */
@@ -1682,41 +1684,53 @@ body, html { background-image: none !important; }
 
 
 /* ─── DESKTOP MOBILE SIMULATOR ──────────────────────────── */
+/* Tablet / desktop / landscape — fully responsive, fills the screen */
 @media (min-width: 600px) {
   html {
-    background-color: #121826 !important; /* Dark outer background */
-    display: flex !important;
-    justify-content: center !important;
-    align-items: center !important;
-    min-height: 100vh !important;
+    background-color: var(--bg) !important;
+    display: block !important;
   }
   body {
-    max-width: 414px !important; /* iPhone Pro Max width */
+    max-width: 100% !important;
     width: 100% !important;
-    height: 100vh !important; /* Full height of browser */
-    max-height: 900px !important;
-    margin: 0 auto !important;
-    position: relative !important;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 10px #000 !important;
-    border-radius: 40px !important;
+    height: 100% !important;      /* Keep viewport-constrained so body scrolls */
+    max-height: none !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
     overflow-x: hidden !important;
-    overflow-y: auto !important;
+    overflow-y: auto !important;  /* body IS the scroll container */
     background-color: var(--bg) !important;
   }
-  
-  /* Make sure bottom nav and overlays stick to the body, not the HTML/window */
   .bottom-nav {
-    position: absolute !important;
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
   }
   #sf-splash, #auth-overlay, #setup-screen, .focus-lock-overlay {
-    position: absolute !important;
-    border-radius: inherit !important;
+    position: fixed !important;
+    border-radius: 0 !important;
   }
-  
-  /* Hide scrollbar for cleaner mobile look */
-  body::-webkit-scrollbar {
-    width: 0px !important;
-    background: transparent !important;
+}
+
+/* Landscape phone — hide bottom nav (too cramped vertically) */
+@media (max-height: 500px) and (orientation: landscape) {
+  .bottom-nav { display: none !important; }
+  .main-content { padding-bottom: 24px !important; }
+}
+
+/* Large screens (tablet+): center content with readable max-width */
+@media (min-width: 768px) {
+  .main-content {
+    max-width: 860px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+}
+
+@media (min-width: 1200px) {
+  .main-content {
+    max-width: 1000px !important;
   }
 }
 
@@ -1799,9 +1813,7 @@ input, textarea, select {
 /* Prevents the main page from scrolling when you reach the 
    top/bottom of the timeline, making scrolling much smoother */
 #day-timeline-view, .timeline-container {
-  overscroll-behavior-y: contain !important;
   -webkit-overflow-scrolling: touch !important;
-  touch-action: pan-y !important;
 }
 
 
@@ -1811,7 +1823,7 @@ input, textarea, select {
 .modal-overlay {
   position: fixed !important;
   inset: 0 !important;
-  width: 100vw !important;
+  width: 100% !important;
   height: 100vh !important;
   z-index: 10000 !important;
   padding-bottom: env(safe-area-inset-bottom, 20px) !important;
@@ -1836,6 +1848,7 @@ input, textarea, select {
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
+  overflow-x: hidden;
   overscroll-behavior: contain;
   animation: ancSheetUp 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
   display: flex;
@@ -2513,13 +2526,161 @@ input[type="date"], input[type="time"] {
   }
 }
 
-/* === GLOBAL FIXES FOR RESPONSIVENESS AND SCROLL === */
-html { height: auto !important; overflow-y: auto !important; overflow-x: hidden !important; }
-body { height: auto !important; overflow-y: visible !important; overflow-x: hidden !important; max-width: 100% !important; width: 100vw !important; }
-.app-layout { max-width: 100% !important; width: 100% !important; overflow: hidden !important; }
-.main-content { max-width: 100% !important; width: 100% !important; padding-left: env(safe-area-inset-left, 16px) !important; padding-right: env(safe-area-inset-right, 16px) !important; box-sizing: border-box !important; }
-.timeline-outer, .hqm-card { max-height: none !important; overflow-y: visible !important; }
+/* === GLOBAL FIXES FOR RESPONSIVENESS === */
+/* Don't override scroll architecture here — body/html heights set above at lines 126-138 */
+html { overflow-x: hidden !important; }
+body { overflow-x: hidden !important; max-width: 100% !important; width: 100% !important; }
+.app-layout { max-width: 100% !important; width: 100% !important; }
+.main-content { width: 100% !important; padding-left: max(env(safe-area-inset-left, 0px), 16px) !important; padding-right: max(env(safe-area-inset-right, 0px), 16px) !important; box-sizing: border-box !important; }
+.timeline-outer, .hqm-card { max-height: none !important; overflow: visible !important; border: none !important; border-radius: 0 !important; }
 .mobile-header { position: sticky !important; top: 0 !important; z-index: 9500 !important; }
 .sidebar-hdr, .sidebar-sub { position: sticky !important; top: 0 !important; background: var(--surface) !important; z-index: 10 !important; }
 .sidebar-hdr { padding-top: 1rem !important; margin-top: -1rem !important; }
 .sidebar-sub { top: 38px !important; padding-bottom: 0.5rem !important; margin-bottom: 0.5rem !important; background: var(--surface) !important; }
+
+/* ─── TASK EDIT SHEET — v6 redesign ─────────────────────────── */
+.tes-panel {
+  background: var(--sur) !important;
+  border-radius: 20px 20px 0 0 !important;
+  padding: 0 !important;
+  box-shadow: 0 -4px 30px rgba(0,0,0,0.18) !important;
+  overflow-x: hidden !important;
+}
+[data-theme="dark"] .tes-panel { background: #1c1c1e !important; }
+
+.tes-drag {
+  background: var(--bor-2) !important;
+  margin: 10px auto 0 !important;
+  width: 36px !important;
+  height: 4px !important;
+}
+
+.tes-task-title {
+  color: var(--ink) !important;
+  font-size: 1rem !important;
+  font-weight: 700 !important;
+  text-align: center !important;
+  padding: 12px 18px 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.tes-quick-row {
+  display: flex !important;
+  gap: 8px !important;
+  padding: 12px 18px !important;
+  margin-bottom: 0 !important;
+}
+
+.tes-qbtn {
+  border-radius: var(--rsm) !important;
+  font-size: 0.84rem !important;
+  font-weight: 700 !important;
+  padding: 10px 8px !important;
+  border: none !important;
+}
+.tes-qbtn.done   { background: rgba(52,199,89,0.15) !important; color: #248A3D !important; }
+.tes-qbtn.missed { background: rgba(255,59,48,0.12) !important; color: var(--red) !important; }
+.tes-qbtn.del    { background: var(--sur-2) !important; color: var(--ink-3) !important; }
+[data-theme="dark"] .tes-qbtn.done { background: rgba(52,199,89,0.18) !important; color: #34C759 !important; }
+
+.tes-fields {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  padding: 0 18px !important;
+  margin-bottom: 12px !important;
+}
+
+.tes-field label {
+  font-size: 0.71rem !important;
+  font-weight: 600 !important;
+  color: var(--ink-3) !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+  margin-bottom: 4px !important;
+}
+
+.tes-field input {
+  background: var(--sur-2) !important;
+  border: 1.5px solid var(--bor) !important;
+  border-radius: var(--rsm) !important;
+  color: var(--ink) !important;
+  font-size: 0.93rem !important;
+  font-weight: 500 !important;
+  padding: 10px 12px !important;
+  font-family: var(--sans) !important;
+}
+
+.tes-field input:focus {
+  border-color: var(--brand) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 3px var(--soft) !important;
+}
+
+[data-theme="dark"] .tes-field input {
+  background: #2c2c2e !important;
+  border-color: #38383a !important;
+}
+
+.tes-save-btn {
+  display: block !important;
+  margin: 0 18px calc(18px + env(safe-area-inset-bottom, 0px)) !important;
+  width: calc(100% - 36px) !important;
+  background: var(--brand) !important;
+  border: none !important;
+  border-radius: var(--rsm) !important;
+  padding: 13px !important;
+  font-size: 0.97rem !important;
+  font-weight: 700 !important;
+  color: #fff !important;
+  cursor: pointer !important;
+  font-family: var(--sans) !important;
+  transition: background 0.15s !important;
+}
+.tes-save-btn:active { background: var(--dk) !important; }
+
+/* ─── ANCHOR PER-DAY TIME ROWS ────────────────────────────── */
+#anc-per-day-times {
+  padding: 0 18px 14px;
+}
+
+.anc-per-day-row {
+  display: grid;
+  grid-template-columns: 72px 1fr 1fr;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.anc-per-day-lbl {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.anc-per-day-inp {
+  background: var(--sur-2) !important;
+  border: 1.5px solid var(--bor) !important;
+  border-radius: var(--rsm) !important;
+  color: var(--ink) !important;
+  font-size: 0.88rem !important;
+  font-weight: 600 !important;
+  padding: 8px 10px !important;
+  direction: ltr !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+}
+.anc-per-day-inp:focus { outline: none !important; border-color: var(--brand) !important; }
+[data-theme="dark"] .anc-per-day-inp {
+  background: #2c2c2e !important;
+  border-color: #38383a !important;
+}
+
+.anc-per-day-section-lbl {
+  font-size: 0.73rem;
+  font-weight: 600;
+  color: var(--ink-3);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0 18px 8px;
+}

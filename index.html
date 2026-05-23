@@ -6,8 +6,8 @@
 <title>StudyFlow  — ה-Waze של הלימודים</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=86">
-<link rel="stylesheet" href="style_v6.css?v=34">
+<link rel="stylesheet" href="style.css?v=129">
+<link rel="stylesheet" href="style_v6.css?v=130">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -269,7 +269,7 @@
       <button class="ob2-next-btn" onclick="obStep(4)">המשך</button>
     </div>
 
-    <div class="ob2-slide" id="ob2-s3" style="display:none">
+    <div class="ob2-slide" id="ob2-s3">
       <div class="ob2-illus ob2-illus-sm">
         <svg viewBox="0 0 160 80" fill="none" xmlns="http://www.w3.org/2000/svg">
           <rect x="20" y="10" width="120" height="60" rx="8" fill="var(--accent-light)" stroke="var(--accent)" stroke-width="1.5" opacity="0.6"/>
@@ -845,7 +845,7 @@
     </div>
     <div>
       <label class="inline-form-label">תיאור קצר</label>
-      <input type="text" id="hw-name" class="inline-form-input" placeholder="תיאור המטלה...">
+      <input type="text" id="hw-name" class="inline-form-input" placeholder="תיאור המטלה..." maxlength="80">
     </div>
     <div>
       <label class="inline-form-label">תאריך הגשה</label>
@@ -1396,7 +1396,7 @@
       <input type="color" id="anc-color" value="#4f6ef7" />
       <input type="date" id="anc-end-date" disabled />
       <input type="checkbox" id="anc-forever" checked />
-      <textarea id="anc-notes"></textarea>
+      <textarea id="anc-notes" maxlength="300"></textarea>
     </div>
 
     <!-- Footer -->
@@ -1419,7 +1419,7 @@
     <div class="rem-body">
       <!-- Add form -->
       <div class="rem-add-form">
-        <input type="text" id="rem-text" class="rem-input" placeholder="מה לזכור?" />
+        <input type="text" id="rem-text" class="rem-input" placeholder="מה לזכור?" maxlength="200" />
         <div class="rem-form-row">
           <div>
             <label class="anc-label">תאריך</label>
@@ -1486,14 +1486,14 @@
             <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           </div>
           <label class="settings-row-label">שם</label>
-          <input type="text" class="settings-row-input" id="settings-name" placeholder="השם שלך" />
+          <input type="text" class="settings-row-input" id="settings-name" placeholder="השם שלך" maxlength="50" />
         </div>
         <div class="settings-row settings-row-sep">
           <div class="settings-row-icon" style="background:var(--purple-light);color:var(--purple)">
             <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
           </div>
           <label class="settings-row-label">מוסד</label>
-          <input type="text" class="settings-row-input" id="settings-inst" placeholder="אוניברסיטה..." />
+          <input type="text" class="settings-row-input" id="settings-inst" placeholder="אוניברסיטה..." maxlength="80" />
         </div>
       </div>
 
@@ -1883,7 +1883,7 @@
     <button class="tes-qbtn del"    onclick="tesDeleteTask()"> מחק</button>
   </div>
   <div class="tes-fields">
-    <div class="tes-field"><label>שם המשימה</label><input type="text" id="tes-name" placeholder="שם..." /></div>
+    <div class="tes-field"><label>שם המשימה</label><input type="text" id="tes-name" placeholder="שם..." maxlength="80" /></div>
     <div class="tes-field-row">
       <div class="tes-field"><label>תאריך</label><input type="date" id="tes-date" /></div>
       <div class="tes-field"><label>שעה</label><input type="time" id="tes-time" /></div>
@@ -1911,8 +1911,8 @@
   </div>
 </div>
 
-<script src="scheduler.js?v=30"></script>
-<script src="app_v58.js?v=6"></script>
+<script src="scheduler.js?v=31"></script>
+<script src="app_v58.js?v=7"></script>
 <script>
 /* ── Timeline: 80px/hour (airy spacing) ── */
 try { TL_HOUR_PX = 80; TL_PX_MIN = 80/60; } catch(e) {}
@@ -1973,6 +1973,11 @@ function sfQuickJoin() {
   var name = (document.getElementById('inp-name')?.value || '').trim();
   if (!name) { if (window.toast) toast('נא למלא את שמך'); return; }
   S.userType = S.userType || 'university';
+  // Write wake/sleep from step-2 selects so they are not lost on quick join
+  var wakeEl = document.getElementById('inp-wake');
+  var sleepEl = document.getElementById('inp-sleep');
+  if (wakeEl && wakeEl.value) S.wakeTime = wakeEl.value;
+  if (sleepEl && sleepEl.value) S.sleepTime = sleepEl.value;
   obStep(8);          // validates + writes S.userName
   finishOnboarding(); // save + launch app immediately
 }
@@ -2234,11 +2239,14 @@ function sfAncToggleDay(btn) {
   var daySelectEl = document.getElementById('anc-day');
   if (daySelectEl && count > 0) daySelectEl.value = String(parseInt(activePills[0].dataset.day));
 
-  // Show per-day time rows only for multi-day
+  // Toggle between global time cards (single day) and per-day rows (multi-day)
+  var timeCards = document.querySelector('.anc-times-cards');
   if (count > 1) {
+    if (timeCards) timeCards.classList.add('hidden');
     document.getElementById('anc-per-day-times')?.classList.remove('hidden');
     if (typeof updateDayTimeRows === 'function') updateDayTimeRows();
   } else {
+    if (timeCards) timeCards.classList.remove('hidden');
     document.getElementById('anc-per-day-times')?.classList.add('hidden');
   }
 }

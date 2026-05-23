@@ -30,10 +30,18 @@ function _buildBlocked(dateStr, alreadyPlaced = []) {
   const wake   = timeToMins(S.wakeTime  || '07:00');
   const sleep  = timeToMins(S.sleepTime || '23:00');
 
-  const blocked = [{ s: 0, e: wake }, { s: sleep, e: 24 * 60 }];
+  const blocked = [{ s: 0, e: wake }];
+  if (sleep > wake) {
+    blocked.push({ s: sleep, e: 24 * 60 });
+  }
 
   (S.anchors || [])
-    .filter(a => parseInt(a.day) === dayIdx)
+    .filter(a => {
+      if (parseInt(a.day) !== dayIdx) return false;
+      if (a.endDate && dateStr > a.endDate) return false;
+      if (a.oneTimeDate && a.oneTimeDate !== dateStr) return false;
+      return true;
+    })
     .forEach(a => {
       const s = timeToMins(a.start) - (a.travelMin || 0);
       const e = timeToMins(a.end)   + (a.travelMin || 0) + 20; // 20 min rest buffer
@@ -76,7 +84,8 @@ function findBestFreeSlot(dateStr, alreadyPlaced, blockNeeded, preferredRange) {
   
   // Ignore past hours if today
   const now = new Date();
-  const todayStr = typeof ld === 'function' ? ld(now) : now.toISOString().split('T')[0];
+  const d = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+  const todayStr = typeof ld === 'function' ? ld(now) : d.toISOString().split('T')[0];
   if (dateStr === todayStr) {
     const currentMins = now.getHours() * 60 + now.getMinutes();
     wake = Math.max(wake, currentMins + 30);
@@ -99,10 +108,19 @@ function findBestFreeSlot(dateStr, alreadyPlaced, blockNeeded, preferredRange) {
 
   // Try to find a slot within preferred hours
   if (preferredRange) {
-    const ideal = validSlots.find(v => v.s >= preferredRange.min && v.s <= preferredRange.max);
+    const ideal = validSlots.find(v => v.s >= preferredRange.min && v.s <= preferredRange.max && v.e - v.s >= blockNeeded);
     if (ideal) return ideal.s;
     const partial = validSlots.find(v => v.e > preferredRange.min && v.s < preferredRange.max);
-    if (partial) return Math.max(partial.s, preferredRange.min);
+    if (partial) {
+      const pStart = Math.max(partial.s, preferredRange.min);
+      if (partial.e - pStart >= blockNeeded) return pStart;
+    }
+  }
+
+  // Strict boundary check (e.g. for exams)
+  if (preferredRange && preferredRange.strictMax !== undefined) {
+    const strictFallback = validSlots.find(v => v.e - v.s >= blockNeeded && v.s <= preferredRange.strictMax);
+    return strictFallback ? strictFallback.s : null;
   }
 
   // Fallback to first available
@@ -115,7 +133,8 @@ function getDayFreeMinutes(dateStr) {
   
   // Ignore past hours if today
   const now = new Date();
-  const todayStr = typeof ld === 'function' ? ld(now) : now.toISOString().split('T')[0];
+  const d = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+  const todayStr = typeof ld === 'function' ? ld(now) : d.toISOString().split('T')[0];
   if (dateStr === todayStr) {
     const currentMins = now.getHours() * 60 + now.getMinutes();
     wake = Math.max(wake, currentMins + 30);
@@ -249,11 +268,15 @@ function generateWeeklySchedule(answers) {
   days.forEach(d => { dailyCounts[d] = 0; dailyItemCounts[d] = {}; });
 
   // Phase D.1: Homework Placement (highest priority)
+  let hwLastPlacedDay = -99;
   (answers.homework || []).forEach(hw => {
     const reqS = Math.max(1, Math.ceil(hw.duration / sessionMin));
     for (let i = 0; i < reqS; i++) {
       for (const date of days) {
         if (date > hw.date) continue;
+        const dayIdx = days.indexOf(date);
+        // Avoid cramming all homework on same day if multiple sessions needed
+        if (reqS > 1 && dayIdx === hwLastPlacedDay) continue; 
         const maxPerDay = answers.load === 'heavy' ? 6 : answers.load === 'light' ? 3 : 5;
         if (dailyCounts[date] >= maxPerDay) continue;
         const slot = findBestFreeSlot(date, placed, sessionMin + breakMin, prefRange);
@@ -265,6 +288,7 @@ function generateWeeklySchedule(answers) {
             priority: 'קריטי', done: false, missed: false, isHobby: false, isHomework: true
           });
           dailyCounts[date]++;
+          hwLastPlacedDay = days.indexOf(date);
           break;
         }
       }
@@ -341,6 +365,7 @@ function generateWeeklySchedule(answers) {
     const slotPref = isHard ? hardPref : null; // hard = peak time, easy = any time
     const blockNeed = sessionMin + breakMin;
 
+    let placedSession = false;
     for (const date of days) {
       const maxPerDay = answers.load === 'heavy' ? 5 : answers.load === 'light' ? 2 : 4;
       if (dailyCounts[date] >= maxPerDay) continue;
@@ -365,10 +390,10 @@ function generateWeeklySchedule(answers) {
       if (examMin !== null) {
         if (examMin <= blockNeed) continue; // No time to study before the exam on this day
         if (localPref) {
-          localPref = { min: localPref.min, max: Math.min(localPref.max, examMin - blockNeed) };
-          if (localPref.min >= localPref.max) localPref = { min: 0, max: examMin - blockNeed };
+          localPref = { min: localPref.min, max: Math.min(localPref.max, examMin - blockNeed), strictMax: examMin - blockNeed };
+          if (localPref.min >= localPref.max) localPref = { min: 0, max: examMin - blockNeed, strictMax: examMin - blockNeed };
         } else {
-          localPref = { min: 0, max: examMin - blockNeed };
+          localPref = { min: 0, max: examMin - blockNeed, strictMax: examMin - blockNeed };
         }
       }
 
@@ -390,7 +415,36 @@ function generateWeeklySchedule(answers) {
         });
         dailyCounts[date]++;
         dailyItemCounts[date][item] = (dailyItemCounts[date][item] || 0) + 1;
+        placedSession = true;
         break;
+      }
+    }
+
+    if (!placedSession) {
+      // Fallback: Drop spaced repetition and preference rules, just find any slot
+      for (const date of days) {
+        const maxPerDay = answers.load === 'heavy' ? 5 : answers.load === 'light' ? 2 : 4;
+        if (dailyCounts[date] >= maxPerDay) continue;
+        
+        let slot2 = findBestFreeSlot(date, placed, blockNeed, null);
+        if (slot2 !== null) {
+          let taskName = item;
+          if (profile.style) {
+            if (profile.style.includes('תרגילים')) taskName = `תרגול ומטלות: ${item}`;
+            else if (profile.style.includes('וידאו')) taskName = `הרצאות מוקלטות: ${item}`;
+            else if (profile.style.includes('קריאה')) taskName = `סיכום וקריאה: ${item}`;
+          }
+          placed.push({
+            id: Math.random().toString(36).slice(2, 9),
+            course: item, name: taskName, date,
+            time: minsToTime(slot2), duration: `${sessionMin} דק'`,
+            priority: isHard ? 'גבוה' : 'בינוני',
+            done: false, missed: false, isHobby: false
+          });
+          dailyCounts[date]++;
+          dailyItemCounts[date][item] = (dailyItemCounts[date][item] || 0) + 1;
+          break;
+        }
       }
     }
   }
