@@ -1760,6 +1760,22 @@ function addPlanToSchedule() {
     S.tasks = S.tasks.filter(old => !(old.date === newT.date && old.time === newT.time && !old.done));
     S.tasks.push(newT);
   });
+  // Safety pass: remove any task overlapping an anchor (catches stale data / timezone edge cases)
+  S.tasks = S.tasks.filter(t => {
+    if (t.done || t.missed) return true;
+    const tStart = timeToMins(t.time);
+    const tDur = parseInt(String(t.duration || '60').match(/\d+/)?.[0] || 60);
+    const tEnd = tStart + tDur;
+    const dayIdx = new Date(t.date + 'T12:00').getDay();
+    return !(S.anchors || []).some(a => {
+      if (parseInt(a.day) !== dayIdx) return false;
+      if (a.endDate && t.date > a.endDate) return false;
+      if (a.oneTimeDate && a.oneTimeDate !== t.date) return false;
+      const aStart = timeToMins(a.start) - (a.travelMin || 0);
+      const aEnd = timeToMins(a.end) + (a.travelMin || 0);
+      return tStart < aEnd && tEnd > aStart;
+    });
+  });
   // Holiday check AFTER adding
   const holidayTasks = S.pendingPlan.filter(t => getHoliday(t.date));
   const hadHoliday = holidayTasks.length > 0;
@@ -2499,6 +2515,22 @@ function addSemesterPlanToSchedule() {
     replacedCount += displaced.length;
     S.tasks = S.tasks.filter(old => !(old.date===newT.date && old.time===newT.time && !old.done));
     S.tasks.push(newT);
+  });
+  // Safety pass: remove any task overlapping an anchor (catches stale data / timezone edge cases)
+  S.tasks = S.tasks.filter(t => {
+    if (t.done || t.missed) return true;
+    const tStart = timeToMins(t.time);
+    const tDur = parseInt(String(t.duration || '60').match(/\d+/)?.[0] || 60);
+    const tEnd = tStart + tDur;
+    const dayIdx = new Date(t.date + 'T12:00').getDay();
+    return !(S.anchors || []).some(a => {
+      if (parseInt(a.day) !== dayIdx) return false;
+      if (a.endDate && t.date > a.endDate) return false;
+      if (a.oneTimeDate && a.oneTimeDate !== t.date) return false;
+      const aStart = timeToMins(a.start) - (a.travelMin || 0);
+      const aEnd = timeToMins(a.end) + (a.travelMin || 0);
+      return tStart < aEnd && tEnd > aStart;
+    });
   });
   // Add exams for any new courses
   const courses = collectSemesterCourses();
@@ -3803,7 +3835,7 @@ function saveAnchorManual(){
       const ast2 = parseInt(anchor.start.split(':')[0])*60+parseInt(anchor.start.split(':')[1])-travelMin;
       const aen2 = parseInt(anchor.end.split(':')[0])*60+parseInt(anchor.end.split(':')[1])+travelMin;
       S.tasks = S.tasks.filter(t => {
-        if (new Date(t.date).getDay() === anchor.day && !t.done && !t.missed) {
+        if (new Date(t.date + 'T12:00').getDay() === anchor.day && !t.done && !t.missed) {
           const tst = parseInt((t.time||'00:00').split(':')[0])*60+parseInt((t.time||'00:00').split(':')[1]);
           const ten = tst + parseInt(t.duration||90);
           if (tst < aen2 && ten > ast2){ allCollided.push(t); return false; }
@@ -3837,7 +3869,7 @@ function saveAnchorManual(){
     const aen2 = parseInt(end.split(':')[0])*60+parseInt(end.split(':')[1])+travelMin;
     let collidedTasks = [];
     S.tasks = S.tasks.filter(t => {
-      if (new Date(t.date).getDay() === day && !t.done && !t.missed) {
+      if (new Date(t.date + 'T12:00').getDay() === day && !t.done && !t.missed) {
         const tst = parseInt((t.time||'00:00').split(':')[0])*60+parseInt((t.time||'00:00').split(':')[1]);
         const ten = tst + parseInt(t.duration||90);
         if (tst < aen2 && ten > ast2){ collidedTasks.push(t); return false; }
@@ -4076,8 +4108,8 @@ function _findSlotsInRange(fromDateStr, limitDateStr, maxCount, ignoreSlots = []
       const anchorBusy = (S.anchors||[]).some(a => {
         if (a.oneTimeDate) { if (a.oneTimeDate !== dateStr) return false; }
         else { if (parseInt(a.day) !== dow) return false; if (a.endDate && dateStr > a.endDate) return false; }
-        const as2 = parseInt((a.start||'00:00').split(':')[0])*60 - (a.travelMin||0);
-        const ae2 = parseInt((a.end  ||'00:00').split(':')[0])*60 + (a.travelMin||0);
+        const as2 = parseInt((a.start||'00:00').split(':')[0])*60 + parseInt((a.start||'00:00').split(':')[1]||0) - (a.travelMin||0);
+        const ae2 = parseInt((a.end  ||'00:00').split(':')[0])*60 + parseInt((a.end  ||'00:00').split(':')[1]||0) + (a.travelMin||0);
         return sm < ae2 && (sm + 90) > as2;
       });
       if (anchorBusy) continue;
@@ -5857,6 +5889,22 @@ function confirmWeeklyPlan() {
   const addedCount = _wr.pendingPlan.length;
   _wr.pendingPlan.forEach(t => S.tasks.push({...t, id:uid(), name: t.course || t.name, done:false, missed:false}));
   _wr.pendingPlan = [];
+  // Safety pass: remove any newly added task that overlaps an anchor (catches stale data edge cases)
+  S.tasks = S.tasks.filter(t => {
+    if (t.done || t.missed) return true; // keep completed/missed
+    const tStart = timeToMins(t.time);
+    const tDur = parseInt(String(t.duration || '60').match(/\d+/)?.[0] || 60);
+    const tEnd = tStart + tDur;
+    const dayIdx = new Date(t.date + 'T12:00').getDay();
+    return !(S.anchors || []).some(a => {
+      if (parseInt(a.day) !== dayIdx) return false;
+      if (a.endDate && t.date > a.endDate) return false;
+      if (a.oneTimeDate && a.oneTimeDate !== t.date) return false;
+      const aStart = timeToMins(a.start) - (a.travelMin || 0);
+      const aEnd = timeToMins(a.end) + (a.travelMin || 0);
+      return tStart < aEnd && tEnd > aStart;
+    });
+  });
   // Record review
   if (!S.weeklyReview) S.weeklyReview = { lastReviewDate:null, history:[] };
   S.weeklyReview.lastReviewDate = today;
@@ -6060,7 +6108,7 @@ async function handleMagicInput() {
       const ast = parseInt((newAnchor.start).split(':')[0])*60 + parseInt((newAnchor.start).split(':')[1]);
       const aen = parseInt((newAnchor.end).split(':')[0])*60 + parseInt((newAnchor.end).split(':')[1]);
       let collidedTasks = [];
-      S.tasks = S.tasks.filter(t => { if (new Date(t.date).getDay()===dayNum&&!t.done&&!t.missed){const tst=parseInt((t.time||'00:00').split(':')[0])*60+parseInt((t.time||'00:00').split(':')[1]);const ten=tst+90;if(tst<aen&&ten>ast){collidedTasks.push(t);return false;}} return true; });
+      S.tasks = S.tasks.filter(t => { if (new Date(t.date+'T12:00').getDay()===dayNum&&!t.done&&!t.missed){const tst=parseInt((t.time||'00:00').split(':')[0])*60+parseInt((t.time||'00:00').split(':')[1]);const ten=tst+90;if(tst<aen&&ten>ast){collidedTasks.push(t);return false;}} return true; });
       save(); renderAll();
       const confirmMsg = ` עוגן "<b>${newAnchor.name}</b>" נוסף ביום ${dn2[dayNum]}, ${newAnchor.start}–${newAnchor.end}.${collidedTasks.length ? ` ️ ${collidedTasks.length} משימות הוזזו.` : ''}`;
       appendAssistantMsg('ai', confirmMsg);

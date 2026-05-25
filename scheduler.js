@@ -57,7 +57,7 @@ function _buildBlocked(dateStr, alreadyPlaced = []) {
     });
 
   (S.tasks || [])
-    .filter(t => t.date === dateStr && t.done)
+    .filter(t => t.date === dateStr && (t.done || t.missed))
     .forEach(t => {
       const s   = timeToMins(t.time);
       const dur = parseInt(String(t.duration).match(/\d+/)?.[0] || 60);
@@ -198,7 +198,8 @@ function generateWeeklySchedule(answers) {
   const endD = answers.endDate ? new Date(answers.endDate + 'T12:00') : new Date(startD.getTime() + 6*86400000);
   const days = [];
   for (let d = new Date(startD); d <= endD; d.setDate(d.getDate() + 1)) {
-    days.push(typeof ld === 'function' ? ld(d) : d.toISOString().split('T')[0]);
+    const ds = typeof ld === 'function' ? ld(d) : d.toISOString().split('T')[0];
+    if (ds >= today) days.push(ds);
   }
 
   // Phase A: Free pool
@@ -454,13 +455,29 @@ function generateWeeklySchedule(answers) {
     // Already placed hobbies above; no extra action needed (they're already prioritized)
   }
 
+  // Safety pass: remove any placed task that overlaps with an anchor
+  const finalPlaced = placed.filter(t => {
+    const tStart = timeToMins(t.time);
+    const tDur = parseInt(String(t.duration).match(/\d+/)?.[0] || 60);
+    const tEnd = tStart + tDur;
+    const dayIdx = new Date(t.date + 'T12:00').getDay();
+    return !(S.anchors || []).some(a => {
+      if (parseInt(a.day) !== dayIdx) return false;
+      if (a.endDate && t.date > a.endDate) return false;
+      if (a.oneTimeDate && a.oneTimeDate !== t.date) return false;
+      const aStart = timeToMins(a.start) - (a.travelMin || 0);
+      const aEnd = timeToMins(a.end) + (a.travelMin || 0);
+      return tStart < aEnd && tEnd > aStart;
+    });
+  });
+
   return {
-    tasks: placed,
+    tasks: finalPlaced,
     stats: {
       totalFreeMin,
-      studyMin: placed.length * sessionMin,
-      sessions: placed.length,
-      reason: placed.length === 0 ? 'no_time' : 'ok'
+      studyMin: finalPlaced.length * sessionMin,
+      sessions: finalPlaced.length,
+      reason: finalPlaced.length === 0 ? 'no_time' : 'ok'
     }
   };
 }

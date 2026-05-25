@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css?v=129">
-<link rel="stylesheet" href="style_v6.css?v=130">
+<link rel="stylesheet" href="style_v6.css?v=131">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -1911,8 +1911,8 @@
   </div>
 </div>
 
-<script src="scheduler.js?v=31"></script>
-<script src="app_v58.js?v=7"></script>
+<script src="scheduler.js?v=33"></script>
+<script src="app_v58.js?v=9"></script>
 <script>
 /* ── Timeline: 80px/hour (airy spacing) ── */
 try { TL_HOUR_PX = 80; TL_PX_MIN = 80/60; } catch(e) {}
@@ -2556,6 +2556,21 @@ function sfSyncAnchorModal() {
     // Post-generation: redistribute movable sessions more evenly across days
     if (result && result.tasks && result.tasks.length > 1) {
       result.tasks = _sfRebalanceDays(result.tasks);
+      // Final safety pass: drop any task still overlapping an anchor after rebalancing
+      result.tasks = result.tasks.filter(function(t) {
+        var tStart = (typeof timeToMins === 'function') ? timeToMins(t.time) : 0;
+        var tDur = parseInt((String(t.duration || '60').match(/\d+/) || ['60'])[0]);
+        var tEnd = tStart + tDur;
+        var dayIdx = new Date(t.date + 'T12:00').getDay();
+        return !(S.anchors || []).some(function(a) {
+          if (parseInt(a.day) !== dayIdx) return false;
+          if (a.endDate && t.date > a.endDate) return false;
+          if (a.oneTimeDate && a.oneTimeDate !== t.date) return false;
+          var aStart = (typeof timeToMins === 'function') ? timeToMins(a.start) - (a.travelMin || 0) : 0;
+          var aEnd = (typeof timeToMins === 'function') ? timeToMins(a.end) + (a.travelMin || 0) : 0;
+          return tStart < aEnd && tEnd > aStart;
+        });
+      });
     }
     return result;
   };
@@ -2604,15 +2619,16 @@ function sfSyncAnchorModal() {
             ? findBestFreeSlot(day, alreadyOnDay, dur + 15, null) : null;
           if (slot !== null) {
             t2.time = typeof minsToTime === 'function' ? minsToTime(slot) : t2.time;
+            buckets[day].push(t2);
+            di = (start + tries + 1) % dates.length;
+            placed = true;
+            break;
           }
-          buckets[day].push(t2);
-          di = (start + tries + 1) % dates.length;
-          placed = true;
-          break;
+          // slot === null means no room on this day — try next day
         }
       }
       if (!placed) {
-        // overflow — just keep original
+        // No valid slot on any day — keep task on its original day/time
         var fallback = Object.assign({}, task);
         buckets[fallback.date] = buckets[fallback.date] || [];
         buckets[fallback.date].push(fallback);
