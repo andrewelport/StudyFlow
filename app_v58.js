@@ -2041,8 +2041,7 @@ function deletePlannerCourse(id) {
   if (!course) return;
   if (!confirm(`למחוק את הקורס "${course.name}"? גם המשימות והמבחנים העתידיים ימחקו.`)) return;
   S.courses = S.courses.filter(c => c.id !== id);
-  const today = ld(new Date());
-  S.tasks = S.tasks.filter(t => !(t.course === course.name && !t.done && t.date >= today));
+  S.tasks = S.tasks.filter(t => t.course !== course.name);
   S.exams = S.exams.filter(e => e.course !== course.name);
   if (S.homework) S.homework = S.homework.filter(h => h.course !== course.name);
   save(); renderAll(); renderPlannerPage();
@@ -2064,7 +2063,7 @@ function renderCourseCards() {
         <div style="position:absolute;top:0;right:0;bottom:0;width:6px;background:${color};border-radius:0 24px 24px 0;"></div>
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem;">
           <div style="font-size:1.4rem;font-weight:900;color:var(--text);letter-spacing:-0.02em;">${c.name}</div>
-          <button style="background:transparent;border:none;color:var(--muted);cursor:pointer;padding:4px;border-radius:8px;transition:all 0.2s;" onclick="deleteCourseFromSchedule('${c.id}')" title="מחק קורס">
+          <button style="background:transparent;border:none;color:var(--muted);cursor:pointer;padding:4px;border-radius:8px;transition:all 0.2s;" onclick="deletePlannerCourse('${c.id}')" title="מחק קורס">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           </button>
         </div>
@@ -5267,8 +5266,7 @@ function renderWeeklyReview() {
     _wrForceRebuild = false;
     doneEl.classList.add('hidden');
     activeEl.classList.remove('hidden');
-    _wr.qi++;
-    _wrNext();
+    _wrInit();
     return;
   }
   
@@ -5854,7 +5852,7 @@ function confirmWeeklyPlan() {
   const range = _wrGetTargetRange();
   const today = ld(new Date());
   // Remove undone tasks only within the target range
-  S.tasks = S.tasks.filter(t => !(t.date >= range.start && t.date <= range.end && !t.done && !t.missed));
+  S.tasks = S.tasks.filter(t => !(t.date >= range.start && t.date <= range.end && !t.done));
   // Add new plan
   const addedCount = _wr.pendingPlan.length;
   _wr.pendingPlan.forEach(t => S.tasks.push({...t, id:uid(), name: t.course || t.name, done:false, missed:false}));
