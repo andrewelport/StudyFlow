@@ -1484,10 +1484,14 @@
     </div>
 
     <div id="schedule-upload-input-area">
-      <label for="schedule-upload-file" style="display:block; padding:1.6rem 1rem; border:2px dashed var(--border); border-radius:14px; text-align:center; cursor:pointer; background:var(--surface2)">
-        <div style="font-size:2.4rem; margin-bottom:0.4rem">📁</div>
-        <div style="font-weight:800; color:var(--text); margin-bottom:0.25rem">בחר קובץ</div>
-        <div style="font-size:0.82rem; color:var(--muted)">תמונה, PDF או CSV · עד 20MB</div>
+      <label for="schedule-upload-file"
+        ondragover="event.preventDefault(); this.style.borderColor='var(--accent)'; this.style.background='var(--accent-light)'"
+        ondragleave="this.style.borderColor='var(--border)'; this.style.background='var(--surface2)'"
+        ondrop="event.preventDefault(); this.style.borderColor='var(--border)'; this.style.background='var(--surface2)'; handleScheduleUploadFile(event.dataTransfer)"
+        style="display:block; padding:1.6rem 1rem; border:2px dashed var(--border); border-radius:14px; text-align:center; cursor:pointer; background:var(--surface2)">
+        <div style="font-size:2.4rem; margin-bottom:0.4rem; pointer-events:none">📁</div>
+        <div style="font-weight:800; color:var(--text); margin-bottom:0.25rem; pointer-events:none">בחר קובץ או גרור לכאן</div>
+        <div style="font-size:0.82rem; color:var(--muted); pointer-events:none">תמונה, PDF או CSV · עד 20MB</div>
       </label>
       <input id="schedule-upload-file" type="file" accept="image/*,application/pdf,.csv" style="display:none" onchange="handleScheduleUploadFile(this)">
     </div>
@@ -1542,10 +1546,14 @@
     </div>
 
     <div id="ics-upload-input-area">
-      <label for="ics-upload-file" style="display:block; padding:1.6rem 1rem; border:2px dashed var(--border); border-radius:14px; text-align:center; cursor:pointer; background:var(--surface2)">
-        <div style="font-size:2.4rem; margin-bottom:0.4rem">📅</div>
-        <div style="font-weight:800; color:var(--text); margin-bottom:0.25rem">בחר קובץ ICS</div>
-        <div style="font-size:0.82rem; color:var(--muted)">ייצוא מ-Moodle (.ics)</div>
+      <label for="ics-upload-file"
+        ondragover="event.preventDefault(); this.style.borderColor='var(--accent)'; this.style.background='var(--accent-light)'"
+        ondragleave="this.style.borderColor='var(--border)'; this.style.background='var(--surface2)'"
+        ondrop="event.preventDefault(); this.style.borderColor='var(--border)'; this.style.background='var(--surface2)'; handleIcsUploadFile(event.dataTransfer)"
+        style="display:block; padding:1.6rem 1rem; border:2px dashed var(--border); border-radius:14px; text-align:center; cursor:pointer; background:var(--surface2)">
+        <div style="font-size:2.4rem; margin-bottom:0.4rem; pointer-events:none">📅</div>
+        <div style="font-weight:800; color:var(--text); margin-bottom:0.25rem; pointer-events:none">בחר קובץ ICS או גרור לכאן</div>
+        <div style="font-size:0.82rem; color:var(--muted); pointer-events:none">ייצוא מ-Moodle (.ics)</div>
       </label>
       <input id="ics-upload-file" type="file" accept=".ics,text/calendar" style="display:none" onchange="handleIcsUploadFile(this)">
     </div>
