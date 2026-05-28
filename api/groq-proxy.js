@@ -19,12 +19,12 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { messages, temperature, json, maxTokens, responseSchema } = req.body || {};
+    const { messages, temperature, json, maxTokens, responseSchema, files } = req.body || {};
     if (!Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({ error: 'messages array required' });
     }
 
-    const geminiBody = buildGeminiBody({ messages, temperature, json, maxTokens, responseSchema });
+    const geminiBody = buildGeminiBody({ messages, temperature, json, maxTokens, responseSchema, files });
 
     const geminiRes = await fetch(GEMINI_ENDPOINT, {
       method: 'POST',
@@ -53,7 +53,7 @@ module.exports = async function handler(req, res) {
   }
 };
 
-function buildGeminiBody({ messages, temperature, json, maxTokens, responseSchema }) {
+function buildGeminiBody({ messages, temperature, json, maxTokens, responseSchema, files }) {
   // Gemini has no native "system" role — concatenate any system messages and
   // prepend them to the first user message.
   const systems = [];
@@ -66,6 +66,7 @@ function buildGeminiBody({ messages, temperature, json, maxTokens, responseSchem
 
   const contents = [];
   let firstUserPrefixed = false;
+  let filesAttached = false;
   for (const m of rest) {
     const role = m.role === 'assistant' ? 'model' : 'user';
     let text = m.content || '';
@@ -77,7 +78,18 @@ function buildGeminiBody({ messages, temperature, json, maxTokens, responseSchem
     if (contents.length && contents[contents.length - 1].role === role) {
       contents[contents.length - 1].parts[0].text += '\n\n' + text;
     } else {
-      contents.push({ role, parts: [{ text }] });
+      const parts = [];
+      // Attach inline_data files BEFORE the text part on the first user turn
+      if (role === 'user' && !filesAttached && Array.isArray(files) && files.length) {
+        for (const f of files) {
+          if (f && f.mime_type && f.data) {
+            parts.push({ inline_data: { mime_type: f.mime_type, data: f.data } });
+          }
+        }
+        filesAttached = true;
+      }
+      parts.push({ text });
+      contents.push({ role, parts });
     }
   }
 

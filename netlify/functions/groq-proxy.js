@@ -28,9 +28,9 @@ exports.handler = async function (event) {
     return jsonResponse(503, { error: 'GEMINI_API_KEY is not set on server' });
   }
 
-  let messages, temperature, json, maxTokens, responseSchema;
+  let messages, temperature, json, maxTokens, responseSchema, files;
   try {
-    ({ messages, temperature, json, maxTokens, responseSchema } = JSON.parse(event.body));
+    ({ messages, temperature, json, maxTokens, responseSchema, files } = JSON.parse(event.body));
   } catch {
     return jsonResponse(400, { error: 'Invalid JSON body' });
   }
@@ -39,7 +39,7 @@ exports.handler = async function (event) {
     return jsonResponse(400, { error: 'messages array required' });
   }
 
-  const geminiBody = buildGeminiBody({ messages, temperature, json, maxTokens, responseSchema });
+  const geminiBody = buildGeminiBody({ messages, temperature, json, maxTokens, responseSchema, files });
 
   try {
     const geminiRes = await fetch(GEMINI_ENDPOINT, {
@@ -80,7 +80,7 @@ function jsonResponse(statusCode, body) {
   };
 }
 
-function buildGeminiBody({ messages, temperature, json, maxTokens, responseSchema }) {
+function buildGeminiBody({ messages, temperature, json, maxTokens, responseSchema, files }) {
   // Gemini has no native "system" role — concatenate any system messages and
   // prepend them to the first user message.
   const systems = [];
@@ -93,6 +93,7 @@ function buildGeminiBody({ messages, temperature, json, maxTokens, responseSchem
 
   const contents = [];
   let firstUserPrefixed = false;
+  let filesAttached = false;
   for (const m of rest) {
     const role = m.role === 'assistant' ? 'model' : 'user';
     let text = m.content || '';
@@ -104,7 +105,18 @@ function buildGeminiBody({ messages, temperature, json, maxTokens, responseSchem
     if (contents.length && contents[contents.length - 1].role === role) {
       contents[contents.length - 1].parts[0].text += '\n\n' + text;
     } else {
-      contents.push({ role, parts: [{ text }] });
+      const parts = [];
+      // Attach inline_data files BEFORE the text part on the first user turn
+      if (role === 'user' && !filesAttached && Array.isArray(files) && files.length) {
+        for (const f of files) {
+          if (f && f.mime_type && f.data) {
+            parts.push({ inline_data: { mime_type: f.mime_type, data: f.data } });
+          }
+        }
+        filesAttached = true;
+      }
+      parts.push({ text });
+      contents.push({ role, parts });
     }
   }
 
