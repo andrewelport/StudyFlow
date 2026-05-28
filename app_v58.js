@@ -1038,8 +1038,9 @@ function updateBottomNav(name) {
 }
 
 
-// Developer API key — users don't need to enter their own key
-const _DEV_API_KEY = 'gsk_placeholder_replace_with_your_groq_key';
+// Developer API key — proxy is the only working AI path after Gemini migration.
+// Direct-call fallback is intentionally disabled (empty key → _callGroqDirect throws cleanly).
+const _DEV_API_KEY = '';
 
 async function _callGroqDirect({ messages, temperature, json, maxTokens }) {
   const key = S.apiKey || _DEV_API_KEY;

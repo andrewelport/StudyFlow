@@ -1,5 +1,10 @@
-// Serverless proxy — keeps GROQ_API_KEY out of client-side code.
-// Set GROQ_API_KEY in Netlify → Site settings → Environment variables.
+// Legacy filename — internally calls Google Gemini, not Groq.
+// Kept as "groq-proxy" so the 8 callers in app_v58.js continue to work
+// without touching client code.
+
+const GEMINI_MODEL = 'gemini-2.5-flash';
+const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+
 exports.handler = async function (event) {
   if (event.httpMethod === 'OPTIONS') {
     return {
@@ -17,58 +22,111 @@ exports.handler = async function (event) {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
-  const GROQ_API_KEY = process.env.GROQ_API_KEY;
-  if (!GROQ_API_KEY) {
-    return {
-      statusCode: 500,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: { message: 'GROQ_API_KEY environment variable is not set' } }),
-    };
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+  if (!GEMINI_API_KEY) {
+    // 503 maps cleanly to callAI's "service unavailable" branch in app_v58.js
+    return jsonResponse(503, { error: 'GEMINI_API_KEY is not set on server' });
   }
 
-  let messages, temperature, json, maxTokens;
+  let messages, temperature, json, maxTokens, responseSchema;
   try {
-    ({ messages, temperature = 0.7, json = false, maxTokens = 4096 } = JSON.parse(event.body));
+    ({ messages, temperature, json, maxTokens, responseSchema } = JSON.parse(event.body));
   } catch {
-    return { statusCode: 400, body: JSON.stringify({ error: { message: 'Invalid JSON body' } }) };
+    return jsonResponse(400, { error: 'Invalid JSON body' });
   }
 
   if (!Array.isArray(messages) || messages.length === 0) {
-    return { statusCode: 400, body: JSON.stringify({ error: { message: 'messages array required' } }) };
+    return jsonResponse(400, { error: 'messages array required' });
   }
 
-  const groqBody = {
-    model: 'llama-3.3-70b-versatile',
-    messages,
-    temperature,
-    max_tokens: maxTokens,
-  };
-  if (json) groqBody.response_format = { type: 'json_object' };
+  const geminiBody = buildGeminiBody({ messages, temperature, json, maxTokens, responseSchema });
 
   try {
-    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const geminiRes = await fetch(GEMINI_ENDPOINT, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'x-goog-api-key': GEMINI_API_KEY,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(groqBody),
+      body: JSON.stringify(geminiBody),
     });
 
-    const data = await groqRes.json();
-    return {
-      statusCode: groqRes.status,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-      body: JSON.stringify(data),
-    };
+    const data = await geminiRes.json();
+
+    if (!geminiRes.ok) {
+      const msg = data?.error?.message || `Gemini error (${geminiRes.status})`;
+      return jsonResponse(geminiRes.status, { error: msg });
+    }
+
+    const text = (data?.candidates?.[0]?.content?.parts || [])
+      .map(p => p.text || '')
+      .join('');
+
+    // Shape the response to match what callAI() expects (Groq/OpenAI format)
+    return jsonResponse(200, { choices: [{ message: { content: text } }] });
   } catch (err) {
-    return {
-      statusCode: 500,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: { message: err.message } }),
-    };
+    return jsonResponse(500, { error: err.message });
   }
 };
+
+function jsonResponse(statusCode, body) {
+  return {
+    statusCode,
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+    },
+    body: JSON.stringify(body),
+  };
+}
+
+function buildGeminiBody({ messages, temperature, json, maxTokens, responseSchema }) {
+  // Gemini has no native "system" role — concatenate any system messages and
+  // prepend them to the first user message.
+  const systems = [];
+  const rest = [];
+  for (const m of messages) {
+    if (m.role === 'system') systems.push(m.content || '');
+    else rest.push(m);
+  }
+  const systemPrefix = systems.length ? systems.join('\n\n') + '\n\n' : '';
+
+  const contents = [];
+  let firstUserPrefixed = false;
+  for (const m of rest) {
+    const role = m.role === 'assistant' ? 'model' : 'user';
+    let text = m.content || '';
+    if (role === 'user' && !firstUserPrefixed) {
+      text = systemPrefix + text;
+      firstUserPrefixed = true;
+    }
+    // Gemini requires alternating roles — merge consecutive same-role messages
+    if (contents.length && contents[contents.length - 1].role === role) {
+      contents[contents.length - 1].parts[0].text += '\n\n' + text;
+    } else {
+      contents.push({ role, parts: [{ text }] });
+    }
+  }
+
+  // System-only payloads: send the system text as a user turn
+  if (!contents.length && systemPrefix) {
+    contents.push({ role: 'user', parts: [{ text: systemPrefix.trim() }] });
+  }
+  // Gemini requires the first turn to be 'user'
+  if (contents.length && contents[0].role !== 'user') {
+    contents.unshift({ role: 'user', parts: [{ text: '' }] });
+  }
+
+  const generationConfig = {
+    temperature: temperature ?? 0.7,
+    maxOutputTokens: maxTokens || 4096,
+  };
+  if (responseSchema) {
+    generationConfig.responseMimeType = 'application/json';
+    generationConfig.responseSchema = responseSchema;
+  } else if (json) {
+    generationConfig.responseMimeType = 'application/json';
+  }
+
+  return { contents, generationConfig };
+}
