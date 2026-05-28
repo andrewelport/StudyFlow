@@ -1223,6 +1223,9 @@ function openScheduleUploadModal() {
   document.getElementById('schedule-upload-preview').classList.add('hidden');
   document.getElementById('schedule-upload-error').classList.add('hidden');
   document.getElementById('schedule-upload-buttons').classList.add('hidden');
+  // Approve button can be hidden by _suDeleteRow when last row goes — restore it on each open
+  const approveBtn = document.querySelector('#schedule-upload-buttons button:first-child');
+  if (approveBtn) approveBtn.style.display = '';
   const fileInp = document.getElementById('schedule-upload-file');
   if (fileInp) fileInp.value = '';
 }
@@ -1279,10 +1282,20 @@ async function handleScheduleUploadFile(input) {
       return;
     }
     _scheduleUploadPending = schedule;
-    _suRenderPreview(schedule);
+    _suSortSchedule(_scheduleUploadPending);   // sort ONCE, before first render
+    _suRenderPreview(_scheduleUploadPending);
   } catch (e) {
     _suShowError(e.message || 'שגיאה בחילוץ');
   }
+}
+
+function _suSortSchedule(arr) {
+  arr.sort((a, b) => {
+    const da = _SU_DAY_NUM[a.day_of_week] ?? 99;
+    const db = _SU_DAY_NUM[b.day_of_week] ?? 99;
+    if (da !== db) return da - db;
+    return String(a.start_time || '').localeCompare(String(b.start_time || ''));
+  });
 }
 
 function _suRenderPreview(schedule) {
@@ -1291,14 +1304,53 @@ function _suRenderPreview(schedule) {
   document.getElementById('schedule-upload-buttons').classList.remove('hidden');
   document.getElementById('schedule-upload-count').textContent = schedule.length;
   const tbody = document.getElementById('schedule-upload-preview-tbody');
-  tbody.innerHTML = schedule.map(item => `
-    <tr style="border-top:1px solid var(--border)">
-      <td style="padding:0.55rem 0.6rem; color:var(--text); font-weight:700">${_SU_DAY_HE[item.day_of_week] || escapeHtml(String(item.day_of_week||''))}</td>
-      <td style="padding:0.55rem 0.6rem; color:var(--text)">${escapeHtml(String(item.course_name||''))}</td>
-      <td style="padding:0.55rem 0.6rem; font-family:var(--mono); color:var(--muted)">${escapeHtml(String(item.start_time||''))}</td>
-      <td style="padding:0.55rem 0.6rem; font-family:var(--mono); color:var(--muted)">${escapeHtml(String(item.end_time||''))}</td>
-    </tr>
-  `).join('');
+  const dayPairs = [
+    ['sunday','ראשון'], ['monday','שני'], ['tuesday','שלישי'],
+    ['wednesday','רביעי'], ['thursday','חמישי'], ['friday','שישי'], ['saturday','שבת'],
+  ];
+  tbody.innerHTML = schedule.map((item, idx) => {
+    const dayOpts = dayPairs.map(([v, h]) =>
+      `<option value="${v}"${item.day_of_week === v ? ' selected' : ''}>${h}</option>`
+    ).join('');
+    return `
+      <tr style="border-top:1px solid var(--border)">
+        <td style="padding:0.45rem 0.5rem">
+          <select onchange="_suEditDay(${idx}, this.value)" style="background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:0.35rem 0.4rem; font-family:var(--sans); font-size:0.85rem; font-weight:700; cursor:pointer; direction:rtl">${dayOpts}</select>
+        </td>
+        <td style="padding:0.45rem 0.5rem">
+          <input type="text" value="${escapeHtml(String(item.course_name || ''))}" oninput="_suEditCourse(${idx}, this.value)" style="background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:0.35rem 0.55rem; font-family:var(--sans); font-size:0.85rem; width:100%; min-width:130px; direction:rtl">
+        </td>
+        <td style="padding:0.45rem 0.5rem">
+          <input type="time" value="${escapeHtml(String(item.start_time || ''))}" onchange="_suEditStart(${idx}, this.value)" style="background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:0.35rem 0.4rem; font-family:var(--mono); font-size:0.85rem; width:90px">
+        </td>
+        <td style="padding:0.45rem 0.5rem">
+          <input type="time" value="${escapeHtml(String(item.end_time || ''))}" onchange="_suEditEnd(${idx}, this.value)" style="background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:0.35rem 0.4rem; font-family:var(--mono); font-size:0.85rem; width:90px">
+        </td>
+        <td style="padding:0.45rem 0.3rem; width:34px">
+          <button onclick="_suDeleteRow(${idx})" title="מחק שורה" aria-label="מחק שורה" style="background:transparent; border:none; color:var(--muted); cursor:pointer; padding:0.3rem 0.4rem; font-size:1rem; border-radius:6px; opacity:0.65" onmouseover="this.style.opacity='1'; this.style.color='var(--red)'" onmouseout="this.style.opacity='0.65'; this.style.color='var(--muted)'">✕</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function _suEditDay(idx, val)    { if (_scheduleUploadPending?.[idx]) _scheduleUploadPending[idx].day_of_week = val; }
+function _suEditCourse(idx, val) { if (_scheduleUploadPending?.[idx]) _scheduleUploadPending[idx].course_name = val; }
+function _suEditStart(idx, val)  { if (_scheduleUploadPending?.[idx]) _scheduleUploadPending[idx].start_time = val; }
+function _suEditEnd(idx, val)    { if (_scheduleUploadPending?.[idx]) _scheduleUploadPending[idx].end_time = val; }
+
+function _suDeleteRow(idx) {
+  if (!Array.isArray(_scheduleUploadPending)) return;
+  _scheduleUploadPending.splice(idx, 1);
+  if (_scheduleUploadPending.length === 0) {
+    const tbody = document.getElementById('schedule-upload-preview-tbody');
+    tbody.innerHTML = '<tr><td colspan="5" style="padding:1.2rem; text-align:center; color:var(--muted); font-weight:700">לא נשארו שיעורים. בטל וצלם שוב.</td></tr>';
+    document.getElementById('schedule-upload-count').textContent = '0';
+    const approveBtn = document.querySelector('#schedule-upload-buttons button:first-child');
+    if (approveBtn) approveBtn.style.display = 'none';
+    return;
+  }
+  _suRenderPreview(_scheduleUploadPending);
 }
 
 function confirmScheduleUpload() {
