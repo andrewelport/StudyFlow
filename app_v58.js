@@ -3008,6 +3008,7 @@ function finishTaskRating(skip = false) {
   if (t) {
     t.done = true; t.missed = false;
     if (savedRating) { t.rating = savedRating; t.feedback = savedFeedback; }
+    try { if (window.sfOnTaskRated) window.sfOnTaskRated(t, savedRating); } catch(e) {}
     const dur = parseInt(String(t.duration||'90').match(/\d+/)?.[0]||90);
     const xp = Math.max(5, Math.floor(dur / 5));
     try { addPoints(xp); save(); renderAll(); } catch(e) { console.error('rating renderAll:', e); try { save(); } catch(_) {} }
