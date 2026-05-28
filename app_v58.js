@@ -1457,6 +1457,112 @@ function _suDeleteRow(idx) {
   _suRenderPreview(_scheduleUploadPending);
 }
 
+// ── ICS UPLOAD: UI wiring ───────────────────────────────────────────────────
+
+let _icsUploadPending = null;  // parsed tasks[] between extract and approve
+
+function openIcsUploadModal() {
+  document.getElementById('ics-upload-modal').classList.remove('hidden');
+  _setBodyLock(true);
+  _icsUploadPending = null;
+  document.getElementById('ics-upload-input-area').classList.remove('hidden');
+  document.getElementById('ics-upload-loading').classList.add('hidden');
+  document.getElementById('ics-upload-preview').classList.add('hidden');
+  document.getElementById('ics-upload-error').classList.add('hidden');
+  document.getElementById('ics-upload-buttons').classList.add('hidden');
+  const approveBtn = document.querySelector('#ics-upload-buttons button:first-child');
+  if (approveBtn) approveBtn.style.display = '';
+  const fileInp = document.getElementById('ics-upload-file');
+  if (fileInp) fileInp.value = '';
+}
+
+function closeIcsUploadModal() {
+  document.getElementById('ics-upload-modal').classList.add('hidden');
+  _setBodyLock(false);
+  _icsUploadPending = null;
+}
+
+function _icsShowError(msg) {
+  const el = document.getElementById('ics-upload-error');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  document.getElementById('ics-upload-input-area').classList.remove('hidden');
+  document.getElementById('ics-upload-loading').classList.add('hidden');
+}
+
+async function handleIcsUploadFile(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  document.getElementById('ics-upload-input-area').classList.add('hidden');
+  document.getElementById('ics-upload-loading').classList.remove('hidden');
+  document.getElementById('ics-upload-error').classList.add('hidden');
+  document.getElementById('ics-upload-preview').classList.add('hidden');
+  document.getElementById('ics-upload-buttons').classList.add('hidden');
+
+  try {
+    const icsText = await file.text();
+    const tasks = await _extractTasksFromICS(icsText);
+    if (!tasks.length) {
+      _icsShowError('לא נמצאו מטלות עתידיות בקובץ.');
+      return;
+    }
+    _icsUploadPending = tasks;
+    _icsSortTasks(_icsUploadPending);   // sort ONCE: due_date asc, then due_time
+    _icsRenderPreview(_icsUploadPending);
+  } catch (e) {
+    _icsShowError(e.message || 'שגיאה בחילוץ');
+  }
+}
+
+function _icsSortTasks(arr) {
+  arr.sort((a, b) => {
+    const dCmp = String(a.due_date || '').localeCompare(String(b.due_date || ''));
+    if (dCmp !== 0) return dCmp;
+    return String(a.due_time || '').localeCompare(String(b.due_time || ''));
+  });
+}
+
+function _icsRenderPreview(tasks) {
+  document.getElementById('ics-upload-loading').classList.add('hidden');
+  document.getElementById('ics-upload-preview').classList.remove('hidden');
+  document.getElementById('ics-upload-buttons').classList.remove('hidden');
+  document.getElementById('ics-upload-count').textContent = tasks.length;
+  const tbody = document.getElementById('ics-upload-preview-tbody');
+  tbody.innerHTML = tasks.map((item, idx) => `
+    <tr style="border-top:1px solid var(--border)">
+      <td style="padding:0.55rem 0.6rem; color:var(--text); font-weight:600">${escapeHtml(String(item.title || ''))}</td>
+      <td style="padding:0.55rem 0.6rem; color:var(--muted); font-size:0.82rem">${escapeHtml(String(item.course || ''))}</td>
+      <td style="padding:0.55rem 0.6rem; font-family:var(--mono); color:var(--text); font-size:0.82rem">${escapeHtml(String(item.due_date || ''))}</td>
+      <td style="padding:0.55rem 0.6rem; font-family:var(--mono); color:var(--muted); font-size:0.82rem">${escapeHtml(String(item.due_time || ''))}</td>
+      <td style="padding:0.45rem 0.3rem; width:34px">
+        <button onclick="_icsDeleteRow(${idx})" title="מחק שורה" aria-label="מחק שורה" style="background:transparent; border:none; color:var(--muted); cursor:pointer; padding:0.3rem 0.4rem; font-size:1rem; border-radius:6px; opacity:0.65" onmouseover="this.style.opacity='1'; this.style.color='var(--red)'" onmouseout="this.style.opacity='0.65'; this.style.color='var(--muted)'">✕</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function _icsDeleteRow(idx) {
+  if (!Array.isArray(_icsUploadPending)) return;
+  _icsUploadPending.splice(idx, 1);
+  if (_icsUploadPending.length === 0) {
+    const tbody = document.getElementById('ics-upload-preview-tbody');
+    tbody.innerHTML = '<tr><td colspan="5" style="padding:1.2rem; text-align:center; color:var(--muted); font-weight:700">לא נשארו מטלות. בטל ונסה קובץ אחר.</td></tr>';
+    document.getElementById('ics-upload-count').textContent = '0';
+    const approveBtn = document.querySelector('#ics-upload-buttons button:first-child');
+    if (approveBtn) approveBtn.style.display = 'none';
+    return;
+  }
+  _icsRenderPreview(_icsUploadPending);
+}
+
+function confirmIcsUpload() {
+  // PHASE 3: loops _icsUploadPending and creates tasks via the existing
+  // task-push pattern at app_v58.js:6234-6240 (Oracle assistant type:"task"),
+  // batched save() + renderAll() once at end.
+  console.log('confirmIcsUpload — Phase 3 pending. Pending tasks:', _icsUploadPending);
+  toast('Phase 3 — יצירת משימות בקרוב');
+}
+
 function confirmScheduleUpload() {
   if (!Array.isArray(_scheduleUploadPending) || !_scheduleUploadPending.length) return;
   if (!Array.isArray(S.anchors)) S.anchors = [];
@@ -3440,6 +3546,9 @@ function renderTodayTasks(){
         <button onclick="openScheduleUploadModal()" class="btn-primary" style="margin-top:0; padding:1.2rem 1rem; display:flex; flex-direction:column; align-items:center; gap:0.3rem">
           <div style="display:flex; align-items:center; gap:0.55rem; font-size:1.05rem"><span style="font-size:1.4rem">📷</span><span>צלם את מערכת השעות שלך</span></div>
           <div style="font-size:0.78rem; font-weight:600; opacity:0.92">תמונה, PDF או CSV — נחלץ הכל אוטומטית</div>
+        </button>
+        <button onclick="openIcsUploadModal()" style="margin-top:0.55rem; width:100%; padding:0.85rem 1rem; background:var(--surface2); color:var(--text); border:1px solid var(--border); border-radius:var(--r); font-family:var(--sans); font-size:0.92rem; font-weight:700; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; justify-content:center; gap:0.55rem">
+          <span style="font-size:1.1rem">📅</span><span>ייבא משימות מ-Moodle</span>
         </button>
       </div>
       <div class="empty-state">היום פנוי לגמרי! הוסף משימות מהמתכנן.</div>

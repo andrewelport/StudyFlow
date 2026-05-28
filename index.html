@@ -654,6 +654,9 @@
               <button class="btn-sm" style="display:flex;align-items:center;gap:0.5rem" onclick="showPage('planner',document.querySelectorAll('.nav-item')[1])">
                 <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> למתכנן השבועי
               </button>
+              <button class="btn-sm" style="display:flex;align-items:center;gap:0.4rem" onclick="openIcsUploadModal()" title="ייבא מטלות מקובץ ICS של Moodle">
+                <span style="font-size:1rem; line-height:1">📅</span> ייבא מ-Moodle
+              </button>
             </div>
           </div>
           <div id="today-tasks-wrap"><div class="empty-state">אין משימות או עוגנים להיום</div></div>
@@ -920,7 +923,7 @@
           </button>
           <button class="anc-action-btn" onclick="openCalendarImport()" title="ייבוא מגוגל קאלנדר / אייפון">
             <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            ייבוא יומן (.ics)
+            ייבוא מגוגל / אייפון (.ics)
           </button>
           <button class="anc-action-btn anc-action-reminders" onclick="openReminders()">
             🔔 תזכורות
@@ -1517,6 +1520,64 @@
     <div id="schedule-upload-buttons" class="hidden" style="display:flex; gap:0.5rem; justify-content:flex-start">
       <button onclick="confirmScheduleUpload()" style="background:var(--accent); color:white; border:none; padding:0.65rem 1.4rem; border-radius:10px; font-weight:800; cursor:pointer; font-family:var(--sans); font-size:0.9rem; box-shadow:0 4px 14px rgba(79,110,247,0.3)">אשר ויצור</button>
       <button onclick="closeScheduleUploadModal()" style="background:var(--surface2); color:var(--text); border:1px solid var(--border); padding:0.65rem 1.1rem; border-radius:10px; font-weight:700; cursor:pointer; font-family:var(--sans); font-size:0.9rem">ביטול</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ── ICS UPLOAD MODAL (Moodle deadline import) ── -->
+<div class="modal-overlay hidden" id="ics-upload-modal" onclick="if(event.target===this)closeIcsUploadModal()" style="display:flex; align-items:flex-start; justify-content:center; padding:40px 0; overflow-y:auto;">
+  <div class="rcm-card" style="background:var(--surface); border-radius:24px; padding:24px; width:90%; max-width:720px; box-shadow:0 20px 40px rgba(0,0,0,0.15); display:flex; flex-direction:column; gap:14px; margin:auto; direction:rtl">
+    <div class="rcm-header" style="display:flex; justify-content:space-between; align-items:flex-start">
+      <div style="display:flex; align-items:center; gap:12px">
+        <div class="rcm-icon-wrap" style="background:var(--accent-light); color:var(--accent); width:48px; height:48px; border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:1.5rem">📅</div>
+        <div>
+          <div class="rcm-title" style="font-size:1.3rem; font-weight:900; color:var(--text); letter-spacing:-0.02em; line-height:1.2">ייבא משימות מ-Moodle</div>
+          <div class="rcm-sub" style="font-size:0.88rem; font-weight:600; color:var(--muted); margin-top:2px">העלה קובץ ICS — נחלץ את המטלות אוטומטית</div>
+        </div>
+      </div>
+      <button class="rcm-close" onclick="closeIcsUploadModal()" style="background:var(--surface2); border:none; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--muted); cursor:pointer">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div id="ics-upload-input-area">
+      <label for="ics-upload-file" style="display:block; padding:1.6rem 1rem; border:2px dashed var(--border); border-radius:14px; text-align:center; cursor:pointer; background:var(--surface2)">
+        <div style="font-size:2.4rem; margin-bottom:0.4rem">📅</div>
+        <div style="font-weight:800; color:var(--text); margin-bottom:0.25rem">בחר קובץ ICS</div>
+        <div style="font-size:0.82rem; color:var(--muted)">ייצוא מ-Moodle (.ics)</div>
+      </label>
+      <input id="ics-upload-file" type="file" accept=".ics,text/calendar" style="display:none" onchange="handleIcsUploadFile(this)">
+    </div>
+
+    <div id="ics-upload-loading" class="hidden" style="text-align:center; padding:2rem 1rem">
+      <div style="font-size:2rem; margin-bottom:0.5rem">⏳</div>
+      <div style="font-weight:800; color:var(--text); margin-bottom:0.25rem">מחלץ מטלות...</div>
+      <div style="font-size:0.82rem; color:var(--muted)">זה ייקח עד 30 שניות</div>
+    </div>
+
+    <div id="ics-upload-preview" class="hidden">
+      <div style="font-weight:800; color:var(--text); margin-bottom:0.5rem">נמצאו <span id="ics-upload-count">0</span> מטלות — אשר את היצירה</div>
+      <div style="max-height:320px; overflow-y:auto; border:1px solid var(--border); border-radius:12px; background:var(--surface2)">
+        <table style="width:100%; border-collapse:collapse; font-size:0.85rem; direction:rtl">
+          <thead style="background:var(--surface); position:sticky; top:0">
+            <tr>
+              <th style="padding:0.6rem; text-align:right; font-weight:800; color:var(--muted); font-size:0.78rem">כותרת</th>
+              <th style="padding:0.6rem; text-align:right; font-weight:800; color:var(--muted); font-size:0.78rem; width:150px">קורס</th>
+              <th style="padding:0.6rem; text-align:right; font-weight:800; color:var(--muted); font-size:0.78rem; width:110px">תאריך</th>
+              <th style="padding:0.6rem; text-align:right; font-weight:800; color:var(--muted); font-size:0.78rem; width:80px">שעה</th>
+            </tr>
+          </thead>
+          <tbody id="ics-upload-preview-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="ics-upload-error" class="hidden" style="padding:0.75rem 1rem; border-radius:12px; background:var(--red-light); color:var(--red); font-weight:700; font-size:0.88rem"></div>
+
+    <div id="ics-upload-buttons" class="hidden" style="display:flex; gap:0.5rem; justify-content:flex-start">
+      <button onclick="confirmIcsUpload()" style="background:var(--accent); color:white; border:none; padding:0.65rem 1.4rem; border-radius:10px; font-weight:800; cursor:pointer; font-family:var(--sans); font-size:0.9rem; box-shadow:0 4px 14px rgba(79,110,247,0.3)">אשר ויצור</button>
+      <button onclick="closeIcsUploadModal()" style="background:var(--surface2); color:var(--text); border:1px solid var(--border); padding:0.65rem 1.1rem; border-radius:10px; font-weight:700; cursor:pointer; font-family:var(--sans); font-size:0.9rem">ביטול</button>
     </div>
   </div>
 </div>
