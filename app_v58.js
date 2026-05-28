@@ -1207,6 +1207,110 @@ async function _extractScheduleFromFile(fileContent, mimeType) {
   return schedule;
 }
 
+// ── MOODLE ICS IMPORT: deadline extraction ──────────────────────────────────
+// Same direct-fetch + responseSchema + thinkingBudget:0 pattern as
+// _extractScheduleFromFile. ICS is always plain text, so no inline_data
+// branch — the raw file content is embedded in the user prompt.
+async function _extractTasksFromICS(icsText) {
+  const TIMEOUT_MS = 30000;
+  // YYYY-MM-DD in Asia/Jerusalem regardless of user machine timezone
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
+
+  const systemPrompt = 'אתה מקבל קובץ ICS (יומן iCalendar) של סטודנט מ-Moodle. חלץ ממנו רק אירועי מועד הגשה של מטלות. החזר JSON בלבד.';
+  const userPrompt = `חלץ מהקובץ רק אירועים שמתארים מועדי הגשה של מטלות. עבור כל אירוע:
+- title: כותרת המטלה כפי שמופיעה ב-SUMMARY (נקה סיומות כמו "יש להגיש את ", השאר רק את שם המטלה)
+- course: שם הקורס מהשדה CATEGORIES — החלק שלפני הרווח-מקף-רווח הראשון
+- due_date: תאריך ההגשה בפורמט YYYY-MM-DD בשעון ישראל
+- due_time: שעת ההגשה בפורמט HH:MM בשעון ישראל
+- description: תיאור מקוצר עד 100 תווים — נקה מ-DESCRIPTION את הסדרות \\, ו-\\n והשאר טקסט קריא
+
+חוקים:
+1. כלול רק אירועים שתאריך ההגשה שלהם הוא ${today} ואילך — דלג על אירועים שכבר עברו.
+2. דלג על אירועים שכותרתם בנוסח "נפתח ב..." — אלו הודעות פתיחה, לא הגשות.
+3. כלול רק אירועים בנוסח "יש להגיש" או "תאריך הגשה".
+4. הזמנים בקובץ הם UTC (סיומת Z). המר לשעון ישראל: UTC+3 לחודשים מאי-אוקטובר (IDT), UTC+2 לחודשים נובמבר-אפריל (IST). שים לב לחציית חצות בהמרה.
+5. אם השדות לא ברורים — דלג ואל תנחש.
+
+תוכן ה-ICS:
+${icsText}`;
+
+  const body = {
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ],
+    temperature: 0.2,
+    maxTokens: 8000,
+    responseSchema: {
+      type: 'object',
+      properties: {
+        tasks: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              title:       { type: 'string' },
+              course:      { type: 'string' },
+              due_date:    { type: 'string', description: 'YYYY-MM-DD local Israel time' },
+              due_time:    { type: 'string', description: 'HH:MM local Israel time' },
+              description: { type: 'string', description: 'shortened, max 100 chars' },
+            },
+            required: ['title', 'course', 'due_date', 'due_time'],
+          },
+        },
+      },
+      required: ['tasks'],
+    },
+    thinkingConfig: { thinkingBudget: 0 },
+  };
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+  let res;
+  try {
+    res = await fetch('/api/groq-proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch (e) {
+    if (e.name === 'AbortError') {
+      throw new Error('החילוץ נמשך זמן רב מדי. נסה קובץ אחר.');
+    }
+    throw new Error(`שגיאת רשת: ${e.message}`);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  if (!res.ok) {
+    let errMsg = `שגיאת שרת (${res.status})`;
+    try {
+      const d = await res.json();
+      if (d?.error) errMsg = typeof d.error === 'string' ? d.error : (d.error.message || errMsg);
+    } catch (_) {}
+    throw new Error(errMsg);
+  }
+
+  const data = await res.json();
+  const content = data?.choices?.[0]?.message?.content;
+  if (!content) throw new Error('ה-AI לא החזיר תוכן.');
+
+  let parsed;
+  try {
+    parsed = JSON.parse(content);
+  } catch (_) {
+    try { parsed = extractJSON(content); } catch (__) {
+      throw new Error('לא הצלחנו לפענח את התוצאה.');
+    }
+  }
+
+  const tasks = parsed?.tasks;
+  if (!Array.isArray(tasks)) throw new Error('המבנה שהוחזר לא תקין.');
+  return tasks;
+}
+
 // ── SCHEDULE UPLOAD: UI wiring ──────────────────────────────────────────────
 
 let _scheduleUploadPending = null;  // parsed schedule[] between extract and approve
