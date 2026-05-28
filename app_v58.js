@@ -1556,11 +1556,45 @@ function _icsDeleteRow(idx) {
 }
 
 function confirmIcsUpload() {
-  // PHASE 3: loops _icsUploadPending and creates tasks via the existing
-  // task-push pattern at app_v58.js:6234-6240 (Oracle assistant type:"task"),
-  // batched save() + renderAll() once at end.
-  console.log('confirmIcsUpload — Phase 3 pending. Pending tasks:', _icsUploadPending);
-  toast('Phase 3 — יצירת משימות בקרוב');
+  if (!Array.isArray(_icsUploadPending) || !_icsUploadPending.length) return;
+  if (!Array.isArray(S.tasks)) S.tasks = [];
+
+  let added = 0;
+  for (const item of _icsUploadPending) {
+    const title  = String(item.title  || '').trim();
+    const course = String(item.course || '').trim();
+    const date   = item.due_date;
+    const time   = item.due_time;
+    if (!title) continue;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+    if (!/^\d{2}:\d{2}$/.test(time)) continue;
+    // Dedup: skip if a task with same name+date already exists
+    if (S.tasks.find(t => t.name === title && t.date === date)) continue;
+    // Mirror the Oracle assistant task shape at app_v58.js:6630
+    // (no time whitelist — Moodle deadlines are point-in-time, often 23:55)
+    const newTask = {
+      id: uid(),
+      name: title,
+      course,
+      date,
+      time,
+      duration: "60 דק'",
+      priority: 'בינוני',
+      done: false,
+      missed: false,
+    };
+    const desc = String(item.description || '').slice(0, 100).trim();
+    if (desc) newTask.notes = desc;
+    S.tasks.push(newTask);
+    added++;
+  }
+
+  // Batch — save() and renderAll() once after the loop, not per item
+  save();
+  renderAll();
+
+  closeIcsUploadModal();
+  toast(added > 0 ? `${added} משימות נוצרו` : 'לא נוספו משימות (כפילויות)');
 }
 
 function confirmScheduleUpload() {
