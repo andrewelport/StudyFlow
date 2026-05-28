@@ -1600,8 +1600,10 @@ function confirmIcsUpload() {
 function confirmScheduleUpload() {
   if (!Array.isArray(_scheduleUploadPending) || !_scheduleUploadPending.length) return;
   if (!Array.isArray(S.anchors)) S.anchors = [];
+  if (!Array.isArray(S.courses)) S.courses = [];
 
   let added = 0;
+  const uniqueCourseNames = new Set();
   for (const item of _scheduleUploadPending) {
     const day = _SU_DAY_NUM[item.day_of_week];
     if (day === undefined) continue;
@@ -1616,6 +1618,18 @@ function confirmScheduleUpload() {
       color: getCourseColor(item.course_name || ''),
     });
     added++;
+    const trimmed = String(item.course_name || '').trim();
+    if (trimmed) uniqueCourseNames.add(trimmed);
+  }
+
+  // Register any new courses (skip ones already in S.courses by exact name match).
+  // Empty examDate by design — user adds it later via the exam tracker.
+  let addedCourses = 0;
+  for (const name of uniqueCourseNames) {
+    if (!S.courses.find(c => c.name === name)) {
+      S.courses.push({ id: uid(), name, examDate: '', hoursPerWeek: 6 });
+      addedCourses++;
+    }
   }
 
   // Batch — call save() and renderAll() once after the loop, not per item
@@ -1623,7 +1637,9 @@ function confirmScheduleUpload() {
   renderAll();
 
   closeScheduleUploadModal();
-  toast(` נוצרו ${added} עוגנים`);
+  toast(addedCourses > 0
+    ? ` נוצרו ${added} עוגנים ו-${addedCourses} קורסים חדשים`
+    : ` נוצרו ${added} עוגנים`);
 }
 
 // ── XP LEVEL SYSTEM ──
