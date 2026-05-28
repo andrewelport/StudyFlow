@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css?v=129">
-<link rel="stylesheet" href="style_v6.css?v=131">
+<link rel="stylesheet" href="style_v6.css?v=132">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -137,6 +137,27 @@
 
 <div id="setup-screen" style="display:none">
   <div class="ob2-wrap">
+
+    <!-- AI Onboarding (new primary flow) -->
+    <div class="ob2-slide ob2-active" id="ob2-s-aiob">
+      <div class="aiob-logo">✨</div>
+      <div class="ob2-title" style="font-size:1.6rem">ברוך הבא ל-StudyFlow</div>
+      <div class="ob2-sub">ספר/י לי על הלימודים שלך — AI יבנה לך לוז מלא תוך שניות</div>
+      <textarea
+        id="aiob-text"
+        class="aiob-textarea"
+        placeholder="לדוגמה: אני אנדרה, שנה ב׳ מדמ״ח. יש לי אלגוריתמים מבחן 20.6, מערכות הפעלה 25.6, תורת הקומפילציה 28.6. קם ב-7, שוכב ב-23. חדר כושר כל ראשון 9-11."
+        rows="5"
+        dir="auto"
+        maxlength="800"
+      ></textarea>
+      <button class="ob2-next-btn" id="aiob-btn" onclick="_startAIOnboarding()">✨ בנה לי לוז</button>
+      <div id="aiob-loading" class="aiob-loading hidden">
+        <span class="ai-thinking">AI מנתח את הפרטים שלך...</span>
+      </div>
+      <div id="aiob-result" class="aiob-result hidden"></div>
+      <button class="ob2-skip-lnk" onclick="sfGoToS1()">⚙️ הגדרה ידנית (8 שלבים)</button>
+    </div>
 
     <!-- Top bar -->
     <div class="ob2-topbar">
@@ -1272,6 +1293,18 @@
       <div class="bn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>
       <div class="bn-label">שבועי</div>
     </button>
+    <button class="bn-item" id="bn-ai" onclick="document.getElementById('magic-fab')?.click()" title="AI">
+      <span class="bn-icon">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+      </span>
+      <span class="bn-label">AI</span>
+    </button>
+    <button class="bn-item" id="bn-settings" onclick="openSettings()" title="הגדרות">
+      <span class="bn-icon">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </span>
+      <span class="bn-label">הגדרות</span>
+    </button>
   </div>
 </nav>
 
@@ -1534,6 +1567,23 @@
       </div>
 
       
+
+      <!-- AI / Gemini API Key -->
+      <div class="settings-sec-label">🤖 AI — מפתח Gemini</div>
+      <div class="settings-card" id="acc-ai">
+        <div id="api-managed-banner" style="display:none;padding:0.6rem 0.8rem;border-radius:8px;font-size:0.8rem;margin-bottom:0.5rem;font-weight:600"></div>
+        <div class="settings-row">
+          <div class="settings-row-icon" style="background:#e8f5e9;color:#2e7d32">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </div>
+          <div style="flex:1">
+            <label class="settings-row-label" style="display:block">Gemini API Key</label>
+            <input type="text" class="settings-row-input" id="settings-api-key" placeholder="AIza..." style="width:100%;margin-top:0.25rem;font-size:0.8rem;font-family:monospace" autocomplete="off" />
+            <div id="api-key-status" style="font-size:0.75rem;margin-top:0.3rem;color:var(--muted)">⚠️ לא הוגדר — הזן מפתח Gemini</div>
+            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" style="font-size:0.72rem;color:var(--accent);display:block;margin-top:0.25rem">📎 קבל מפתח חינמי מ-Google AI Studio</a>
+          </div>
+        </div>
+      </div>
 
       <!-- Appearance -->
       <div class="settings-sec-label">מראה</div>
@@ -1912,7 +1962,8 @@
 </div>
 
 <script src="scheduler.js?v=33"></script>
-<script src="app_v58.js?v=9"></script>
+<script src="app_v58.js?v=10"></script>
+<script src="ai-features.js"></script>
 <script>
 /* ── Timeline: 80px/hour (airy spacing) ── */
 try { TL_HOUR_PX = 80; TL_PX_MIN = 80/60; } catch(e) {}
@@ -2002,8 +2053,10 @@ function sfUpdateAvailHours() {
   preview.textContent = mins > 0 ? hrs + ' שעות ו-' + mins + ' דקות פנויות ביום' : hrs + ' שעות פנויות ביום';
 }
 function sfGoToS1() {
+  var sAiob = document.getElementById('ob2-s-aiob');
   var s0 = document.getElementById('ob2-s0');
   var s1 = document.getElementById('ob2-s1');
+  if (sAiob) sAiob.classList.remove('ob2-active');
   if (s0) s0.classList.remove('ob2-active');
   if (s1) s1.classList.add('ob2-active');
   // Fix 1: show back button (hidden on S0)
@@ -2042,9 +2095,11 @@ window.addEventListener('load', function() {
   if (ss) ss.style.display = 'none';
   var s1 = document.getElementById('ob2-s1');
   var s0 = document.getElementById('ob2-s0');
+  var sAiob = document.getElementById('ob2-s-aiob');
   if (s1) s1.classList.remove('ob2-active');
-  if (s0) s0.classList.add('ob2-active');
-  // S0 has no back / counter / progress
+  if (s0) s0.classList.remove('ob2-active');
+  if (sAiob) sAiob.classList.add('ob2-active');
+  // AI onboarding has no back / counter / progress
   var backBtn = document.getElementById('ob2-back');
   if (backBtn) backBtn.classList.add('hidden');
   var counter = document.getElementById('ob2-counter');

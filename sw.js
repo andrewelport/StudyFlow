@@ -1,11 +1,12 @@
-const CACHE = 'studyflow-v146';
+const CACHE = 'studyflow-v148';
 const PRECACHE = [
   '/',
   '/index.html',
   '/style.css?v=129',
-  '/style_v6.css?v=131',
+  '/style_v6.css?v=132',
   '/scheduler.js?v=33',
-  '/app_v58.js?v=9',
+  '/app_v58.js?v=10',
+  '/ai-features.js',
   '/logo_192.png',
   '/logo_512.png',
   '/manifest.json',
@@ -31,7 +32,7 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = e.request.url;
   // Never cache API calls
-  if (url.includes('supabase') || url.includes('groq.com') || url.includes('netlify/functions')) return;
+  if (url.includes('supabase') || url.includes('groq.com') || url.includes('netlify/functions') || url.includes('generativelanguage.googleapis.com')) return;
   // Let browser handle cross-origin (fonts, CDN)
   if (!url.startsWith(self.location.origin) && !url.includes('fonts.googleapis') && !url.includes('fonts.gstatic')) return;
 

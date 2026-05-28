@@ -668,7 +668,7 @@ function openSettings() {
   if (keyEl) keyEl.value = S.apiKey || '';
   const keyStatus = document.getElementById('api-key-status');
   if (keyStatus) {
-    keyStatus.textContent = S.apiKey ? ` מפתח שמור: ${S.apiKey.slice(0,7)}...` : '️ לא הוגדר — AI לא יעבודק';
+    keyStatus.textContent = S.apiKey ? `✓ מפתח שמור: ${S.apiKey.slice(0,8)}...` : '⚠️ לא הוגדר — הזן מפתח Gemini';
     keyStatus.style.color = S.apiKey ? 'var(--green)' : '#f59e0b';
   }
   const banner = document.getElementById('api-managed-banner');
@@ -680,7 +680,7 @@ function openSettings() {
       banner.style.background = 'var(--orange-light, #fff7ed)';
       banner.style.border = '1px solid #f59e0b';
       banner.style.color = '#b45309';
-      banner.textContent = '️ נדרש מפתח API כדי שהמערכת תפעל — הכנס למטה';
+      banner.textContent = '⚠️ נדרש מפתח Gemini API — הכנס למטה';
     }
   }
   const lbl = document.getElementById('theme-btn-label');
@@ -716,7 +716,157 @@ function saveSettings() {
   if (sbName) sbName.textContent = S.userName || '—';
   const sbAvatar = document.getElementById('sb-avatar');
   if (sbAvatar) sbAvatar.textContent = (S.userName || '?')[0].toUpperCase();
-  toast(apiKey ? ` הגדרות נשמרו · API Key: ${apiKey.slice(0,7)}...` : ' הגדרות נשמרו');
+  toast(apiKey ? `✓ הגדרות נשמרו · Gemini Key: ${apiKey.slice(0,8)}...` : '✓ הגדרות נשמרו');
+}
+
+// ── AI ONBOARDING ──
+let _aiObParsed = null; // stores parsed AI result
+
+async function _startAIOnboarding() {
+  const textEl = document.getElementById('aiob-text');
+  const btn = document.getElementById('aiob-btn');
+  const loadEl = document.getElementById('aiob-loading');
+  const resultEl = document.getElementById('aiob-result');
+  const text = (textEl?.value || '').trim();
+
+  if (!text || text.length < 10) {
+    toast('אנא ספר/י קצת על הלימודים שלך');
+    return;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ מעבד...'; }
+  if (loadEl) loadEl.classList.remove('hidden');
+  if (resultEl) resultEl.classList.add('hidden');
+
+  const today = ld(new Date());
+  const systemPrompt = `אתה עוזר להגדרת לוח לימודים ישראלי. קרא את הטקסט של המשתמש והחזר JSON בלבד ללא טקסט נוסף.
+שדות חובה: name (שם המשתמש, אם לא מוזכר - "סטודנט"), wakeTime (HH:MM, ברירת מחדל "07:00"), sleepTime (HH:MM, ברירת מחדל "23:00"), courses (מערך עם {name:string, examDate:"YYYY-MM-DD"|null}), anchors (מערך עם {name:string, day:number (0=ראשון, 1=שני...6=שבת), start:"HH:MM", end:"HH:MM"}, hobbies (מערך מחרוזות).
+תאריכי מבחנים יחסיים (כמו "סוף יוני") — חשב לפי היום שהוא ${today}. אם חסרים נתונים — השתמש בברירות מחדל סבירות. החזר רק JSON תקין.`;
+
+  try {
+    const raw = await callAI({
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: text }
+      ],
+      temperature: 0.3,
+      json: true,
+      maxTokens: 2048
+    });
+    const parsed = extractJSON(raw);
+    if (!parsed || !parsed.courses) throw new Error('לא הצלחתי להבין את הפרטים — נסה להיות יותר ספציפי');
+    _aiObParsed = parsed;
+    _showAIObResult(parsed);
+  } catch(e) {
+    if (loadEl) loadEl.classList.add('hidden');
+    if (btn) { btn.disabled = false; btn.textContent = '✨ בנה לי לוז'; }
+    toast(`שגיאה: ${e.message}`);
+  }
+}
+
+function _showAIObResult(parsed) {
+  const loadEl = document.getElementById('aiob-loading');
+  const resultEl = document.getElementById('aiob-result');
+  const btn = document.getElementById('aiob-btn');
+  if (loadEl) loadEl.classList.add('hidden');
+  if (btn) { btn.disabled = false; btn.textContent = '✨ בנה לי לוז'; }
+
+  const coursesList = (parsed.courses || []).map(c =>
+    `<li>${c.name}${c.examDate ? ` — מבחן ${c.examDate}` : ''}</li>`
+  ).join('');
+  const anchorsList = (parsed.anchors || []).map(a => {
+    const dayNames = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+    return `<li>${a.name} — יום ${dayNames[a.day] || a.day}, ${a.start}–${a.end}</li>`;
+  }).join('');
+
+  if (resultEl) {
+    resultEl.innerHTML = `
+      <div class="aiob-result-title">🤖 הנה מה שהבנתי:</div>
+      <div class="aiob-result-grid">
+        <div class="aiob-chip accent">👤 ${parsed.name || 'סטודנט'}</div>
+        <div class="aiob-chip">🌅 ${parsed.wakeTime || '07:00'} – 🌙 ${parsed.sleepTime || '23:00'}</div>
+      </div>
+      ${coursesList ? `<div class="aiob-result-sec">📚 קורסים:</div><ul class="aiob-result-list">${coursesList}</ul>` : ''}
+      ${anchorsList ? `<div class="aiob-result-sec">📌 עוגנים:</div><ul class="aiob-result-list">${anchorsList}</ul>` : ''}
+      <div class="aiob-result-actions">
+        <button class="ob2-next-btn" onclick="_confirmAIOnboarding()">✅ נכון! בנה לוז</button>
+        <button class="ob2-skip-lnk" onclick="document.getElementById('aiob-result').classList.add('hidden');document.getElementById('aiob-text').focus()">✏️ ערוך</button>
+      </div>
+    `;
+    resultEl.classList.remove('hidden');
+  }
+}
+
+function _confirmAIOnboarding() {
+  if (!_aiObParsed) return;
+  try {
+    _applyAIOnboarding(_aiObParsed);
+    toast('🎉 הפרופיל שלך נוצר! מייצר לוז...');
+    // initApp() hides setup-screen, shows app-screen, initializes nav
+    initApp();
+    // Navigate to weekly review after initApp runs
+    setTimeout(() => {
+      showPage('weekly-review', null);
+      updateBottomNav('weekly-review');
+      setTimeout(() => {
+        if (typeof renderWeeklyReview === 'function') renderWeeklyReview();
+      }, 300);
+    }, 500);
+  } catch(e) {
+    toast('שגיאה: ' + e.message);
+  }
+}
+
+function _applyAIOnboarding(data) {
+  // Set basic profile
+  S.userName = (data.name || 'סטודנט').trim();
+  S.wakeTime = data.wakeTime || '07:00';
+  S.sleepTime = data.sleepTime || '23:00';
+
+  // Create courses + exams
+  const existingNames = new Set((S.courses || []).map(c => c.name));
+  (data.courses || []).forEach(c => {
+    if (!c.name || existingNames.has(c.name)) return;
+    const id = uid();
+    S.courses = S.courses || [];
+    S.courses.push({ id, name: c.name, color: getCourseColor(c.name) });
+    if (c.examDate) {
+      S.exams = S.exams || [];
+      S.exams.push({ id: uid(), course: c.name, date: c.examDate, note: '' });
+    }
+    existingNames.add(c.name);
+  });
+
+  // Create anchors
+  const existingAnchors = new Set((S.anchors || []).map(a => a.name + '|' + a.day));
+  (data.anchors || []).forEach(a => {
+    const key = a.name + '|' + a.day;
+    if (!a.name || existingAnchors.has(key)) return;
+    S.anchors = S.anchors || [];
+    S.anchors.push({
+      id: uid(),
+      name: a.name,
+      day: parseInt(a.day ?? 0),
+      start: a.start || '09:00',
+      end: a.end || '10:00',
+      color: '#4f6ef7',
+      travelMin: 0
+    });
+    existingAnchors.add(key);
+  });
+
+  // Set hobbies
+  (data.hobbies || []).forEach(h => {
+    if (typeof h === 'string' && h.trim()) {
+      S.hobbies = S.hobbies || [];
+      if (!S.hobbies.some(x => x.name === h)) {
+        S.hobbies.push({ id: uid(), name: h, timesPerWeek: 2 });
+      }
+    }
+  });
+
+  S.onboardingDone = true;
+  save();
 }
 
 // ── OB2: Modern step-by-step onboarding ──
@@ -1039,24 +1189,45 @@ function updateBottomNav(name) {
 
 
 // Developer API key — users don't need to enter their own key
-const _DEV_API_KEY = 'gsk_placeholder_replace_with_your_groq_key';
+const _DEV_API_KEY = 'AIza_REPLACE_WITH_DEMO_GEMINI_KEY';
 
-async function _callGroqDirect({ messages, temperature, json, maxTokens }) {
-  const key = S.apiKey || _DEV_API_KEY;
-  if (!key || key.startsWith('gsk_placeholder')) throw new Error('נדרש מפתח Groq API — הכנס אותו בהגדרות ️');
-  const body = { model: 'llama-3.3-70b-versatile', messages, temperature, max_tokens: maxTokens };
-  if (json) body.response_format = { type: 'json_object' };
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+async function _callGeminiDirect({ messages, temperature, json, maxTokens }) {
+  const key = (S.apiKey || _DEV_API_KEY).trim();
+  if (!key || key.startsWith('AIza_REPLACE')) throw new Error('נדרש מפתח Gemini API — הכנס אותו בהגדרות ️');
+  const model = 'gemini-2.0-flash';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+
+  const systemMsg = messages.find(m => m.role === 'system');
+  const userMsgs = messages.filter(m => m.role !== 'system');
+
+  const body = {
+    contents: userMsgs.map(m => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }]
+    })),
+    generationConfig: {
+      temperature: temperature ?? 0.7,
+      maxOutputTokens: maxTokens ?? 4096,
+      ...(json ? { responseMimeType: 'application/json' } : {})
+    }
+  };
+  if (systemMsg) body.system_instruction = { parts: [{ text: systemMsg.content }] };
+
+  const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   });
-  if (res.status === 401) throw new Error('Groq API Key לא תקין — בדוק בהגדרות ️');
+  if (res.status === 400) {
+    const d = await res.json().catch(() => ({}));
+    throw new Error(`Gemini שגיאה: ${d.error?.message || res.status}`);
+  }
+  if (res.status === 401 || res.status === 403) throw new Error('Gemini API Key לא תקין — בדוק בהגדרות ️');
   if (res.status === 429) throw new Error('חריגת מגבלת API — נסה שוב בעוד דקה');
   if (!res.ok) throw new Error(`שגיאת שרת (${res.status})`);
   const d = await res.json();
   if (d.error) throw new Error(typeof d.error === 'string' ? d.error : (d.error.message || 'שגיאה ב-AI'));
-  return d.choices[0].message.content;
+  return d.candidates?.[0]?.content?.parts?.[0]?.text || '';
 }
 
 async function _retryOn429(fn, maxRetries = 2) {
@@ -1075,35 +1246,7 @@ async function _retryOn429(fn, maxRetries = 2) {
 }
 
 async function callAI({ messages, temperature = 0.7, json = false, maxTokens = 4096 }) {
-  // Personal key set → skip proxy entirely (avoids 3-5s 404 wait on GitHub Pages)
-  if (S.apiKey && !S.apiKey.startsWith('gsk_placeholder')) {
-    return await _retryOn429(() => _callGroqDirect({ messages, temperature, json, maxTokens }));
-  }
-  return await _retryOn429(async () => {
-    try {
-      const res = await fetch('/api/groq-proxy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages, temperature, json, maxTokens })
-      });
-      if (res.status === 503) throw new Error('תכונות AI אינן זמינות בגרסה החינמית');
-      if (res.status === 429) throw new Error('חריגת מגבלת AI — נסה שוב בעוד דקה');
-      if (res.status === 401) throw new Error('מפתח API לא תקין — עדכן בהגדרות ️');
-      if (res.status === 500) {
-        const d = await res.json().catch(() => ({}));
-        if (d.error && d.error.includes('GROQ_API_KEY')) throw new Error('GROQ_API_KEY לא מוגדר בשרת — הגדר אותו ב-Vercel Environment Variables');
-      }
-      if (res.ok) {
-        const d = await res.json();
-        if (d.error) throw new Error(typeof d.error === 'string' ? d.error : (d.error.message || 'שגיאה ב-AI'));
-        return d.choices[0].message.content;
-      }
-      // 404 = proxy not deployed, fall through to direct
-    } catch (e) {
-      if (e.message && (e.message.includes('חריגת') || e.message.includes('GROQ_API_KEY') || e.message.includes('לא תקין'))) throw e;
-    }
-    return await _callGroqDirect({ messages, temperature, json, maxTokens });
-  });
+  return await _retryOn429(() => _callGeminiDirect({ messages, temperature, json, maxTokens }));
 }
 
 async function gemini(prompt) {
@@ -5380,23 +5523,8 @@ function _wrInit() {
   )];
   const activeHobbies = S.hobbies || [];
 
-  const qs = [];
-  // Always ask which week to plan (unless first week where only current makes sense)
-  if (!firstWeek) {
-    qs.push({ type: '_week_choice' });
-    coursesLastWeek.forEach(c => qs.push({ type:'course_feel', c }));
-    // Hobby check-ins for hobbies not checked in for 6+ days
-    activeHobbies.forEach(h => {
-      const daysSince = h.lastCheckIn
-        ? Math.floor((Date.now() - new Date(h.lastCheckIn).getTime()) / 86400000) : 999;
-      if (daysSince >= 6) qs.push({ type: 'hobby_checkin', hobby: h });
-    });
-    qs.push({ type: 'homework_check' });
-  }
-  qs.push({ type:'goal' });
-
-  _wrPlanNextWeek = false; // reset
-  _wr = { qs, qi: 0, answers: { courses:{}, load:null }, coursesLastWeek, activeHobbies, pendingPlan: null };
+  _wrPlanNextWeek = false;
+  _wr = { qs: [{ type: 'goal' }], qi: 0, answers: { courses:{}, load:null }, coursesLastWeek, activeHobbies, pendingPlan: null };
 
   const wrMsgsEl = document.getElementById('wr-msgs');
   wrMsgsEl.innerHTML = '';
@@ -5414,19 +5542,70 @@ function _wrInit() {
     recentDeleted.forEach(d => { byCourse[d.course] = (byCourse[d.course]||0) + 1; });
     const summary = Object.entries(byCourse).map(([c,n]) => `${c} (${n})`).join(', ');
     _wr.deletedCollisionSummary = `⚠️ השבוע נמחקו ${recentDeleted.length} משימות בגלל התנגשות עם עוגנים: ${summary}`;
-    // Clear old entries after noting them
     S.deletedCollisions = (S.deletedCollisions||[]).filter(d => d.deletedAt < weekAgo);
     save();
   }
 
-  if (firstWeek) {
-    const range = _wrGetTargetRange();
-    _wrMsg(`שלום ${S.userName}! \nברוך הבא — נבנה יחד את לוז השבוע הראשון שלך (${range.start} – ${range.end}).`);
-  } else {
-    const deletedNote = _wr.deletedCollisionSummary ? `\n\n${_wr.deletedCollisionSummary}` : '';
-    _wrMsg(`שלום ${S.userName}!${deletedNote}`);
+  const range = _wrGetTargetRange();
+  const greeting = firstWeek
+    ? `שלום ${S.userName || 'סטודנט'}! 🎉\nנבנה יחד את לוז השבוע הראשון שלך (${range.start} – ${range.end}).`
+    : `שלום ${S.userName || 'סטודנט'}! 📅\nבוא נתכנן את השבוע הקרוב (${range.start} – ${range.end}).`;
+
+  _wrMsg(greeting);
+  if (_wr.deletedCollisionSummary) {
+    setTimeout(() => _wrMsg(_wr.deletedCollisionSummary), 400);
   }
-  setTimeout(() => _wrNext(), 700);
+
+  // Try AI summary first, fall back to simple question
+  setTimeout(() => _wrAISummary(), 800);
+}
+
+async function _wrAISummary() {
+  // Build context for AI
+  const today = ld(new Date());
+  const range = _wrGetTargetRange();
+  const upcomingExams = (S.exams || [])
+    .filter(e => e.date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 5)
+    .map(e => {
+      const daysLeft = Math.ceil((new Date(e.date + 'T12:00') - new Date(today + 'T12:00')) / 86400000);
+      return `${e.course}: ${e.date} (עוד ${daysLeft} ימים)`;
+    });
+
+  const missedCount = (S.tasks || []).filter(t => t.missed && t.date >= range.start && t.date <= range.end).length;
+  const courses = (S.courses || []).map(c => c.name).join(', ');
+
+  // Build a short AI insight
+  try {
+    const prompt = `אתה עוזר תכנון לימודים. תן תובנה קצרה בעברית (משפט אחד, עד 20 מילה) על השבוע הקרוב לסטודנט.
+קורסים: ${courses || 'אין'}
+מבחנים קרובים: ${upcomingExams.length ? upcomingExams.join('; ') : 'אין'}
+משימות שהוחמצו השבוע: ${missedCount}
+תכנון: ${range.start} – ${range.end}
+החזר משפט אחד בעברית בלבד, ישיר ועם אימוג'י.`;
+
+    const insight = await callAI({
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.6,
+      maxTokens: 100
+    });
+    if (insight && insight.trim()) {
+      _wrMsg(`💡 ${insight.trim()}`);
+    }
+  } catch(e) {
+    // AI not available — skip insight, just show load question
+  }
+
+  // Show the single load question
+  setTimeout(() => {
+    _wrMsg('📊 כמה לטעון השבוע?');
+    _wrChoices([
+      { v: 'min', l: '🎯 קל — רק מה שחייב' },
+      { v: 'ok',  l: '📚 מאוזן — קצב רגוע' },
+      { v: 'max', l: '🔥 מקסימום — ניצול מלא' }
+    ]);
+  }, 600);
 }
 
 function _wrNext() {
@@ -6806,6 +6985,7 @@ Object.assign(window, {
   // ── App init / onboarding ──
   initApp, obNext, addAnchorRow, _abCheckEmpty, toggleObDay, updateObPerDayRows,
   renderProfileQs, selectProfileOpt, finishOnboarding,
+  _startAIOnboarding, _confirmAIOnboarding, _applyAIOnboarding,
   // ── Navigation ──
   toggleSidebar, closeSidebar, openSettings, saveSettings, toggleAccordion,
   showPage, updateBottomNav,
@@ -6842,7 +7022,7 @@ Object.assign(window, {
   // ── Weekly review ──
   renderWeeklyReview, confirmWeeklyPlan, repeatLastSchedule, planPreviousWeek,
   saveFavoriteSchedule, loadFavoriteSchedule,
-  _wrAnswer, _wrAdjustAnswer, _wrNext, _wrDislikeFlow, _wrInit,
+  _wrAnswer, _wrAdjustAnswer, _wrNext, _wrDislikeFlow, _wrInit, _wrAISummary,
   renderWRSidebarCard,
   // ── Planner ──
   generatePlan, renderPlanTable, addPlanToSchedule, setPlannerMode,
