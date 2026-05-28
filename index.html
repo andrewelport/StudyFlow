@@ -910,6 +910,10 @@
           <div class="page-sub">שיעורים, אימונים וזמנים קבועים שהלוז לא יחפוף איתם</div>
         </div>
         <div class="anc-page-actions">
+          <button class="anc-action-btn anc-action-primary" onclick="openScheduleUploadModal()">
+            <span style="font-size:1rem; line-height:1">📷</span>
+            העלה מערכת שעות
+          </button>
           <button class="anc-action-btn anc-action-primary" onclick="showAddAnchorModal()">
             <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             הוסף עוגן
@@ -1462,7 +1466,7 @@
 
 <!-- ── SCHEDULE UPLOAD MODAL ── -->
 <div class="modal-overlay hidden" id="schedule-upload-modal" onclick="if(event.target===this)closeScheduleUploadModal()" style="display:flex; align-items:flex-start; justify-content:center; padding:40px 0; overflow-y:auto;">
-  <div class="rcm-card" style="background:var(--surface); border-radius:24px; padding:24px; width:90%; max-width:560px; box-shadow:0 20px 40px rgba(0,0,0,0.15); display:flex; flex-direction:column; gap:14px; margin:auto; direction:rtl">
+  <div class="rcm-card" style="background:var(--surface); border-radius:24px; padding:24px; width:90%; max-width:720px; box-shadow:0 20px 40px rgba(0,0,0,0.15); display:flex; flex-direction:column; gap:14px; margin:auto; direction:rtl">
     <div class="rcm-header" style="display:flex; justify-content:space-between; align-items:flex-start">
       <div style="display:flex; align-items:center; gap:12px">
         <div class="rcm-icon-wrap" style="background:var(--accent-light); color:var(--accent); width:48px; height:48px; border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:1.5rem">📷</div>
@@ -1497,10 +1501,10 @@
         <table style="width:100%; border-collapse:collapse; font-size:0.85rem; direction:rtl">
           <thead style="background:var(--surface); position:sticky; top:0">
             <tr>
-              <th style="padding:0.6rem; text-align:right; font-weight:800; color:var(--muted); font-size:0.78rem">יום</th>
+              <th style="padding:0.6rem; text-align:right; font-weight:800; color:var(--muted); font-size:0.78rem; width:95px">יום</th>
               <th style="padding:0.6rem; text-align:right; font-weight:800; color:var(--muted); font-size:0.78rem">קורס</th>
-              <th style="padding:0.6rem; text-align:right; font-weight:800; color:var(--muted); font-size:0.78rem">משעה</th>
-              <th style="padding:0.6rem; text-align:right; font-weight:800; color:var(--muted); font-size:0.78rem">עד שעה</th>
+              <th style="padding:0.6rem; text-align:right; font-weight:800; color:var(--muted); font-size:0.78rem; width:100px">משעה</th>
+              <th style="padding:0.6rem; text-align:right; font-weight:800; color:var(--muted); font-size:0.78rem; width:100px">עד שעה</th>
             </tr>
           </thead>
           <tbody id="schedule-upload-preview-tbody"></tbody>

@@ -1314,17 +1314,17 @@ function _suRenderPreview(schedule) {
     ).join('');
     return `
       <tr style="border-top:1px solid var(--border)">
-        <td style="padding:0.45rem 0.5rem">
-          <select onchange="_suEditDay(${idx}, this.value)" style="background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:0.35rem 0.4rem; font-family:var(--sans); font-size:0.85rem; font-weight:700; cursor:pointer; direction:rtl">${dayOpts}</select>
+        <td style="padding:0.45rem 0.5rem; width:95px">
+          <select onchange="_suEditDay(${idx}, this.value)" style="background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:0.35rem 0.4rem; font-family:var(--sans); font-size:0.85rem; font-weight:700; cursor:pointer; direction:rtl; width:100%">${dayOpts}</select>
         </td>
         <td style="padding:0.45rem 0.5rem">
-          <input type="text" value="${escapeHtml(String(item.course_name || ''))}" oninput="_suEditCourse(${idx}, this.value)" style="background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:0.35rem 0.55rem; font-family:var(--sans); font-size:0.85rem; width:100%; min-width:130px; direction:rtl">
+          <input type="text" value="${escapeHtml(String(item.course_name || ''))}" oninput="_suEditCourse(${idx}, this.value)" style="background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:0.35rem 0.55rem; font-family:var(--sans); font-size:0.85rem; width:100%; direction:rtl">
         </td>
-        <td style="padding:0.45rem 0.5rem">
-          <input type="time" value="${escapeHtml(String(item.start_time || ''))}" onchange="_suEditStart(${idx}, this.value)" style="background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:0.35rem 0.4rem; font-family:var(--mono); font-size:0.85rem; width:90px">
+        <td style="padding:0.45rem 0.5rem; width:100px">
+          <input type="time" value="${escapeHtml(String(item.start_time || ''))}" onchange="_suEditStart(${idx}, this.value)" style="background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:0.35rem 0.4rem; font-family:var(--mono); font-size:0.85rem; width:100%">
         </td>
-        <td style="padding:0.45rem 0.5rem">
-          <input type="time" value="${escapeHtml(String(item.end_time || ''))}" onchange="_suEditEnd(${idx}, this.value)" style="background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:0.35rem 0.4rem; font-family:var(--mono); font-size:0.85rem; width:90px">
+        <td style="padding:0.45rem 0.5rem; width:100px">
+          <input type="time" value="${escapeHtml(String(item.end_time || ''))}" onchange="_suEditEnd(${idx}, this.value)" style="background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:0.35rem 0.4rem; font-family:var(--mono); font-size:0.85rem; width:100%">
         </td>
         <td style="padding:0.45rem 0.3rem; width:34px">
           <button onclick="_suDeleteRow(${idx})" title="מחק שורה" aria-label="מחק שורה" style="background:transparent; border:none; color:var(--muted); cursor:pointer; padding:0.3rem 0.4rem; font-size:1rem; border-radius:6px; opacity:0.65" onmouseover="this.style.opacity='1'; this.style.color='var(--red)'" onmouseout="this.style.opacity='0.65'; this.style.color='var(--muted)'">✕</button>
