@@ -662,8 +662,8 @@ function openSettings() {
   if (heroName) heroName.textContent = S.userName || 'משתמש';
   const wakeEl = document.getElementById('settings-wake');
   const sleepEl = document.getElementById('settings-sleep');
-  if (wakeEl) wakeEl.value = S.wakeTime || '08:00';
-  if (sleepEl) sleepEl.value = S.sleepTime || '22:00';
+  if (wakeEl) wakeEl.value = S.wakeTime || '07:00';
+  if (sleepEl) sleepEl.value = S.sleepTime || '23:00';
   const keyEl = document.getElementById('settings-api-key');
   if (keyEl) keyEl.value = S.apiKey || '';
   const keyStatus = document.getElementById('api-key-status');
@@ -2007,8 +2007,8 @@ function getAvailableSlots(startDateStr, endDateStr, currentPriority){
   let endD = new Date(endDateStr);
   let daysLeft = Math.ceil((endD - startD) / 86400000);
   let maxDays = Math.min(daysLeft, 14);
-  const wake = parseInt((S.wakeTime||"08:00").split(':')[0])*60 + parseInt((S.wakeTime||"08:00").split(':')[1]);
-  const sleep = parseInt((S.sleepTime||"22:00").split(':')[0])*60 + parseInt((S.sleepTime||"22:00").split(':')[1]);
+  const wake = parseInt((S.wakeTime||"07:00").split(':')[0])*60 + parseInt((S.wakeTime||"07:00").split(':')[1]);
+  const sleep = parseInt((S.sleepTime||"23:00").split(':')[0])*60 + parseInt((S.sleepTime||"23:00").split(':')[1]);
   for(let i=0; i<=maxDays; i++){
     let d = new Date(startD); d.setDate(startD.getDate()+i);
     let dateStr = ld(d); let dayIdx = d.getDay();
@@ -2065,8 +2065,8 @@ function isTimeInFreeWindow(dateStr, timeStr, durationMins) {
   const dayAnchors = (S.anchors||[]).filter(a => parseInt(a.day)===dayIdx && !(a.endDate && dateStr>a.endDate));
   const tStart = parseInt(timeStr.split(':')[0])*60 + parseInt(timeStr.split(':')[1]);
   const tEnd = tStart + (durationMins||60);
-  const wake = parseInt((S.wakeTime||"08:00").split(':')[0])*60 + parseInt((S.wakeTime||"08:00").split(':')[1]);
-  const sleep = parseInt((S.sleepTime||"22:00").split(':')[0])*60 + parseInt((S.sleepTime||"22:00").split(':')[1]);
+  const wake = parseInt((S.wakeTime||"07:00").split(':')[0])*60 + parseInt((S.wakeTime||"07:00").split(':')[1]);
+  const sleep = parseInt((S.sleepTime||"23:00").split(':')[0])*60 + parseInt((S.sleepTime||"23:00").split(':')[1]);
   if (tStart < wake || tEnd > sleep) return false;
   for (const a of dayAnchors) {
     const travel = a.travelMin||0;
@@ -2670,8 +2670,8 @@ function renderTimeChart() {
   const weekEnd = ld(weekEndD);
 
   // Weekly available hours (wake to sleep × 7 days) — always based on user settings
-  const [wkH,wkM] = (S.wakeTime||'08:00').split(':').map(Number);
-  const [slH,slM] = (S.sleepTime||'22:00').split(':').map(Number);
+  const [wkH,wkM] = (S.wakeTime||'07:00').split(':').map(Number);
+  const [slH,slM] = (S.sleepTime||'23:00').split(':').map(Number);
   const dailyAvailH = ((slH*60+slM) - (wkH*60+wkM)) / 60;
   const weeklyAvailH = dailyAvailH * 7;
 
@@ -4326,7 +4326,7 @@ function saveAnchorManual(){
     if (start === end) { toast('⚠️ שעת ההתחלה חייבת להיות שונה משעת הסיום'); return; }
     const [sh, sm] = start.split(':').map(Number); const [eh, em] = end.split(':').map(Number);
     if ((eh*60+em)-(sh*60+sm) > 16*60) { toast('⚠️ משמרת לא יכולה להיות יותר מ-16 שעות'); return; }
-    { const wm = (S.wakeTime||'08:00').split(':').map(Number); const slm = (S.sleepTime||'22:00').split(':').map(Number); const wakeMin = wm[0]*60+wm[1]; const sleepMin = slm[0]*60+slm[1]; if (sh*60+sm < wakeMin || eh*60+em > sleepMin) toast('💡 שים לב: העוגן מחוץ לשעות הערות שלך'); }
+    { const wm = (S.wakeTime||'07:00').split(':').map(Number); const slm = (S.sleepTime||'23:00').split(':').map(Number); const wakeMin = wm[0]*60+wm[1]; const sleepMin = slm[0]*60+slm[1]; if (sh*60+sm < wakeMin || eh*60+em > sleepMin) toast('💡 שים לב: העוגן מחוץ לשעות הערות שלך'); }
     const updatedAnchor = { ...S.anchors[idx], name, day, start, end, travelMin, color, endDate, notes };
     if (isOneTime) { updatedAnchor.oneTimeDate = oneTimeDate; updatedAnchor.day = new Date(oneTimeDate+'T12:00:00').getDay(); }
     else { delete updatedAnchor.oneTimeDate; }
@@ -4611,7 +4611,7 @@ function _endOfWeek() {
 // Finds up to maxCount free slots between fromDateStr and limitDateStr (inclusive)
 function _findSlotsInRange(fromDateStr, limitDateStr, maxCount, ignoreSlots = []) {
   const validTimes = ["08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00"];
-  const wakeH  = parseInt((S.wakeTime||'08:00').split(':')[0]);
+  const wakeH  = parseInt((S.wakeTime||'07:00').split(':')[0]);
   const sleepH = parseInt((S.sleepTime||'23:00').split(':')[0]);
   const results = [];
   const usedKeys = new Set();

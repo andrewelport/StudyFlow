@@ -88,9 +88,9 @@ function findBestFreeSlot(dateStr, alreadyPlaced, blockNeeded, preferredRange) {
   const todayStr = typeof ld === 'function' ? ld(now) : d.toISOString().split('T')[0];
   if (dateStr === todayStr) {
     const currentMins = now.getHours() * 60 + now.getMinutes();
-    wake = Math.max(wake, currentMins + 30);
+    wake = Math.max(wake, currentMins + 15);
   }
-  
+
   let validSlots = [];
   
   let cursor = wake;
@@ -137,7 +137,7 @@ function getDayFreeMinutes(dateStr) {
   const todayStr = typeof ld === 'function' ? ld(now) : d.toISOString().split('T')[0];
   if (dateStr === todayStr) {
     const currentMins = now.getHours() * 60 + now.getMinutes();
-    wake = Math.max(wake, currentMins + 30);
+    wake = Math.max(wake, currentMins + 15);
   }
 
   const merged = _buildBlocked(dateStr);
@@ -366,11 +366,17 @@ function generateWeeklySchedule(answers) {
     const slotPref = isHard ? hardPref : null; // hard = peak time, easy = any time
     const blockNeed = sessionMin + breakMin;
 
+    // Near-exam (≤3 days) courses get maxSameDay=2 even under non-heavy load.
+    // Hoisted here so the fallback loop below can apply the same cap.
+    const nextExam = exams.filter(e => e.course === item).sort((a, b) => a.date.localeCompare(b.date))[0];
+    const daysToExam = nextExam ? Math.ceil((new Date(nextExam.date) - new Date()) / 86400000) : Infinity;
+    const examIsNear = daysToExam <= 3;
+    const maxSameDay = answers.load === 'heavy' ? 2 : (examIsNear ? 2 : 1);
+
     let placedSession = false;
     for (const date of days) {
       const maxPerDay = answers.load === 'heavy' ? 5 : answers.load === 'light' ? 2 : 4;
       if (dailyCounts[date] >= maxPerDay) continue;
-      const maxSameDay = answers.load === 'heavy' ? 2 : 1;
       if ((dailyItemCounts[date][item] || 0) >= maxSameDay) continue;
 
       // Avoid same course on consecutive days (spaced repetition)
@@ -422,11 +428,13 @@ function generateWeeklySchedule(answers) {
     }
 
     if (!placedSession) {
-      // Fallback: Drop spaced repetition and preference rules, just find any slot
+      // Fallback: Drop spaced repetition and preference rules, just find any slot.
+      // Still respect maxSameDay so packing converges with the primary path.
       for (const date of days) {
         const maxPerDay = answers.load === 'heavy' ? 5 : answers.load === 'light' ? 2 : 4;
         if (dailyCounts[date] >= maxPerDay) continue;
-        
+        if ((dailyItemCounts[date][item] || 0) >= maxSameDay) continue;
+
         let slot2 = findBestFreeSlot(date, placed, blockNeed, null);
         if (slot2 !== null) {
           let taskName = item;
