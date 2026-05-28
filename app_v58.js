@@ -4742,6 +4742,12 @@ function _rcDoSpreadWeek(isAlternative = false) {
       minDate = _rcPendingTasks[0].date;
     }
   }
+  if (isAlternative) {
+    // Advance by +1 day so alternative search lands on a truly different date
+    const d0 = new Date(minDate + 'T12:00:00');
+    d0.setDate(d0.getDate() + 1);
+    minDate = ld(d0);
+  }
   const today = minDate;
   const d = new Date(today + 'T12:00:00');
   d.setDate(d.getDate() + 6);
@@ -5149,6 +5155,9 @@ function _hpRenderHobby(idx) {
   if (el('hp-hero-goal')) el('hp-hero-goal').textContent = hobby.goal;
   if (el('hp-sessions-count')) el('hp-sessions-count').textContent = done;
   if (el('hp-freq-count')) el('hp-freq-count').textContent = hobby.timesPerWeek + ' פעמים/שבוע';
+  const _hpLabel = _hobbyLabel(hobby.name);
+  if (el('hp-label-sessions')) el('hp-label-sessions').textContent = _hpLabel;
+  if (el('hp-label-button'))   el('hp-label-button').textContent   = _hpLabel;
   if (el('hp-next-date')) {
     if (upcoming[0]) {
       const dParts = upcoming[0].date.split('-');
@@ -5213,6 +5222,20 @@ function _hobbyEmoji(name) {
   if (/ספרדית|צרפתית|אנגלית|שפה|ערבית/.test(n)) return '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>';
   // Default
   return '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>';
+}
+
+// Category-aware noun for hobby UI strings (e.g., "0 ___" stat label, "find time for ___" CTA).
+// Mirrors the regex classification approach used in _hobbyEmoji.
+function _hobbyLabel(name) {
+  if (!name) return 'מפגשים';
+  const n = name.toLowerCase();
+  if (/קריאה|ספרים|ספר/.test(n)) return 'מפגשי קריאה';
+  if (/בישול|אפייה|מתכון/.test(n)) return 'מפגשי בישול';
+  if (/גיימינג|משחקים|משחק|gaming|game/.test(n)) return 'סשנים';
+  if (/גיטרה|בס|מוזיקה|פסנתר|כינור|תוף/.test(n)) return 'שיעורי תרגול';
+  if (/ציור|אמנות|יצירה|קרמיקה/.test(n)) return 'מפגשי יצירה';
+  if (/ריצה|ג'וגינג|מרוץ|שחייה|בריכה|יוגה|מדיטציה|מיינדפולנס|כדורגל|כדורסל|כדורעף|טניס|ספורט/.test(n)) return 'אימונים';
+  return 'מפגשים';
 }
 
 function _hpRenderInsight(hobby, done) {
