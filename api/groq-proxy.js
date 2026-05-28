@@ -19,12 +19,12 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { messages, temperature, json, maxTokens, responseSchema, files } = req.body || {};
+    const { messages, temperature, json, maxTokens, responseSchema, files, thinkingConfig } = req.body || {};
     if (!Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({ error: 'messages array required' });
     }
 
-    const geminiBody = buildGeminiBody({ messages, temperature, json, maxTokens, responseSchema, files });
+    const geminiBody = buildGeminiBody({ messages, temperature, json, maxTokens, responseSchema, files, thinkingConfig });
 
     const geminiRes = await fetch(GEMINI_ENDPOINT, {
       method: 'POST',
@@ -53,7 +53,7 @@ module.exports = async function handler(req, res) {
   }
 };
 
-function buildGeminiBody({ messages, temperature, json, maxTokens, responseSchema, files }) {
+function buildGeminiBody({ messages, temperature, json, maxTokens, responseSchema, files, thinkingConfig }) {
   // Gemini has no native "system" role — concatenate any system messages and
   // prepend them to the first user message.
   const systems = [];
@@ -106,6 +106,9 @@ function buildGeminiBody({ messages, temperature, json, maxTokens, responseSchem
     temperature: temperature ?? 0.7,
     maxOutputTokens: maxTokens || 4096,
   };
+  if (thinkingConfig && typeof thinkingConfig === 'object') {
+    generationConfig.thinkingConfig = thinkingConfig;
+  }
   if (responseSchema) {
     generationConfig.responseMimeType = 'application/json';
     generationConfig.responseSchema = responseSchema;

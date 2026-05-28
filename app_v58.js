@@ -1111,6 +1111,102 @@ async function gemini(prompt) {
   return callAI({ messages: [{ role: 'user', content: prompt }] });
 }
 
+// ── SCHEDULE UPLOAD: multimodal extraction ──────────────────────────────────
+// Used by the home-screen schedule upload feature. Bypasses callAI to send
+// responseSchema/files/thinkingConfig directly to the proxy (callAI's wrapper
+// only forwards the legacy 4 fields).
+//
+// fileContent: for image/PDF → base64 string; for CSV → raw CSV text.
+// mimeType:    binary MIME for image/PDF, "text/csv" (or similar) for CSV.
+async function _extractScheduleFromFile(fileContent, mimeType) {
+  const TIMEOUT_MS = 30000;
+  const isCsv = /^(text\/csv|application\/csv|text\/plain)/i.test(mimeType || '');
+
+  const systemPrompt = 'אתה מקבל מערכת שעות שבועית של סטודנט באוניברסיטה. חלץ ממנה את כל המפגשים השבועיים. החזר JSON בלבד.';
+  const baseUserPrompt = 'חלץ את כל השיעורים במערכת השעות. עבור כל שיעור: שם הקורס, יום בשבוע (sunday/monday/tuesday/wednesday/thursday/friday/saturday), שעת התחלה בפורמט HH:MM, שעת סיום בפורמט HH:MM. אם השדות לא ברורים — דלג ואל תנחש.';
+  const userPrompt = isCsv
+    ? `${baseUserPrompt}\n\nתוכן ה-CSV:\n${fileContent}`
+    : baseUserPrompt;
+
+  const body = {
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ],
+    temperature: 0.2,
+    responseSchema: {
+      type: 'object',
+      properties: {
+        schedule: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              course_name: { type: 'string' },
+              day_of_week: { type: 'string', enum: ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'] },
+              start_time:  { type: 'string', description: 'HH:MM' },
+              end_time:    { type: 'string', description: 'HH:MM' },
+            },
+            required: ['course_name', 'day_of_week', 'start_time', 'end_time'],
+          },
+        },
+      },
+      required: ['schedule'],
+    },
+    thinkingConfig: { thinkingBudget: 0 },
+  };
+  if (!isCsv) {
+    body.files = [{ mime_type: mimeType, data: fileContent }];
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+  let res;
+  try {
+    res = await fetch('/api/groq-proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch (e) {
+    if (e.name === 'AbortError') {
+      throw new Error('החילוץ נמשך זמן רב מדי. נסה תמונה אחרת או קובץ אחר.');
+    }
+    throw new Error(`שגיאת רשת: ${e.message}`);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  if (!res.ok) {
+    let errMsg = `שגיאת שרת (${res.status})`;
+    try {
+      const d = await res.json();
+      if (d?.error) errMsg = typeof d.error === 'string' ? d.error : (d.error.message || errMsg);
+    } catch (_) {}
+    throw new Error(errMsg);
+  }
+
+  const data = await res.json();
+  const content = data?.choices?.[0]?.message?.content;
+  if (!content) throw new Error('ה-AI לא החזיר תוכן.');
+
+  let parsed;
+  try {
+    parsed = JSON.parse(content);
+  } catch (_) {
+    // responseSchema should guarantee valid JSON; this is belt-and-suspenders
+    try { parsed = extractJSON(content); } catch (__) {
+      throw new Error('לא הצלחנו לפענח את התוצאה.');
+    }
+  }
+
+  const schedule = parsed?.schedule;
+  if (!Array.isArray(schedule)) throw new Error('המבנה שהוחזר לא תקין.');
+  return schedule;
+}
+
 // ── XP LEVEL SYSTEM ──
 const XP_LEVELS = [
   {min:0,     max:100,   emoji:'🌱', name:'מתחיל'},

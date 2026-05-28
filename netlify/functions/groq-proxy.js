@@ -28,9 +28,9 @@ exports.handler = async function (event) {
     return jsonResponse(503, { error: 'GEMINI_API_KEY is not set on server' });
   }
 
-  let messages, temperature, json, maxTokens, responseSchema, files;
+  let messages, temperature, json, maxTokens, responseSchema, files, thinkingConfig;
   try {
-    ({ messages, temperature, json, maxTokens, responseSchema, files } = JSON.parse(event.body));
+    ({ messages, temperature, json, maxTokens, responseSchema, files, thinkingConfig } = JSON.parse(event.body));
   } catch {
     return jsonResponse(400, { error: 'Invalid JSON body' });
   }
@@ -39,7 +39,7 @@ exports.handler = async function (event) {
     return jsonResponse(400, { error: 'messages array required' });
   }
 
-  const geminiBody = buildGeminiBody({ messages, temperature, json, maxTokens, responseSchema, files });
+  const geminiBody = buildGeminiBody({ messages, temperature, json, maxTokens, responseSchema, files, thinkingConfig });
 
   try {
     const geminiRes = await fetch(GEMINI_ENDPOINT, {
@@ -80,7 +80,7 @@ function jsonResponse(statusCode, body) {
   };
 }
 
-function buildGeminiBody({ messages, temperature, json, maxTokens, responseSchema, files }) {
+function buildGeminiBody({ messages, temperature, json, maxTokens, responseSchema, files, thinkingConfig }) {
   // Gemini has no native "system" role — concatenate any system messages and
   // prepend them to the first user message.
   const systems = [];
@@ -133,6 +133,9 @@ function buildGeminiBody({ messages, temperature, json, maxTokens, responseSchem
     temperature: temperature ?? 0.7,
     maxOutputTokens: maxTokens || 4096,
   };
+  if (thinkingConfig && typeof thinkingConfig === 'object') {
+    generationConfig.thinkingConfig = thinkingConfig;
+  }
   if (responseSchema) {
     generationConfig.responseMimeType = 'application/json';
     generationConfig.responseSchema = responseSchema;
