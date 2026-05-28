@@ -1207,6 +1207,129 @@ async function _extractScheduleFromFile(fileContent, mimeType) {
   return schedule;
 }
 
+// ── SCHEDULE UPLOAD: UI wiring ──────────────────────────────────────────────
+
+let _scheduleUploadPending = null;  // parsed schedule[] between extract and approve
+
+const _SU_DAY_HE = { sunday:'ראשון', monday:'שני', tuesday:'שלישי', wednesday:'רביעי', thursday:'חמישי', friday:'שישי', saturday:'שבת' };
+const _SU_DAY_NUM = { sunday:0, monday:1, tuesday:2, wednesday:3, thursday:4, friday:5, saturday:6 };
+
+function openScheduleUploadModal() {
+  document.getElementById('schedule-upload-modal').classList.remove('hidden');
+  _setBodyLock(true);
+  _scheduleUploadPending = null;
+  document.getElementById('schedule-upload-input-area').classList.remove('hidden');
+  document.getElementById('schedule-upload-loading').classList.add('hidden');
+  document.getElementById('schedule-upload-preview').classList.add('hidden');
+  document.getElementById('schedule-upload-error').classList.add('hidden');
+  document.getElementById('schedule-upload-buttons').classList.add('hidden');
+  const fileInp = document.getElementById('schedule-upload-file');
+  if (fileInp) fileInp.value = '';
+}
+
+function closeScheduleUploadModal() {
+  document.getElementById('schedule-upload-modal').classList.add('hidden');
+  _setBodyLock(false);
+  _scheduleUploadPending = null;
+}
+
+function _suShowError(msg) {
+  const el = document.getElementById('schedule-upload-error');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  document.getElementById('schedule-upload-input-area').classList.remove('hidden');
+  document.getElementById('schedule-upload-loading').classList.add('hidden');
+}
+
+function _suFileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => {
+      const result = r.result || '';
+      const comma = String(result).indexOf(',');
+      resolve(comma >= 0 ? String(result).slice(comma + 1) : String(result));
+    };
+    r.onerror = () => reject(new Error('שגיאה בקריאת הקובץ.'));
+    r.readAsDataURL(file);
+  });
+}
+
+async function handleScheduleUploadFile(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  document.getElementById('schedule-upload-input-area').classList.add('hidden');
+  document.getElementById('schedule-upload-loading').classList.remove('hidden');
+  document.getElementById('schedule-upload-error').classList.add('hidden');
+  document.getElementById('schedule-upload-preview').classList.add('hidden');
+  document.getElementById('schedule-upload-buttons').classList.add('hidden');
+
+  try {
+    const isCsv = /\.csv$/i.test(file.name) || /^(text\/csv|application\/csv|text\/plain)/i.test(file.type);
+    let content, mimeType;
+    if (isCsv) {
+      content = await file.text();
+      mimeType = 'text/csv';
+    } else {
+      content = await _suFileToBase64(file);
+      mimeType = file.type || 'application/octet-stream';
+    }
+    const schedule = await _extractScheduleFromFile(content, mimeType);
+    if (!schedule.length) {
+      _suShowError('לא נמצאו שיעורים בקובץ. נסה תמונה ברורה יותר.');
+      return;
+    }
+    _scheduleUploadPending = schedule;
+    _suRenderPreview(schedule);
+  } catch (e) {
+    _suShowError(e.message || 'שגיאה בחילוץ');
+  }
+}
+
+function _suRenderPreview(schedule) {
+  document.getElementById('schedule-upload-loading').classList.add('hidden');
+  document.getElementById('schedule-upload-preview').classList.remove('hidden');
+  document.getElementById('schedule-upload-buttons').classList.remove('hidden');
+  document.getElementById('schedule-upload-count').textContent = schedule.length;
+  const tbody = document.getElementById('schedule-upload-preview-tbody');
+  tbody.innerHTML = schedule.map(item => `
+    <tr style="border-top:1px solid var(--border)">
+      <td style="padding:0.55rem 0.6rem; color:var(--text); font-weight:700">${_SU_DAY_HE[item.day_of_week] || escapeHtml(String(item.day_of_week||''))}</td>
+      <td style="padding:0.55rem 0.6rem; color:var(--text)">${escapeHtml(String(item.course_name||''))}</td>
+      <td style="padding:0.55rem 0.6rem; font-family:var(--mono); color:var(--muted)">${escapeHtml(String(item.start_time||''))}</td>
+      <td style="padding:0.55rem 0.6rem; font-family:var(--mono); color:var(--muted)">${escapeHtml(String(item.end_time||''))}</td>
+    </tr>
+  `).join('');
+}
+
+function confirmScheduleUpload() {
+  if (!Array.isArray(_scheduleUploadPending) || !_scheduleUploadPending.length) return;
+  if (!Array.isArray(S.anchors)) S.anchors = [];
+
+  let added = 0;
+  for (const item of _scheduleUploadPending) {
+    const day = _SU_DAY_NUM[item.day_of_week];
+    if (day === undefined) continue;
+    if (!/^\d{2}:\d{2}$/.test(item.start_time) || !/^\d{2}:\d{2}$/.test(item.end_time)) continue;
+    S.anchors.push({
+      id: uid(),
+      name: item.course_name || 'עוגן',
+      day,
+      start: item.start_time,
+      end: item.end_time,
+      travelMin: 0,
+      color: getCourseColor(item.course_name || ''),
+    });
+    added++;
+  }
+
+  // Batch — call save() and renderAll() once after the loop, not per item
+  save();
+  renderAll();
+
+  closeScheduleUploadModal();
+  toast(` נוצרו ${added} עוגנים`);
+}
+
 // ── XP LEVEL SYSTEM ──
 const XP_LEVELS = [
   {min:0,     max:100,   emoji:'🌱', name:'מתחיל'},
@@ -3155,7 +3278,19 @@ function renderTodayTasks(){
   items.sort((a,b)=>(a.time||'00:00').localeCompare(b.time||'00:00'));
   const wrap = document.getElementById('today-tasks-wrap');
   if (!wrap) return;
-  if(!items.length){ wrap.innerHTML = '<div class="empty-state">היום פנוי לגמרי! הוסף משימות מהמתכנן.</div>'; renderPomoTaskSelect(); return; }
+  if(!items.length){
+    wrap.innerHTML = `
+      <div style="padding:1rem 1.25rem 0">
+        <button onclick="openScheduleUploadModal()" class="btn-primary" style="margin-top:0; padding:1.2rem 1rem; display:flex; flex-direction:column; align-items:center; gap:0.3rem">
+          <div style="display:flex; align-items:center; gap:0.55rem; font-size:1.05rem"><span style="font-size:1.4rem">📷</span><span>צלם את מערכת השעות שלך</span></div>
+          <div style="font-size:0.78rem; font-weight:600; opacity:0.92">תמונה, PDF או CSV — נחלץ הכל אוטומטית</div>
+        </button>
+      </div>
+      <div class="empty-state">היום פנוי לגמרי! הוסף משימות מהמתכנן.</div>
+    `;
+    renderPomoTaskSelect();
+    return;
+  }
 
   const priColor={גבוה:'var(--red)',בינוני:'var(--yellow)',שוטף:'var(--green)'};
   const priBg={גבוה:'var(--red-light)',בינוני:'var(--yellow-light)',שוטף:'var(--green-light)'};

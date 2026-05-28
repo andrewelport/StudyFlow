@@ -1460,6 +1460,64 @@
 </div>
 
 
+<!-- ── SCHEDULE UPLOAD MODAL ── -->
+<div class="modal-overlay hidden" id="schedule-upload-modal" onclick="if(event.target===this)closeScheduleUploadModal()" style="display:flex; align-items:flex-start; justify-content:center; padding:40px 0; overflow-y:auto;">
+  <div class="rcm-card" style="background:var(--surface); border-radius:24px; padding:24px; width:90%; max-width:560px; box-shadow:0 20px 40px rgba(0,0,0,0.15); display:flex; flex-direction:column; gap:14px; margin:auto; direction:rtl">
+    <div class="rcm-header" style="display:flex; justify-content:space-between; align-items:flex-start">
+      <div style="display:flex; align-items:center; gap:12px">
+        <div class="rcm-icon-wrap" style="background:var(--accent-light); color:var(--accent); width:48px; height:48px; border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:1.5rem">📷</div>
+        <div>
+          <div class="rcm-title" style="font-size:1.3rem; font-weight:900; color:var(--text); letter-spacing:-0.02em; line-height:1.2">העלאת מערכת שעות</div>
+          <div class="rcm-sub" style="font-size:0.88rem; font-weight:600; color:var(--muted); margin-top:2px">תמונה, PDF או CSV — נחלץ אוטומטית</div>
+        </div>
+      </div>
+      <button class="rcm-close" onclick="closeScheduleUploadModal()" style="background:var(--surface2); border:none; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--muted); cursor:pointer">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div id="schedule-upload-input-area">
+      <label for="schedule-upload-file" style="display:block; padding:1.6rem 1rem; border:2px dashed var(--border); border-radius:14px; text-align:center; cursor:pointer; background:var(--surface2)">
+        <div style="font-size:2.4rem; margin-bottom:0.4rem">📁</div>
+        <div style="font-weight:800; color:var(--text); margin-bottom:0.25rem">בחר קובץ</div>
+        <div style="font-size:0.82rem; color:var(--muted)">תמונה, PDF או CSV · עד 20MB</div>
+      </label>
+      <input id="schedule-upload-file" type="file" accept="image/*,application/pdf,.csv" style="display:none" onchange="handleScheduleUploadFile(this)">
+    </div>
+
+    <div id="schedule-upload-loading" class="hidden" style="text-align:center; padding:2rem 1rem">
+      <div style="font-size:2rem; margin-bottom:0.5rem">⏳</div>
+      <div style="font-weight:800; color:var(--text); margin-bottom:0.25rem">מחלץ את מערכת השעות...</div>
+      <div style="font-size:0.82rem; color:var(--muted)">זה ייקח עד 30 שניות</div>
+    </div>
+
+    <div id="schedule-upload-preview" class="hidden">
+      <div style="font-weight:800; color:var(--text); margin-bottom:0.5rem">נמצאו <span id="schedule-upload-count">0</span> שיעורים — אשר את היצירה</div>
+      <div style="max-height:280px; overflow-y:auto; border:1px solid var(--border); border-radius:12px; background:var(--surface2)">
+        <table style="width:100%; border-collapse:collapse; font-size:0.85rem; direction:rtl">
+          <thead style="background:var(--surface); position:sticky; top:0">
+            <tr>
+              <th style="padding:0.6rem; text-align:right; font-weight:800; color:var(--muted); font-size:0.78rem">יום</th>
+              <th style="padding:0.6rem; text-align:right; font-weight:800; color:var(--muted); font-size:0.78rem">קורס</th>
+              <th style="padding:0.6rem; text-align:right; font-weight:800; color:var(--muted); font-size:0.78rem">משעה</th>
+              <th style="padding:0.6rem; text-align:right; font-weight:800; color:var(--muted); font-size:0.78rem">עד שעה</th>
+            </tr>
+          </thead>
+          <tbody id="schedule-upload-preview-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="schedule-upload-error" class="hidden" style="padding:0.75rem 1rem; border-radius:12px; background:var(--red-light); color:var(--red); font-weight:700; font-size:0.88rem"></div>
+
+    <div id="schedule-upload-buttons" class="hidden" style="display:flex; gap:0.5rem; justify-content:flex-start">
+      <button onclick="confirmScheduleUpload()" style="background:var(--accent); color:white; border:none; padding:0.65rem 1.4rem; border-radius:10px; font-weight:800; cursor:pointer; font-family:var(--sans); font-size:0.9rem; box-shadow:0 4px 14px rgba(79,110,247,0.3)">אשר ויצור</button>
+      <button onclick="closeScheduleUploadModal()" style="background:var(--surface2); color:var(--text); border:1px solid var(--border); padding:0.65rem 1.1rem; border-radius:10px; font-weight:700; cursor:pointer; font-family:var(--sans); font-size:0.9rem">ביטול</button>
+    </div>
+  </div>
+</div>
+
+
 <!-- ── SETTINGS MODAL ── -->
 <div class="modal-overlay hidden" id="settings-modal">
   <div class="settings-panel">
