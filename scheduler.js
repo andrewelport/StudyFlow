@@ -322,7 +322,7 @@ function generateWeeklySchedule(answers) {
       if (slot !== null) {
         placed.push({
           id: Math.random().toString(36).slice(2, 9),
-          course: hName, name: `אימון ${hName}`, date,
+          course: hName, name: _hobbyLabel(hName), date,
           time: minsToTime(slot), duration: `${hobbyDur} דק'`,
           priority: 'תחביב', done: false, missed: false, isHobby: true
         });
@@ -342,7 +342,7 @@ function generateWeeklySchedule(answers) {
         if (slot !== null) {
           placed.push({
             id: Math.random().toString(36).slice(2, 9),
-            course: hName, name: `אימון ${hName}`, date,
+            course: hName, name: _hobbyLabel(hName), date,
             time: minsToTime(slot), duration: `${hobbyDur} דק'`,
             priority: 'תחביב', done: false, missed: false, isHobby: true
           });
@@ -409,9 +409,9 @@ function generateWeeklySchedule(answers) {
       if (slot !== null) {
         let taskName = item;
         if (profile.style) {
-          if (profile.style.includes('תרגילים')) taskName = `תרגול ומטלות: ${item}`;
-          else if (profile.style.includes('וידאו')) taskName = `הרצאות מוקלטות: ${item}`;
-          else if (profile.style.includes('קריאה')) taskName = `סיכום וקריאה: ${item}`;
+          if (profile.style.includes('תרגילים')) taskName = 'תרגול ומטלות';
+          else if (profile.style.includes('וידאו')) taskName = 'הרצאות מוקלטות';
+          else if (profile.style.includes('קריאה')) taskName = 'סיכום וקריאה';
         }
         placed.push({
           id: Math.random().toString(36).slice(2, 9),
@@ -439,9 +439,9 @@ function generateWeeklySchedule(answers) {
         if (slot2 !== null) {
           let taskName = item;
           if (profile.style) {
-            if (profile.style.includes('תרגילים')) taskName = `תרגול ומטלות: ${item}`;
-            else if (profile.style.includes('וידאו')) taskName = `הרצאות מוקלטות: ${item}`;
-            else if (profile.style.includes('קריאה')) taskName = `סיכום וקריאה: ${item}`;
+            if (profile.style.includes('תרגילים')) taskName = 'תרגול ומטלות';
+            else if (profile.style.includes('וידאו')) taskName = 'הרצאות מוקלטות';
+            else if (profile.style.includes('קריאה')) taskName = 'סיכום וקריאה';
           }
           placed.push({
             id: Math.random().toString(36).slice(2, 9),
