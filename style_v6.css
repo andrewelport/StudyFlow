@@ -1489,10 +1489,33 @@ input:focus, textarea:focus, select:focus {
 /* Remove emoji/level elements (JS bakes emoji into text node) */
 .sq-hero-level-name, #tree-next, #xp-level-emoji, .sq-level-emoji { display: none !important; }
 
-/* Green canvas wash: cool mint -> near-white -> warm lime */
+/* Green canvas: a soft vertical wash + green/lime corner glows, fixed to the
+   viewport so it stays put behind the floating white cards on every page. */
 html { background-image: none !important; }
-body { background-image: var(--grad-canvas) !important; background-color: #f1f6ef !important; }
+body {
+  background-color: #e9f5e1 !important;
+  background-image:
+    radial-gradient(1200px 820px at 90% -8%, rgba(52,210,126,0.28), transparent 56%),
+    radial-gradient(1000px 720px at -8% 108%, rgba(201,242,77,0.30), transparent 54%),
+    linear-gradient(180deg, #cdecd7 0%, #e7f4dd 50%, #dcefae 100%) !important;
+  background-attachment: fixed !important;
+  background-repeat: no-repeat !important;
+}
+[data-theme="dark"] body {
+  background-color: #0b130f !important;
+  background-image:
+    radial-gradient(1200px 820px at 90% -8%, rgba(34,197,94,0.18), transparent 56%),
+    radial-gradient(1000px 720px at -8% 108%, rgba(52,210,126,0.12), transparent 54%),
+    linear-gradient(180deg, #0b130f 0%, #0d1712 50%, #0b1a0f 100%) !important;
+}
 .app-layout, .main-content { background: transparent !important; background-image: none !important; }
+/* Onboarding/setup screen sits above body — paint the canvas on it directly */
+#setup-screen {
+  background:
+    radial-gradient(1000px 720px at 88% -8%, rgba(52,210,126,0.26), transparent 56%),
+    radial-gradient(820px 640px at -6% 108%, rgba(201,242,77,0.30), transparent 54%),
+    linear-gradient(180deg, #cdecd7 0%, #e7f4dd 50%, #dcefae 100%) !important;
+}
 
 /* Mobile adjustments */
 @media (max-width: 768px) {
@@ -2260,7 +2283,10 @@ html[data-theme="dark"] body .anc-travel-chip:not(.anc-travel-sel) {
   margin: 0 !important;
   padding: 1.5rem 1.25rem !important;
   box-sizing: border-box !important;
-  background: transparent !important;
+  background:
+    radial-gradient(1000px 720px at 88% -8%, rgba(52,210,126,0.26), transparent 56%),
+    radial-gradient(820px 640px at -6% 108%, rgba(201,242,77,0.30), transparent 54%),
+    linear-gradient(180deg, #cdecd7 0%, #e7f4dd 50%, #dcefae 100%) !important;
 }
 
 /* Ensure the slides inside take full width too */
