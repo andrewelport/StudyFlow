@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════
    STUDYFLOW v6 — Premium Design System
    Apple / Fantastical / Things 3 inspired
-   Brand: Indigo #5C6EF5  |  Light-mode primary  |  Hebrew RTL
+   Brand: Indigo #1fb45c  |  Light-mode primary  |  Hebrew RTL
    Loads after style.css — wins on all conflicts via !important
    ═══════════════════════════════════════════════════════════════ */
 
@@ -24,10 +24,10 @@
   --bor-2:    #C6C6C8;   /* opaque separator */
 
   /* Brand — Indigo */
-  --brand:    #5C6EF5;
-  --dk:       #4250D4;   /* pressed / deeper */
-  --soft:     rgba(92,110,245,0.10);
-  --lite:     #EEF0FF;
+  --brand:    #1fb45c;
+  --dk:       #0e8a43;   /* pressed / deeper */
+  --soft:     rgba(31, 180, 92,0.10);
+  --lite:     #e7f7ee;
 
   /* Semantic */
   --grn:      #34C759;   /* Apple green */
@@ -57,8 +57,8 @@
   --ink:   #FFFFFF;  --ink-2: #EBEBF5;  --ink-3: rgba(235,235,245,0.6);
   --ink-4: rgba(235,235,245,0.3);
   --bor:   #38383A;  --bor-2: #545458;
-  --brand: #818CF8;  --dk:    #6366F1;
-  --soft:  rgba(129,140,248,0.12);  --lite: #2D2B5A;
+  --brand: #34d27e;  --dk:    #22c55e;
+  --soft:  rgba(52, 210, 126,0.12);  --lite: #0e3a22;
   --sh:    0 1px 4px rgba(0,0,0,0.5);  --sh-md: 0 4px 16px rgba(0,0,0,0.6);
 }
 
@@ -70,9 +70,9 @@
   --surface3:    #E5E5EA;
   --text:        #1C1C1E;
   --muted:       #8E8E93;
-  --accent:      #5C6EF5;
-  --accent-light: #EEF0FF;
-  --accent-dark:  #4250D4;
+  --accent:      #1fb45c;
+  --accent-light: #e7f7ee;
+  --accent-dark:  #0e8a43;
   --border:      #E5E5EA;
   --border2:     #C6C6C8;
   --green-light: rgba(52,199,89,0.12);
@@ -88,7 +88,7 @@
 [data-theme="dark"] {
   --surface:    #2C2C2E;  --surface2: #1C1C1E;  --surface3: #3A3A3C;
   --text:       #FFFFFF;  --muted:    rgba(235,235,245,0.6);
-  --accent:     #818CF8;  --accent-light: rgba(129,140,248,0.15);
+  --accent:     #34d27e;  --accent-light: rgba(52, 210, 126,0.15);
   --border:     #38383A;  --border2:  #545458;
   --green-light: rgba(52,199,89,0.15); --red-light: rgba(255,59,48,0.15);
   --yellow:      #FF9F0A; --yellow-light: rgba(255,159,10,0.15);
@@ -393,7 +393,7 @@ body[data-theme="dark"] {
 .stat-card.yellow { background: #FFF7E0 !important; }
 .stat-card.yellow .stat-num, .stat-card.yellow .stat-label { color: #996600 !important; }
 
-[data-theme="dark"] .stat-card.blue   { background: rgba(92,110,245,0.15) !important; }
+[data-theme="dark"] .stat-card.blue   { background: rgba(31, 180, 92,0.15) !important; }
 [data-theme="dark"] .stat-card.blue   .stat-num,
 [data-theme="dark"] .stat-card.blue   .stat-label { color: #93A8FF !important; }
 [data-theme="dark"] .stat-card.green  { background: rgba(52,199,89,0.12) !important; }
@@ -892,7 +892,7 @@ input:focus, textarea:focus, select:focus {
   width: 100% !important; height: 6px !important; border-radius: 99px !important;
   background-color: var(--sur-3) !important; overflow: hidden !important; margin-top: 5px !important;
 }
-.sq-mission-bar { height: 100% !important; border-radius: 99px !important; background: linear-gradient(90deg, var(--brand), #818CF8) !important; }
+.sq-mission-bar { height: 100% !important; border-radius: 99px !important; background: linear-gradient(90deg, var(--brand), #34d27e) !important; }
 .sq-mission-xp {
   font-size: 0.75rem !important; font-weight: 800 !important; color: var(--xp) !important;
   background-color: rgba(88,204,2,0.12) !important; border-radius: 8px !important;
@@ -1004,11 +1004,11 @@ input:focus, textarea:focus, select:focus {
 }
 /* Next task widget — HERO card (big, most important thing) */
 .next-task-widget {
-  background: linear-gradient(135deg, var(--brand), #818CF8) !important;
+  background: linear-gradient(135deg, var(--brand), #34d27e) !important;
   border-radius: var(--rsm) !important;
   padding: 18px 20px !important; margin-bottom: 14px !important;
   border: none !important; background-image: none !important;
-  box-shadow: 0 6px 20px rgba(92,110,245,0.35) !important;
+  box-shadow: 0 6px 20px rgba(31, 180, 92,0.35) !important;
   position: relative !important; overflow: hidden !important;
 }
 .next-task-widget * { color: rgba(255,255,255,0.95) !important; }
@@ -1155,7 +1155,7 @@ input:focus, textarea:focus, select:focus {
   font-size: 5rem !important; font-weight: 800 !important; color: #fff !important;
   letter-spacing: -0.06em !important;
   font-family: Heebo, 'Space Mono', monospace !important;
-  text-shadow: 0 0 40px rgba(129,140,248,0.3) !important;
+  text-shadow: 0 0 40px rgba(52, 210, 126,0.3) !important;
 }
 /* Focus ring behind timer */
 .focus-ring-svg {
@@ -1247,7 +1247,7 @@ input:focus, textarea:focus, select:focus {
 #sf-load-bar {
   position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important;
   height: 3px !important; z-index: 9999 !important;
-  background: linear-gradient(90deg, var(--brand), #818CF8) !important;
+  background: linear-gradient(90deg, var(--brand), #34d27e) !important;
   transform-origin: left !important;
   animation: sfLoadBar 1.4s cubic-bezier(0.4,0,0.2,1) forwards !important;
   pointer-events: none !important;
@@ -1299,14 +1299,14 @@ input:focus, textarea:focus, select:focus {
   left: 20px !important;   /* RTL: left = screen left */
   z-index: 250 !important;
   width: 56px !important; height: 56px !important; border-radius: 50% !important;
-  background: linear-gradient(135deg, var(--brand), #818CF8) !important;
-  box-shadow: 0 4px 14px rgba(92,110,245,0.45) !important;
+  background: linear-gradient(135deg, var(--brand), #34d27e) !important;
+  box-shadow: 0 4px 14px rgba(31, 180, 92,0.45) !important;
   border: none !important; cursor: pointer !important;
   display: flex; align-items: center !important; justify-content: center !important;
   color: #fff !important; font-size: 1.75rem !important; font-weight: 300 !important;
   transition: transform var(--tf), box-shadow var(--tf) !important;
 }
-.fab-circle:active { transform: scale(0.92) !important; box-shadow: 0 2px 8px rgba(92,110,245,0.35) !important; }
+.fab-circle:active { transform: scale(0.92) !important; box-shadow: 0 2px 8px rgba(31, 180, 92,0.35) !important; }
 .fab-circle svg { stroke: #fff !important; width: 24px !important; height: 24px !important; }
 
 /* ─── XP TOAST (+XP quiet display) ─────────────────────────── */
@@ -1403,7 +1403,7 @@ input:focus, textarea:focus, select:focus {
 /* Geometric illustration wrapper */
 .ob2-illus {
   width: 100% !important; height: 140px !important;
-  background: linear-gradient(135deg, var(--lite) 0%, rgba(129,140,248,0.08) 100%) !important;
+  background: linear-gradient(135deg, var(--lite) 0%, rgba(52, 210, 126,0.08) 100%) !important;
   border-radius: 20px !important; margin-bottom: 24px !important;
   position: relative !important; overflow: hidden !important;
   display: flex; align-items: center !important; justify-content: center !important;
@@ -1411,13 +1411,13 @@ input:focus, textarea:focus, select:focus {
 .ob2-illus::before {
   content: '' !important; position: absolute !important;
   width: 120px !important; height: 120px !important; border-radius: 50% !important;
-  background: rgba(92,110,245,0.1) !important;
+  background: rgba(31, 180, 92,0.1) !important;
   top: -30px !important; right: -20px !important;
 }
 .ob2-illus::after {
   content: '' !important; position: absolute !important;
   width: 60px !important; height: 60px !important; border-radius: 18px !important;
-  background: rgba(92,110,245,0.07) !important;
+  background: rgba(31, 180, 92,0.07) !important;
   bottom: 10px !important; left: 10px !important; transform: rotate(20deg) !important;
 }
 .ob2-illus svg { position: relative !important; z-index: 1 !important; }
@@ -1445,7 +1445,7 @@ input:focus, textarea:focus, select:focus {
 }
 .sf-attr-chip.sf-sel {
   background: var(--brand) !important; color: #fff !important;
-  border-color: var(--brand) !important; box-shadow: 0 4px 12px rgba(92,110,245,0.3) !important;
+  border-color: var(--brand) !important; box-shadow: 0 4px 12px rgba(31, 180, 92,0.3) !important;
 }
 
 /* "שאלות נוספות" optional link below skip */
@@ -1489,8 +1489,9 @@ input:focus, textarea:focus, select:focus {
 /* Remove emoji/level elements (JS bakes emoji into text node) */
 .sq-hero-level-name, #tree-next, #xp-level-emoji, .sq-level-emoji { display: none !important; }
 
-/* Clean backgrounds */
-body, html { background-image: none !important; }
+/* Green canvas wash: cool mint -> near-white -> warm lime */
+html { background-image: none !important; }
+body { background-image: var(--grad-canvas) !important; background-color: #f1f6ef !important; }
 .app-layout, .main-content { background: transparent !important; background-image: none !important; }
 
 /* Mobile adjustments */
@@ -1502,7 +1503,7 @@ body, html { background-image: none !important; }
 
 /* ─── CRITICAL BUG FIXES FOR COLORS ──────────────────────── */
 .next-task-widget {
-  background: linear-gradient(135deg, var(--brand), #818CF8) !important;
+  background: linear-gradient(135deg, var(--brand), #34d27e) !important;
 }
 .next-task-widget .ntw-task-name, 
 .next-task-widget .ntw-label, 
@@ -2335,12 +2336,12 @@ input[type="date"], input[type="time"] {
 
 /* ─── SETUP GUIDE CARD ─── */
 .sf-guide {
-  background: linear-gradient(135deg, #5C6EF5 0%, #7c3aed 100%);
+  background: linear-gradient(135deg, #1fb45c 0%, #34d27e 100%);
   border-radius: 16px;
   padding: 1rem 1rem 0.75rem;
   margin-bottom: 1rem;
   color: #fff;
-  box-shadow: 0 6px 24px rgba(92,110,245,0.35);
+  box-shadow: 0 6px 24px rgba(31, 180, 92,0.35);
 }
 .sf-guide-title {
   font-size: 1rem;
@@ -2384,7 +2385,7 @@ input[type="date"], input[type="time"] {
 .sf-guide-check.done {
   background: rgba(255,255,255,0.9);
   border-color: transparent;
-  color: #5C6EF5;
+  color: #1fb45c;
   font-weight: 900;
 }
 .sf-guide-step-label {
@@ -2490,7 +2491,7 @@ input[type="date"], input[type="time"] {
   min-width: 0 !important;
 }
 .pl-sh-hobby-add input:focus {
-  border-color: var(--accent, #4f6ef7) !important;
+  border-color: var(--accent, #1fb45c) !important;
 }
 
 /* Bug 2: hp-setup-card was using 100vw (overflows padded main-content on mobile) */

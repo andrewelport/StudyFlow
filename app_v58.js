@@ -251,7 +251,7 @@ function extractJSON(str) {
     }
 }
 
-const palette = ['#4f6ef7', '#16c98d', '#f5a623', '#f76060', '#8b5cf6', '#ff7043', '#00b8d4'];
+const palette = ['#1fb45c', '#16c98d', '#f5a623', '#f76060', '#8b5cf6', '#ff7043', '#00b8d4'];
 const courseColorMap = {};
 function getCourseColor(course) {
   if (!course) return 'var(--accent)';
@@ -804,7 +804,7 @@ function obNext(step) { obStep(step + 1); }
 function addAnchorRow(){
   const rowId='anch-'+uid();
   const dayShort=['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ש׳'];
-  const colors=['#4f6ef7','#22c55e','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316'];
+  const colors=['#1fb45c','#22c55e','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316'];
   const defColor=colors[document.querySelectorAll('.anchor-builder-row').length % colors.length];
   // remove empty state if present
   const empty=document.getElementById('ab-empty-state');
@@ -898,7 +898,7 @@ function collectAnchors(){
     const name = (row.querySelector('input[type="text"]')?.value || '').trim();
     if (!name) return;
     if (name.length > 60) { toast('שם עוגן ארוך מדי (מקסימום 60 תווים)'); return; }
-    const color = row.querySelector('input[type="color"]')?.value || '#4f6ef7';
+    const color = row.querySelector('input[type="color"]')?.value || '#1fb45c';
     const travelMin = Math.max(0, Math.min(180, parseInt(row.querySelector('.ob-travel-inp')?.value || 0)));
     const activeDays = Array.from(row.querySelectorAll('.ob-day-btn.active')).map(b => parseInt(b.dataset.day));
     const defaultStart = row.querySelector('.ob-def-start')?.value || '09:00';
@@ -1230,10 +1230,10 @@ function renderProgress(){
     const earned = ACHIEVEMENTS.filter(a => a.check(S));
     if (el('sq-badge-count')) el('sq-badge-count').textContent = `${earned.length} / ${ACHIEVEMENTS.length}`;
     const HEX_COLORS = [
-      ['#4f6ef7','#a78bfa'],['#06b6d4','#16c98d'],['#8b5cf6','#ec4899'],
-      ['#f5a623','#f97316'],['#16c98d','#4f6ef7'],['#f97316','#fbbf24'],
+      ['#1fb45c','#a78bfa'],['#06b6d4','#16c98d'],['#8b5cf6','#ec4899'],
+      ['#f5a623','#f97316'],['#16c98d','#1fb45c'],['#f97316','#fbbf24'],
       ['#06b6d4','#8b5cf6'],['#10b981','#06b6d4'],['#f76060','#f97316'],
-      ['#a78bfa','#4f6ef7'],['#ec4899','#8b5cf6'],['#fbbf24','#f5a623']
+      ['#a78bfa','#1fb45c'],['#ec4899','#8b5cf6'],['#fbbf24','#f5a623']
     ];
     bWrap.innerHTML = ACHIEVEMENTS.map((a, i) => {
       const isEarned = a.check(S);
@@ -1254,7 +1254,7 @@ function renderProgress(){
   if (cpEl) {
     const courses = [...new Set(S.tasks.filter(t => t.course).map(t => t.course))];
     if (courses.length) {
-      const colors = ['#4f6ef7','#16c98d','#f5a623','#f76060','#a78bfa','#38ef7d','#ec4899'];
+      const colors = ['#1fb45c','#16c98d','#f5a623','#f76060','#a78bfa','#38ef7d','#ec4899'];
       cpEl.innerHTML = courses.map((c, i) => {
         const ct = S.tasks.filter(t => t.course === c);
         const cd = ct.filter(t => t.done).length;
@@ -2079,7 +2079,7 @@ function renderCourseCards() {
     const pct = Math.round((d / total) * 100);
     const color = getCourseColor(c.name);
     return `
-      <div style="background:var(--surface);border-radius:24px;padding:1.5rem;margin-bottom:1rem;box-shadow:0 12px 32px rgba(0,0,0,0.06);border:1px solid rgba(79,110,247,0.10);position:relative;overflow:hidden;transition:transform 0.3s, box-shadow 0.3s;animation:slideUpFadeIn 0.3s ease-out;">
+      <div style="background:var(--surface);border-radius:24px;padding:1.5rem;margin-bottom:1rem;box-shadow:0 12px 32px rgba(0,0,0,0.06);border:1px solid rgba(31, 180, 92,0.10);position:relative;overflow:hidden;transition:transform 0.3s, box-shadow 0.3s;animation:slideUpFadeIn 0.3s ease-out;">
         <div style="position:absolute;top:0;right:0;bottom:0;width:6px;background:${color};border-radius:0 24px 24px 0;"></div>
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem;">
           <div style="font-size:1.4rem;font-weight:900;color:var(--text);letter-spacing:-0.02em;">${c.name}</div>
@@ -2133,7 +2133,7 @@ function renderHobbyCardsInPlanner() {
               </div>
             </div>
           </div>
-          <button onclick="_hobbyActiveIdx=${hidx}; showPage('hobby',null)" style="background:var(--accent);color:white;font-weight:900;padding:0.5rem 1rem;border-radius:12px;box-shadow:0 6px 14px rgba(79,110,247,0.25);border:none;cursor:pointer;font-size:0.85rem;">אמן</button>
+          <button onclick="_hobbyActiveIdx=${hidx}; showPage('hobby',null)" style="background:var(--accent);color:white;font-weight:900;padding:0.5rem 1rem;border-radius:12px;box-shadow:0 6px 14px rgba(31, 180, 92,0.25);border:none;cursor:pointer;font-size:0.85rem;">אמן</button>
         </div>
       </div>`;
   }).join('');
@@ -2226,7 +2226,7 @@ function renderTimeChart() {
 // ══════════════════════════════════════════════
 // SEMESTER PLANNER
 // ══════════════════════════════════════════════
-const COURSE_PALETTE = ['#4f6ef7','#16c98d','#f5a623','#8b5cf6','#f76060','#06b6d4','#f97316','#10b981'];
+const COURSE_PALETTE = ['#1fb45c','#16c98d','#f5a623','#8b5cf6','#f76060','#06b6d4','#f97316','#10b981'];
 let semCourseCount = 0;
 
 function setPlannerMode(mode) {
@@ -2271,7 +2271,7 @@ function removeSemesterCourse(id) {
 function collectSemesterCourses() {
   return Array.from(document.querySelectorAll('.semester-course-card')).map(card => ({
     course: card.querySelector('.sem-name')?.value.trim() || '',
-    color: card.querySelector('.sem-color')?.value || '#4f6ef7',
+    color: card.querySelector('.sem-color')?.value || '#1fb45c',
     date: card.querySelector('.sem-exam-date')?.value || '',
     startDate: card.querySelector('.sem-start-date')?.value || ld(new Date()),
     hours: Math.max(1, parseFloat(card.querySelector('.sem-hours')?.value || 8)),
@@ -3134,7 +3134,7 @@ function renderAnchorsList(){
     const endNote = !a.oneTimeDate && a.endDate ? ` · עד ${fmtDate(a.endDate)}` : '';
     const notesHtml = a.notes ? `<div class="anchor-notes-d">${escapeHtml(a.notes)}</div>` : '';
     return `<div class="anchor-card">
-      <div class="anchor-card-strip" style="background:${a.color||'#4f6ef7'}"></div>
+      <div class="anchor-card-strip" style="background:${a.color||'#1fb45c'}"></div>
       <div class="anchor-card-body">
         <div class="anchor-name-d">${escapeHtml(a.name)}</div>
         <div class="anchor-time-d">${dayOrDate} · ${a.start||'00:00'} – ${a.end||'00:00'}${travelNote}${endNote}</div>
@@ -3392,7 +3392,7 @@ function showAddAnchorModal(){
   document.getElementById('anchor-modal').dataset.editId = '';
   document.getElementById('anchor-modal-title').textContent = ' הוסף עוגן קבוע';
   document.getElementById('anc-name').value = '';
-  document.getElementById('anc-color').value = '#4f6ef7';
+  document.getElementById('anc-color').value = '#1fb45c';
   document.getElementById('anc-travel').value = 0;
   document.getElementById('anc-day').value = 0;
   document.getElementById('anc-start').value = '09:00';
@@ -3426,7 +3426,7 @@ function editAnchor(id) {
   document.getElementById('anchor-modal').dataset.editId = id;
   document.getElementById('anchor-modal-title').textContent = '️ עריכת עוגן';
   document.getElementById('anc-name').value = a.name || '';
-  document.getElementById('anc-color').value = a.color || '#4f6ef7';
+  document.getElementById('anc-color').value = a.color || '#1fb45c';
   document.getElementById('anc-travel').value = a.travelMin || 0;
   document.getElementById('anc-day').value = String(a.day || 0);
   document.getElementById('anc-start').value = a.start || '09:00';
@@ -3540,7 +3540,7 @@ function renderCalendarView() {
     const d = new Date(sow); d.setDate(sow.getDate() + i);
     const isToday = ld(d) === todayStr;
     const numHtml = isToday
-      ? `<div style="width:30px;height:30px;border-radius:50%;background:var(--accent);color:white;display:inline-flex;align-items:center;justify-content:center;font-size:0.9rem;font-weight:900;margin-bottom:4px;box-shadow:0 2px 10px rgba(79,110,247,0.35)">${d.getDate()}</div>`
+      ? `<div style="width:30px;height:30px;border-radius:50%;background:var(--accent);color:white;display:inline-flex;align-items:center;justify-content:center;font-size:0.9rem;font-weight:900;margin-bottom:4px;box-shadow:0 2px 10px rgba(31, 180, 92,0.35)">${d.getDate()}</div>`
       : `<div style="font-size:0.9rem;font-weight:700;color:var(--muted);margin-bottom:4px">${d.getDate()}</div>`;
     return `<div class="cal-cell cal-header${isToday?' today-col':''}">${numHtml}<div style="font-size:0.7rem;letter-spacing:0.5px">${daysFull[i]}</div></div>`;
   }).join('');
@@ -3778,7 +3778,7 @@ function saveAnchorManual(){
   const start = document.getElementById('anc-start').value||'09:00';
   const end = document.getElementById('anc-end').value||'16:00';
   const travelMin = Math.max(0, Math.min(180, parseInt(document.getElementById('anc-travel').value)||0));
-  const color = document.getElementById('anc-color').value||'#4f6ef7';
+  const color = document.getElementById('anc-color').value||'#1fb45c';
   const ancForever = document.getElementById('anc-forever')?.checked !== false;
   const ancEndDate = document.getElementById('anc-end-date')?.value || null;
   const endDate = ancForever ? null : ancEndDate;
@@ -4705,7 +4705,7 @@ function _hpRenderInsight(hobby, done) {
   wrap.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:1.25rem">
       <div style="display:flex;align-items:center;gap:1rem;">
-        <div style="width:4.5rem;height:4.5rem;border-radius:18px;background:linear-gradient(135deg, var(--surface), var(--accent-light));color:var(--accent);display:flex;align-items:center;justify-content:center;box-shadow:0 12px 24px rgba(79,110,247,0.15);border:1px solid rgba(255,255,255,0.5);">
+        <div style="width:4.5rem;height:4.5rem;border-radius:18px;background:linear-gradient(135deg, var(--surface), var(--accent-light));color:var(--accent);display:flex;align-items:center;justify-content:center;box-shadow:0 12px 24px rgba(31, 180, 92,0.15);border:1px solid rgba(255,255,255,0.5);">
           ${_hobbyEmoji(hobby.name)}
         </div>
         <div style="flex:1;">
@@ -4747,7 +4747,7 @@ function _hpRenderTrack(hobby, done) {
   const spw = hobby.timesPerWeek || 3;
   const ms = [
     { emoji:'🌱', label:'התחלה',       req:0,                    color:'#94a3b8' },
-    { emoji:'⚡', label:'שבוע ראשון',  req:spw,                  color:'#6366f1' },
+    { emoji:'⚡', label:'שבוע ראשון',  req:spw,                  color:'#22c55e' },
     { emoji:'🔥', label:'חודש ראשון',  req:Math.round(spw*4),    color:'#f59e0b' },
     { emoji:'💪', label:'עוצמה',       req:Math.round(spw*8),    color:'#ef4444' },
     { emoji:'🏆', label:'מתקדם',       req:Math.round(spw*12),   color:'#8b5cf6' },
@@ -4857,7 +4857,7 @@ async function sendHobbyPageMessage() {
       chat.innerHTML += `<div class="chat-msg ai"><div class="chat-bubble hp-task-suggest">
         <div style="font-weight:700;color:var(--accent);margin-bottom:0.4rem">המאמן מציע ${pendingTasks.length} אימונים:</div>
         ${pendingTasks.map(t=>`<div style="font-size:0.82rem">• ${t.name} (${t.duration||hobby.sessionDuration} דק')</div>`).join('')}
-        <button class="hp-add-btn" onclick="hpConfirmAddTasks()" style="background:var(--accent);color:white;border:none;box-shadow:0 4px 14px rgba(79,110,247,0.3);width:100%;border-radius:12px;padding:0.8rem;font-weight:900;margin-top:0.5rem">הוסף אימונים אלו ללו"ז שלי</button>
+        <button class="hp-add-btn" onclick="hpConfirmAddTasks()" style="background:var(--accent);color:white;border:none;box-shadow:0 4px 14px rgba(31, 180, 92,0.3);width:100%;border-radius:12px;padding:0.8rem;font-weight:900;margin-top:0.5rem">הוסף אימונים אלו ללו"ז שלי</button>
       </div></div>`;
     }
     chat.scrollTop = chat.scrollHeight;
@@ -4961,7 +4961,7 @@ async function findHobbySlots() {
       const count = selectedSlots.filter(Boolean).length;
       modal.innerHTML = `
         <div style="text-align:center;">
-          <div style="width:3.5rem;height:3.5rem;margin:0 auto 1rem;border-radius:16px;background:linear-gradient(135deg, var(--brand), var(--purple));color:white;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 16px rgba(79,110,247,0.3);">
+          <div style="width:3.5rem;height:3.5rem;margin:0 auto 1rem;border-radius:16px;background:linear-gradient(135deg, var(--brand), var(--purple));color:white;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 16px rgba(31, 180, 92,0.3);">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
           </div>
           <h2 style="font-size:1.4rem;font-weight:900;color:var(--text);margin-bottom:0.25rem;">מצאתי ${newTasks.length} חלונות זמן!</h2>
@@ -4969,7 +4969,7 @@ async function findHobbySlots() {
         </div>
         <div id="hp-slots-container">${renderTasksHtml()}</div>
         <div style="display:flex;gap:0.75rem;margin-top:0.5rem">
-          <button class="btn-primary" id="hp-approve-btn" style="flex:1.5;background:var(--brand);border:none;border-radius:14px;padding:1rem;font-size:1.1rem;font-weight:900;box-shadow:0 8px 16px rgba(92,110,245,0.25); color:white; ${count===0?'opacity:0.5; pointer-events:none;':''}">הוסף ${count} ללו"ז</button>
+          <button class="btn-primary" id="hp-approve-btn" style="flex:1.5;background:var(--brand);border:none;border-radius:14px;padding:1rem;font-size:1.1rem;font-weight:900;box-shadow:0 8px 16px rgba(31, 180, 92,0.25); color:white; ${count===0?'opacity:0.5; pointer-events:none;':''}">הוסף ${count} ללו"ז</button>
           <button class="btn-cancel" id="hp-cancel-btn" style="flex:1;border-radius:14px;padding:1rem;font-size:1.1rem;font-weight:900;background:var(--surface2);color:var(--text);border:none;">בטל</button>
         </div>
       `;
@@ -5128,7 +5128,7 @@ window.openHobbyProgressModal = function(name) {
   
   modal.innerHTML = `
     <div style="text-align:center;">
-      <div style="width:4.5rem;height:4.5rem;margin:0 auto 1rem;border-radius:20px;background:linear-gradient(135deg, var(--accent), var(--purple));color:white;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 16px rgba(79,110,247,0.3);">
+      <div style="width:4.5rem;height:4.5rem;margin:0 auto 1rem;border-radius:20px;background:linear-gradient(135deg, var(--accent), var(--purple));color:white;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 16px rgba(31, 180, 92,0.3);">
         ${_hobbyEmoji(name)}
       </div>
       <h2 style="font-size:1.6rem;font-weight:900;color:var(--text);margin-bottom:0.25rem;">איך הלך ב${name}?</h2>
@@ -5157,7 +5157,7 @@ window.openHobbyProgressModal = function(name) {
     </div>
     
     <div style="display:flex;flex-direction:column;gap:0.75rem;margin-top:0.5rem;">
-      <button class="btn-primary" onclick="submitHobbyProgress('${name}')" style="width:100%;border-radius:16px;padding:1.1rem;font-size:1.15rem;font-weight:900;background:var(--accent);box-shadow:0 8px 24px rgba(79,110,247,0.3);border:none;color:white;">שמור והמשך</button>
+      <button class="btn-primary" onclick="submitHobbyProgress('${name}')" style="width:100%;border-radius:16px;padding:1.1rem;font-size:1.15rem;font-weight:900;background:var(--accent);box-shadow:0 8px 24px rgba(31, 180, 92,0.3);border:none;color:white;">שמור והמשך</button>
       <button class="btn-cancel" onclick="document.getElementById('hobby-progress-overlay').remove()" style="width:100%;font-weight:800;color:var(--muted);background:transparent;border:none;padding:0.75rem;">ביטול</button>
     </div>
   `;

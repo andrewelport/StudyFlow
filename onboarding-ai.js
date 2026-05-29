@@ -182,7 +182,7 @@
   }
 
   // ── apply extracted data → app model ────────────────────────────────
-  const COLORS = ['#4f6ef7', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316', '#ec4899'];
+  const COLORS = ['#1fb45c', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316', '#ec4899'];
 
   function applyExtracted(d, override) {
     override = override || {};
@@ -211,7 +211,7 @@
     });
     d.class_schedule.forEach(s => {
       const nm = (String(s.course) + (s.kind ? ` (${s.kind})` : '')).slice(0, 60);
-      S.anchors.push({ id: uid(), name: nm, day: clampDay(s.day), start: validTime(s.start), end: validTime(s.end), travelMin: 0, color: colorOf[s.course] || '#4f6ef7', endDate: null });
+      S.anchors.push({ id: uid(), name: nm, day: clampDay(s.day), start: validTime(s.start), end: validTime(s.end), travelMin: 0, color: colorOf[s.course] || '#1fb45c', endDate: null });
     });
     d.fixed_commitments.forEach(s => {
       S.anchors.push({ id: uid(), name: String(s.name).slice(0, 60), day: clampDay(s.day), start: validTime(s.start), end: validTime(s.end), travelMin: 0, color: '#64748b', endDate: null });
@@ -286,26 +286,26 @@
       .sfob-h{font-weight:900;font-size:1.25rem;margin-bottom:.25rem}
       .sfob-sub{color:var(--muted,#888);font-size:.9rem;margin-bottom:1rem;line-height:1.5}
       .sfob-drop{border:2px dashed var(--border,#cbd5e1);border-radius:18px;padding:1.6rem 1rem;text-align:center;cursor:pointer;transition:all .18s;background:var(--surface2,#f6f7fb)}
-      .sfob-drop:hover,.sfob-drop.drag{border-color:var(--accent,#4f6ef7);background:var(--accent-light,#eef1ff)}
+      .sfob-drop:hover,.sfob-drop.drag{border-color:var(--accent,#1fb45c);background:var(--accent-light,#e7f7ee)}
       .sfob-file{display:flex;align-items:center;gap:.5rem;background:var(--surface2,#f4f4f7);border-radius:12px;padding:.5rem .7rem;margin-top:.5rem;font-size:.85rem}
       .sfob-file b{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
       .sfob-x{border:none;background:transparent;color:var(--muted,#888);cursor:pointer;font-size:1.1rem;line-height:1;padding:0 .2rem}
-      .sfob-btn{width:100%;border:none;border-radius:14px;background:linear-gradient(135deg,var(--accent,#4f6ef7),#7c5cff);color:#fff;font-weight:800;padding:.9rem;cursor:pointer;font-size:1rem;margin-top:1rem}
+      .sfob-btn{width:100%;border:none;border-radius:14px;background:linear-gradient(135deg,var(--accent,#1fb45c),#34d27e);color:#fff;font-weight:800;padding:.9rem;cursor:pointer;font-size:1rem;margin-top:1rem}
       .sfob-btn:disabled{opacity:.5;cursor:default}
       .sfob-ghost{width:100%;border:1px solid var(--border,#e2e8f0);background:transparent;color:var(--muted,#64748b);border-radius:14px;padding:.7rem;cursor:pointer;font-weight:700;margin-top:.5rem}
       .sfob-inp{width:100%;border:1px solid var(--border,#cbd5e1);border-radius:12px;padding:.65rem .8rem;font-family:inherit;background:var(--surface,#fff);color:var(--text,#111);direction:rtl}
-      .sfob-spin{width:40px;height:40px;border:4px solid var(--border,#e2e8f0);border-top-color:var(--accent,#4f6ef7);border-radius:50%;animation:sfobSpin .9s linear infinite;margin:1.4rem auto}
+      .sfob-spin{width:40px;height:40px;border:4px solid var(--border,#e2e8f0);border-top-color:var(--accent,#1fb45c);border-radius:50%;animation:sfobSpin .9s linear infinite;margin:1.4rem auto}
       .sfob-sec{font-weight:800;font-size:.82rem;color:var(--muted,#64748b);margin:1rem 0 .4rem}
       .sfob-row{display:flex;align-items:center;gap:.5rem;background:var(--surface2,#f6f7fb);border-radius:12px;padding:.55rem .7rem;margin-bottom:.35rem;font-size:.88rem}
       .sfob-row b{font-weight:700}
       .sfob-row .sfob-meta{color:var(--muted,#888);font-size:.8rem;margin-inline-start:auto}
-      .sfob-chip{display:inline-flex;align-items:center;gap:.35rem;background:var(--accent-light,#eef1ff);color:var(--accent,#4f6ef7);border-radius:999px;padding:.3rem .7rem;font-size:.82rem;font-weight:700;margin:0 0 .35rem .35rem}
+      .sfob-chip{display:inline-flex;align-items:center;gap:.35rem;background:var(--accent-light,#e7f7ee);color:var(--accent,#1fb45c);border-radius:999px;padding:.3rem .7rem;font-size:.82rem;font-weight:700;margin:0 0 .35rem .35rem}
       .sfob-err{background:var(--red-light,#fff2f2);color:var(--red,#e5484d);border-radius:12px;padding:.7rem .9rem;font-size:.88rem;margin-top:.8rem;line-height:1.5}
     `;
     document.head.appendChild(st);
   }
 
-  const FILE_SVG = '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="var(--accent,#4f6ef7)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>';
+  const FILE_SVG = '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="var(--accent,#1fb45c)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>';
 
   function openUpload() {
     ensureStyles();
@@ -321,7 +321,7 @@
     const keyBlock = hasGemini() ? '' :
       `<div class="sfob-sec">מפתח Gemini API</div>
        <input id="sfob-key" class="sfob-inp" type="password" placeholder="הדביקו מפתח Gemini כדי להפעיל חילוץ אוטומטי" />
-       <div style="font-size:.78rem;color:var(--muted,#888);margin-top:.35rem">מפתח חינמי: <a href="${KEY_HELP_URL}" target="_blank" rel="noopener" style="color:var(--accent,#4f6ef7)">aistudio.google.com/apikey</a> · נשמר במכשיר בלבד</div>`;
+       <div style="font-size:.78rem;color:var(--muted,#888);margin-top:.35rem">מפתח חינמי: <a href="${KEY_HELP_URL}" target="_blank" rel="noopener" style="color:var(--accent,#1fb45c)">aistudio.google.com/apikey</a> · נשמר במכשיר בלבד</div>`;
     ov.innerHTML = `
       <div class="sfob-card">
         <div class="sfob-h">✨ הקמה חכמה ב-30 שניות</div>
@@ -451,11 +451,11 @@
   function buildEntryCard() {
     const card = document.createElement('div');
     card.className = 'sfob-entry-card';
-    card.style.cssText = 'background:linear-gradient(135deg,var(--accent,#4f6ef7),#7c5cff);color:#fff;border-radius:18px;padding:1rem 1.1rem;margin:0 0 1rem;box-shadow:0 8px 22px rgba(79,110,247,.3)';
+    card.style.cssText = 'background:linear-gradient(135deg,var(--accent,#1fb45c),#34d27e);color:#fff;border-radius:18px;padding:1rem 1.1rem;margin:0 0 1rem;box-shadow:0 8px 22px rgba(31, 180, 92,.3)';
     card.innerHTML = `
       <div style="font-weight:900;font-size:1.05rem;display:flex;align-items:center;gap:.4rem">✨ הקמה אוטומטית עם AI</div>
       <div style="font-size:.86rem;opacity:.92;margin:.3rem 0 .7rem;line-height:1.5">העלו סילבוס או צילום מערכת שעות — וה-AI ימלא קורסים, מבחנים ולו"ז עבורכם.</div>
-      <button onclick="sfobOpenUpload()" style="background:#fff;color:var(--accent,#4f6ef7);border:none;border-radius:12px;padding:.6rem 1rem;font-weight:800;cursor:pointer;width:100%">העלו קבצים →</button>
+      <button onclick="sfobOpenUpload()" style="background:#fff;color:var(--accent,#1fb45c);border:none;border-radius:12px;padding:.6rem 1rem;font-weight:800;cursor:pointer;width:100%">העלו קבצים →</button>
       <div style="text-align:center;font-size:.78rem;opacity:.8;margin-top:.55rem">או המשיכו להגדרה ידנית</div>`;
     return card;
   }
