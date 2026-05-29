@@ -1535,6 +1535,21 @@
 
       
 
+      <!-- AI -->
+      <div class="settings-sec-label">בינה מלאכותית (AI)</div>
+      <div class="settings-card">
+        <div class="settings-row" style="flex-direction:column;align-items:stretch;gap:0.5rem">
+          <label class="settings-row-label" for="settings-gemini-key" style="font-weight:700">מפתח Gemini — להבנת קבצים והקמה חכמה</label>
+          <input type="password" class="settings-row-input" id="settings-gemini-key" placeholder="הדביקו מפתח Gemini" autocomplete="off" />
+          <div style="font-size:0.74rem;color:var(--muted);line-height:1.5">מפתח חינמי ב-<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--accent)">aistudio.google.com/apikey</a> · נשמר במכשיר בלבד</div>
+        </div>
+        <div class="settings-row settings-row-sep" style="flex-direction:column;align-items:stretch;gap:0.5rem">
+          <label class="settings-row-label" for="settings-api-key" style="font-weight:700">מפתח Groq — לצ׳אט, תכנון ולו"ז</label>
+          <input type="password" class="settings-row-input" id="settings-api-key" placeholder="הדביקו מפתח Groq" autocomplete="off" />
+          <div id="api-key-status" style="font-size:0.74rem"></div>
+        </div>
+      </div>
+
       <!-- Appearance -->
       <div class="settings-sec-label">מראה</div>
       <div class="settings-card">
@@ -1912,7 +1927,8 @@
 </div>
 
 <script src="scheduler.js?v=33"></script>
-<script src="app_v58.js?v=9"></script>
+<script src="app_v58.js?v=10"></script>
+<script src="onboarding-ai.js?v=1"></script>
 <script>
 /* ── Timeline: 80px/hour (airy spacing) ── */
 try { TL_HOUR_PX = 80; TL_PX_MIN = 80/60; } catch(e) {}

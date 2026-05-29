@@ -1,11 +1,12 @@
-const CACHE = 'studyflow-v146';
+const CACHE = 'studyflow-v147';
 const PRECACHE = [
   '/',
   '/index.html',
   '/style.css?v=129',
   '/style_v6.css?v=131',
   '/scheduler.js?v=33',
-  '/app_v58.js?v=9',
+  '/app_v58.js?v=10',
+  '/onboarding-ai.js?v=1',
   '/logo_192.png',
   '/logo_512.png',
   '/manifest.json',

@@ -191,7 +191,7 @@ async function signOut() {
 // Auth state listener removed — local-only mode
 
 
-let S={apiKey:'',userName:'',institution:'',wakeTime:'08:00',sleepTime:'22:00',anchors:[],profile:{},tasks:[],exams:[],courses:[],weekOffset:0,pendingPlan:[],points:0,streak:0,lastStudyDate:'',theme:'light',weeklyReview:{lastReviewDate:null,history:[]},hobbies:[],deletedCollisions:[],reminders:[]};
+let S={apiKey:'',geminiApiKey:'',userName:'',institution:'',wakeTime:'08:00',sleepTime:'22:00',anchors:[],profile:{},tasks:[],exams:[],courses:[],weekOffset:0,pendingPlan:[],points:0,streak:0,lastStudyDate:'',theme:'light',weeklyReview:{lastReviewDate:null,history:[]},hobbies:[],deletedCollisions:[],reminders:[]};
 let selectedOpt=null, missedTaskId=null;
 let currentChatMode = 'general';
 let recalcHistory = [];
@@ -666,6 +666,8 @@ function openSettings() {
   if (sleepEl) sleepEl.value = S.sleepTime || '22:00';
   const keyEl = document.getElementById('settings-api-key');
   if (keyEl) keyEl.value = S.apiKey || '';
+  const gKeyEl = document.getElementById('settings-gemini-key');
+  if (gKeyEl) gKeyEl.value = S.geminiApiKey || '';
   const keyStatus = document.getElementById('api-key-status');
   if (keyStatus) {
     keyStatus.textContent = S.apiKey ? ` מפתח שמור: ${S.apiKey.slice(0,7)}...` : '️ לא הוגדר — AI לא יעבודק';
@@ -710,6 +712,8 @@ function saveSettings() {
   S.wakeTime = wake;
   S.sleepTime = sleep;
   S.apiKey = apiKey;
+  const gKeyEl = document.getElementById('settings-gemini-key');
+  if (gKeyEl) S.geminiApiKey = gKeyEl.value.replace(/\s+/g, '');
   save();
   closeModal('settings-modal');
   const sbName = document.getElementById('sb-name');
@@ -2362,7 +2366,7 @@ async function generateSemesterPlan() {
 
 קורסי הסמסטר:
 ${coursesSummary}
-
+${typeof sfStudyContext === 'function' && sfStudyContext() ? 'מודיעין נוסף מהחומרים שהועלו (נושאים/משקלים/חומר למבחן):\n' + sfStudyContext() + '\n' : ''}
 עוגנים קבועים (חסומים לחלוטין — לא לשבץ כאן):
 ${anchorSummary}
 
@@ -5928,7 +5932,7 @@ async function sendRecalc() {
   const todayStr = ld(new Date());
   const examsTxt = S.exams.map(e => `${e.course}: ${e.date}`).join(', ');
   
-  const ruleReminder = `היום: ${todayStr}. מבחנים: ${examsTxt||'אין'}. אתה עונה ב-JSON בלבד! פורמט: {"reply":"הטקסט שלך","actions":{"add":[{"date":"YYYY-MM-DD","time":"HH:MM","course":"שם","name":"שם הקורס","duration":"60 דק'","priority":"בינוני"}],"delete":["ID"],"update":[{"id":"ID","date":"YYYY-MM-DD","time":"HH:MM"}]}}`;
+  const ruleReminder = `היום: ${todayStr}. מבחנים: ${examsTxt||'אין'}. אתה עונה ב-JSON בלבד! פורמט: {"reply":"הטקסט שלך","actions":{"add":[{"date":"YYYY-MM-DD","time":"HH:MM","course":"שם","name":"שם הקורס","duration":"60 דק'","priority":"בינוני"}],"delete":["ID"],"update":[{"id":"ID","date":"YYYY-MM-DD","time":"HH:MM"}]}}` + (typeof sfStudyContext === 'function' && sfStudyContext() ? ('\n\nהקשר קורסים מהחומרים שהועלו:\n' + sfStudyContext()) : '');
 
   try {
     const _content3 = await callAI({ messages: [...recalcHistory, {role:'system', content:ruleReminder}], temperature: 0.3, json: true });
