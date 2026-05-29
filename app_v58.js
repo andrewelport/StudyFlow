@@ -1122,8 +1122,15 @@ async function _extractScheduleFromFile(fileContent, mimeType) {
   const TIMEOUT_MS = 30000;
   const isCsv = /^(text\/csv|application\/csv|text\/plain)/i.test(mimeType || '');
 
-  const systemPrompt = 'אתה מקבל מערכת שעות שבועית של סטודנט באוניברסיטה. חלץ ממנה את כל המפגשים השבועיים. החזר JSON בלבד.';
-  const baseUserPrompt = 'חלץ את כל השיעורים במערכת השעות. עבור כל שיעור: שם הקורס, יום בשבוע (sunday/monday/tuesday/wednesday/thursday/friday/saturday), שעת התחלה בפורמט HH:MM, שעת סיום בפורמט HH:MM. אם השדות לא ברורים — דלג ואל תנחש.';
+  const systemPrompt = 'אתה מקבל מערכת שעות שבועית של סטודנט באוניברסיטה. חלץ ממנה את כל המפגשים השבועיים, כולל סוג המפגש (הרצאה או תרגול) ושם המרצה אם זמין. החזר JSON בלבד.';
+  const baseUserPrompt = `חלץ את כל המפגשים במערכת השעות. עבור כל מפגש החזר:
+- course_name: שם בסיס נקי של הקורס בלבד. הסר סוגריים כמו "(תרגול)" או "(תר')" והסר שם מרצה. דוגמה: מהמחרוזת "חדו"א 2 (תרגול)- אכרם סאלח" החזר course_name="חדו"א 2".
+- session_type: "tutorial" אם בכותרת מופיע "תרגול" / "תר'" / "(תרגול)" / "(תר')", אחרת "lecture". כל מפגש שלא מסומן במפורש כתרגול הוא הרצאה.
+- teacher: שם המרצה אם כתוב במפורש (בדרך כלל אחרי קו מפריד "-" או אחרי הסוגריים). מחרוזת ריקה אם לא נמצא בבירור.
+- day_of_week: יום בשבוע (sunday/monday/tuesday/wednesday/thursday/friday/saturday).
+- start_time: שעת התחלה בפורמט HH:MM.
+- end_time: שעת סיום בפורמט HH:MM.
+אם השדות לא ברורים — דלג ואל תנחש.`;
   const userPrompt = isCsv
     ? `${baseUserPrompt}\n\nתוכן ה-CSV:\n${fileContent}`
     : baseUserPrompt;
@@ -1142,12 +1149,14 @@ async function _extractScheduleFromFile(fileContent, mimeType) {
           items: {
             type: 'object',
             properties: {
-              course_name: { type: 'string' },
-              day_of_week: { type: 'string', enum: ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'] },
-              start_time:  { type: 'string', description: 'HH:MM' },
-              end_time:    { type: 'string', description: 'HH:MM' },
+              course_name:  { type: 'string' },
+              day_of_week:  { type: 'string', enum: ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'] },
+              start_time:   { type: 'string', description: 'HH:MM' },
+              end_time:     { type: 'string', description: 'HH:MM' },
+              session_type: { type: 'string', enum: ['lecture', 'tutorial'] },
+              teacher:      { type: 'string', description: 'שם המרצה אם נמצא בכותרת — אחרת מחרוזת ריקה' },
             },
-            required: ['course_name', 'day_of_week', 'start_time', 'end_time'],
+            required: ['course_name', 'day_of_week', 'start_time', 'end_time', 'session_type'],
           },
         },
       },
@@ -1608,18 +1617,28 @@ function confirmScheduleUpload() {
     const day = _SU_DAY_NUM[item.day_of_week];
     if (day === undefined) continue;
     if (!/^\d{2}:\d{2}$/.test(item.start_time) || !/^\d{2}:\d{2}$/.test(item.end_time)) continue;
+    const baseName = String(item.course_name || '').trim();
+    const typeLabel = item.session_type === 'tutorial' ? 'תרגול מרצה' : 'הרצאה';
+    const teacher = String(item.teacher || '').trim();
+    let anchorName;
+    if (!baseName) {
+      anchorName = 'עוגן';
+    } else if (teacher) {
+      anchorName = `${baseName} - ${typeLabel} (${teacher})`;
+    } else {
+      anchorName = `${baseName} - ${typeLabel}`;
+    }
     S.anchors.push({
       id: uid(),
-      name: item.course_name || 'עוגן',
+      name: anchorName,
       day,
       start: item.start_time,
       end: item.end_time,
       travelMin: 0,
-      color: getCourseColor(item.course_name || ''),
+      color: getCourseColor(baseName),
     });
     added++;
-    const trimmed = String(item.course_name || '').trim();
-    if (trimmed) uniqueCourseNames.add(trimmed);
+    if (baseName) uniqueCourseNames.add(baseName);
   }
 
   // Register any new courses (skip ones already in S.courses by exact name match).
@@ -6333,7 +6352,7 @@ function _wrShowPreview(tasks) {
       if (cur.getDay() === a.day) {
         const dateStr = ld(cur);
         if (!byDate[dateStr]) byDate[dateStr] = [];
-        byDate[dateStr].push({ date: dateStr, time: a.start, name: a.name, course: '', duration: '', _anchor: true, color: a.color || 'var(--accent)' });
+        byDate[dateStr].push({ date: dateStr, time: a.start, end: a.end, name: a.name, course: '', duration: '', _anchor: true, color: a.color || 'var(--accent)' });
       }
       cur.setDate(cur.getDate() + 1);
     }
@@ -6344,18 +6363,21 @@ function _wrShowPreview(tasks) {
     const sorted = ts.slice().sort((a,b) => (a.time||'').localeCompare(b.time||''));
     return `<div class="wr-day-group">
       <div class="wr-day-label">${dow} · ${date}</div>
-      ${sorted.map(t => t._anchor
-        ? `<div class="wr-task-row wr-anchor-row">
-            <span class="wr-task-time">${t.time}</span>
+      ${sorted.map(t => {
+        if (t._anchor) {
+          return `<div class="wr-task-row wr-anchor-row">
+            <span class="wr-task-time">${t.time} - ${t.end}</span>
             <span class="wr-anchor-dot" style="background:${t.color}"></span>
             <span class="wr-task-name" style="flex:1;text-align:right;color:var(--muted)">${t.name}</span>
-           </div>`
-        : `<div class="wr-task-row">
-            <span class="wr-task-time">${t.time}</span>
+           </div>`;
+        }
+        const dur = parseInt(String(t.duration||'').match(/\d+/)?.[0] || 60);
+        const endStr = minsToTime(timeToMins(t.time) + dur);
+        return `<div class="wr-task-row">
+            <span class="wr-task-time">${t.time} - ${endStr}</span>
             <span class="wr-task-name" style="flex:1;text-align:right;margin-right:1rem">${t.course}${t.name !== t.course ? ` - ${t.name}` : ''}</span>
-            <span class="wr-task-dur">${t.duration}</span>
-           </div>`
-      ).join('')}
+           </div>`;
+      }).join('')}
     </div>`;
   }).join('');
 
