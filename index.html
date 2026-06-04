@@ -1,0 +1,3011 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>StudyFlow  — ה-Waze של הלימודים</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=129">
+<link rel="stylesheet" href="style_v6.css?v=132">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="logo_192.png">
+<meta name="theme-color" content="#5C6EF5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1C1C1E" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="StudyFlow">
+<script>
+(function(){
+  var saved = null;
+  try { var s = localStorage.getItem('sf_free_v1'); if(s) saved = JSON.parse(s).theme; } catch(e){}
+  var theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', theme);
+  // Hide splash immediately for returning users — prevents flash before app.js fires
+  try {
+    var data = JSON.parse(localStorage.getItem('sf_free_v1') || '{}');
+    if (data.userName) document.documentElement.classList.add('sf-returning');
+  } catch(e) {}
+})();
+</script>
+<style>
+  /* Applied synchronously before render — zero flash for returning users */
+  html.sf-returning #sf-splash { display: none !important; }
+</style>
+</head>
+<body>
+<!-- Loading progress bar (Fantastical-style splash) -->
+<div id="sf-load-bar"></div>
+<!-- ═══ SPLASH / HERO SCREEN ═══ -->
+<div id="sf-splash">
+  <div class="spl-blob spl-blob-1"></div>
+  <div class="spl-blob spl-blob-2"></div>
+  <div class="spl-blob spl-blob-3"></div>
+  <div class="spl-center">
+    <div class="spl-icon-wrap">
+      <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M38 18v12M10 18l14-7 14 7-14 7z" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M18 24v8c2 3 10 3 12 0v-8" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="spl-name">StudyFlow</div>
+    <div class="spl-tag">ה-Waze של הלימודים</div>
+  </div>
+  <div class="spl-cta-area">
+    <button class="spl-btn-start" onclick="sfShowAuth()">התחל בחינם</button>
+    <button class="spl-btn-signin" onclick="sfShowAuthSignin()">כבר נרשמתי ← כניסה מהירה</button>
+  </div>
+</div>
+
+<!-- AUTH OVERLAY — hidden in local-only mode -->
+<div id="auth-overlay" style="display:none">
+  <div class="auth-card">
+
+    <!-- Logo -->
+    <div class="auth-logo">
+      <div class="auth-logo-icon-wrap">
+        <svg viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+      </div>
+      <div class="auth-logo-name">StudyFlow</div>
+      <div class="auth-logo-sub">ה-Waze של הלימודים</div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="auth-tabs">
+      <button id="tab-signin" class="auth-tab active" onclick="authSwitchTab('signin')">כניסה</button>
+      <button id="tab-signup" class="auth-tab" onclick="authSwitchTab('signup')">הרשמה</button>
+    </div>
+
+    <!-- Google -->
+    <button class="auth-google-btn" onclick="signInWithGoogle()">
+      <svg width="18" height="18" viewBox="0 0 48 48" style="flex-shrink:0"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+      המשך עם Google
+    </button>
+
+    <!-- Divider -->
+    <div class="auth-divider">
+      <div class="auth-divider-line"></div>
+      <span class="auth-divider-text">או</span>
+      <div class="auth-divider-line"></div>
+    </div>
+
+    <!-- Email -->
+    <div class="auth-field">
+      <label class="auth-label" for="auth-email">אימייל</label>
+      <input id="auth-email" class="auth-input" type="email" placeholder="your@email.com" autocomplete="email" />
+    </div>
+
+    <!-- Password -->
+    <div class="auth-field">
+      <div class="auth-field-header">
+        <label class="auth-label" for="auth-pass">סיסמה</label>
+        <button id="forgot-btn" class="auth-forgot-btn" onclick="authForgotPassword()" type="button">שכחתי סיסמה</button>
+      </div>
+      <div class="auth-input-wrap">
+        <input id="auth-pass" class="auth-input has-eye" type="password" placeholder="לפחות 6 תווים" autocomplete="current-password" onkeydown="if(event.key==='Enter')authSubmit()" />
+        <button class="auth-eye-btn" onclick="authTogglePass('auth-pass','eye1')" type="button" tabindex="-1" aria-label="הצג/הסתר סיסמה">
+          <svg id="eye1" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Confirm Password (signup) -->
+    <div id="confirm-pass-wrap" class="auth-field" style="display:none">
+      <label class="auth-label" for="auth-pass2">אימות סיסמה</label>
+      <div class="auth-input-wrap">
+        <input id="auth-pass2" class="auth-input has-eye" type="password" placeholder="חזור על הסיסמה" autocomplete="new-password" onkeydown="if(event.key==='Enter')authSubmit()" />
+        <button class="auth-eye-btn" onclick="authTogglePass('auth-pass2','eye2')" type="button" tabindex="-1" aria-label="הצג/הסתר אימות סיסמה">
+          <svg id="eye2" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Submit -->
+    <button id="auth-submit-btn" class="auth-submit-btn" onclick="authSubmit()" type="button">כניסה</button>
+
+    <!-- Message -->
+    <div id="auth-msg"></div>
+
+    <!-- Footer -->
+    <div class="auth-footer">הנתונים שלך מוצפנים ומאובטחים&nbsp;•&nbsp;Supabase Auth</div>
+
+  </div>
+</div>
+
+<div id="setup-screen" style="display:none">
+  <div class="ob2-wrap">
+
+    <!-- AI Onboarding (new primary flow) -->
+    <div class="ob2-slide ob2-active" id="ob2-s-aiob">
+      <div class="aiob-logo">✨</div>
+      <div class="ob2-title" style="font-size:1.6rem">ברוך הבא ל-StudyFlow</div>
+      <div class="ob2-sub">ספר/י לי על הלימודים שלך — AI יבנה לך לוז מלא תוך שניות</div>
+      <textarea
+        id="aiob-text"
+        class="aiob-textarea"
+        placeholder="לדוגמה: אני אנדרה, שנה ב׳ מדמ״ח. יש לי אלגוריתמים מבחן 20.6, מערכות הפעלה 25.6, תורת הקומפילציה 28.6. קם ב-7, שוכב ב-23. חדר כושר כל ראשון 9-11."
+        rows="5"
+        dir="auto"
+        maxlength="800"
+      ></textarea>
+      <button class="ob2-next-btn" id="aiob-btn" onclick="_startAIOnboarding()">✨ בנה לי לוז</button>
+      <div id="aiob-loading" class="aiob-loading hidden">
+        <span class="ai-thinking">AI מנתח את הפרטים שלך...</span>
+      </div>
+      <div id="aiob-result" class="aiob-result hidden"></div>
+      <button class="ob2-skip-lnk" onclick="sfGoToS1()">⚙️ הגדרה ידנית (8 שלבים)</button>
+    </div>
+
+    <!-- Top bar -->
+    <div class="ob2-topbar">
+      <button class="ob2-back-btn" id="ob2-back" onclick="obBack()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div class="ob2-progress-track">
+        <div class="ob2-progress-fill" id="ob2-fill"></div>
+      </div>
+      <div class="ob2-counter" id="ob2-counter">1 / 8</div>
+    </div>
+
+    <!-- Step 0: Attribution (first step after auth, before name) -->
+    <div class="ob2-slide" id="ob2-s0">
+      <div class="ob2-illus ob2-illus-sm">
+        <svg viewBox="0 0 160 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="40" cy="40" r="26" fill="var(--accent-light)" stroke="var(--accent)" stroke-width="1.5" opacity="0.7"/>
+          <circle cx="90" cy="40" r="18" fill="var(--green-light)" stroke="var(--green)" stroke-width="1.5" opacity="0.7"/>
+          <circle cx="130" cy="40" r="12" fill="var(--yellow-light)" stroke="var(--yellow)" stroke-width="1.5" opacity="0.7"/>
+          <circle cx="40" cy="40" r="8" fill="var(--accent)" opacity="0.4"/>
+          <path d="M58 30 Q70 20 80 30" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.5"/>
+          <path d="M100 30 Q115 22 120 30" stroke="var(--green)" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.5"/>
+        </svg>
+      </div>
+      <div class="ob2-title">מאיפה שמעת עלינו?</div>
+      <div class="ob2-sub">עוזר לנו להגיע ליותר סטודנטים כמוך 🙏</div>
+      <div class="sf-attr-chips" id="sf-attr-chips">
+        <button class="sf-attr-chip" data-val="tiktok" onclick="sfChipSel(this,'sf-attr-chips')">📱 TikTok / Instagram</button>
+        <button class="sf-attr-chip" data-val="friend" onclick="sfChipSel(this,'sf-attr-chips')">👥 חבר המליץ</button>
+        <button class="sf-attr-chip" data-val="google" onclick="sfChipSel(this,'sf-attr-chips')">🔍 Google</button>
+        <button class="sf-attr-chip" data-val="teacher" onclick="sfChipSel(this,'sf-attr-chips')">👨‍🏫 מורה / מרצה</button>
+        <button class="sf-attr-chip" data-val="other" onclick="sfChipSel(this,'sf-attr-chips')">אחר</button>
+      </div>
+      <button class="ob2-next-btn" onclick="sfAttrNext()">המשך</button>
+      <button class="ob2-skip-lnk" onclick="sfGoToS1()">דלג</button>
+    </div>
+
+    <!-- Step 1: Welcome + Name -->
+    <div class="ob2-slide" id="ob2-s1">
+      <div class="ob2-illus">
+        <svg viewBox="0 0 160 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="28" y="30" width="46" height="60" rx="6" fill="var(--accent-light)" stroke="var(--accent)" stroke-width="2"/>
+          <rect x="86" y="30" width="46" height="60" rx="6" fill="var(--accent-light)" stroke="var(--accent)" stroke-width="2"/>
+          <path d="M74 30 Q80 24 86 30 L86 90 Q80 96 74 90 Z" fill="var(--accent)" opacity="0.25"/>
+          <line x1="38" y1="48" x2="64" y2="48" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" opacity="0.5"/>
+          <line x1="38" y1="58" x2="64" y2="58" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" opacity="0.5"/>
+          <line x1="38" y1="68" x2="56" y2="68" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" opacity="0.5"/>
+          <line x1="96" y1="48" x2="122" y2="48" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" opacity="0.5"/>
+          <line x1="96" y1="58" x2="122" y2="58" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" opacity="0.5"/>
+          <line x1="96" y1="68" x2="112" y2="68" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" opacity="0.5"/>
+          <circle cx="130" cy="22" r="4" fill="var(--yellow)" opacity="0.9"/>
+          <circle cx="140" cy="34" r="2.5" fill="var(--green)" opacity="0.8"/>
+          <circle cx="120" cy="15" r="2" fill="var(--accent)" opacity="0.6"/>
+        </svg>
+      </div>
+      <div class="ob2-title">שלום! בואו נכיר</div>
+      <div class="ob2-sub">ניצור לך לוז שיעבוד איתך, לא נגדך</div>
+      <div class="ob2-fields">
+        <input type="text" id="inp-name" class="ob2-inp ob2-inp-lg" placeholder="מה שמך?" maxlength="50" autocomplete="given-name" onkeydown="if(event.key==='Enter')obStep(2)"/>
+        <input type="text" id="inp-inst" class="ob2-inp" placeholder="מוסד לימודים (אופציונלי)" maxlength="80" autocomplete="organization"/>
+      </div>
+      <div class="ob2-usertype-row">
+        <button type="button" class="ob2-ut-btn ob2-ut-sel" id="ob2-ut-uni" onclick="sfObSetType('university',this)">🎓 סטודנט/ית</button>
+        <button type="button" class="ob2-ut-btn" id="ob2-ut-hs" onclick="sfObSetType('highschool',this)">🏫 תלמיד/ה תיכון</button>
+      </div>
+      <button class="ob2-next-btn" onclick="obStep(2)">המשך — הגדרה מלאה</button>
+      <button class="ob2-skip-lnk" onclick="sfQuickJoin()">כניסה מהירה ← שם בלבד</button>
+    </div>
+
+    <!-- Step 2: Wake / Sleep time -->
+    <div class="ob2-slide" id="ob2-s2">
+      <div class="ob2-illus">
+        <svg viewBox="0 0 160 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="58" cy="60" r="28" fill="var(--yellow-light)" stroke="var(--yellow)" stroke-width="2"/>
+          <line x1="58" y1="32" x2="58" y2="26" stroke="var(--yellow)" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="58" y1="88" x2="58" y2="94" stroke="var(--yellow)" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="30" y1="60" x2="24" y2="60" stroke="var(--yellow)" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="86" y1="60" x2="92" y2="60" stroke="var(--yellow)" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="58" y1="60" x2="58" y2="46" stroke="var(--yellow)" stroke-width="2" stroke-linecap="round"/>
+          <line x1="58" y1="60" x2="68" y2="60" stroke="var(--yellow)" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="58" cy="60" r="3" fill="var(--yellow)"/>
+          <circle cx="110" cy="55" r="22" fill="var(--accent-light)" stroke="var(--accent)" stroke-width="2"/>
+          <path d="M92 55 Q94 42 110 38 Q126 42 128 55 Q126 68 110 72 Q98 68 92 55Z" fill="var(--accent)" opacity="0.1"/>
+          <circle cx="99" cy="44" r="3" fill="var(--accent)" opacity="0.4"/>
+          <circle cx="118" cy="42" r="2" fill="var(--accent)" opacity="0.3"/>
+          <line x1="110" y1="55" x2="110" y2="45" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>
+          <line x1="110" y1="55" x2="118" y2="55" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="110" cy="55" r="2.5" fill="var(--accent)"/>
+        </svg>
+      </div>
+      <div class="ob2-title">מתי היום שלך מתחיל ונגמר?</div>
+      <div class="ob2-sub">המערכת תתכנן משימות רק בין שעות אלו</div>
+      <div class="ob2-time-row">
+        <div class="ob2-time-card">
+          <div class="ob2-time-icon">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="var(--yellow)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          </div>
+          <div class="ob2-time-lbl">קימה</div>
+          <select id="inp-wake" class="ob2-time-sel" onchange="sfUpdateAvailHours()">
+            <option value="05:00">05:00</option><option value="05:30">05:30</option>
+            <option value="06:00">06:00</option><option value="06:30">06:30</option>
+            <option value="07:00">07:00</option><option value="07:30">07:30</option>
+            <option value="08:00" selected>08:00</option><option value="08:30">08:30</option>
+            <option value="09:00">09:00</option><option value="09:30">09:30</option>
+            <option value="10:00">10:00</option><option value="10:30">10:30</option>
+            <option value="11:00">11:00</option><option value="11:30">11:30</option>
+            <option value="12:00">12:00</option><option value="12:30">12:30</option>
+            <option value="13:00">13:00</option>
+          </select>
+        </div>
+        <div class="ob2-time-sep">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </div>
+        <div class="ob2-time-card">
+          <div class="ob2-time-icon">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </div>
+          <div class="ob2-time-lbl">סיום יום</div>
+          <select id="inp-sleep" class="ob2-time-sel" onchange="sfUpdateAvailHours()">
+            <option value="14:00">14:00</option><option value="15:00">15:00</option>
+            <option value="16:00">16:00</option><option value="17:00">17:00</option>
+            <option value="18:00">18:00</option><option value="19:00">19:00</option>
+            <option value="20:00">20:00</option><option value="21:00">21:00</option>
+            <option value="22:00" selected>22:00</option><option value="23:00">23:00</option>
+            <option value="23:59">חצות</option>
+          </select>
+        </div>
+      </div>
+      <div class="ob2-avail-preview" id="ob2-avail-preview">14 שעות פנויות ביום</div>
+      <button class="ob2-next-btn" onclick="obStep(4)">המשך</button>
+    </div>
+
+    <div class="ob2-slide" id="ob2-s3">
+      <div class="ob2-illus ob2-illus-sm">
+        <svg viewBox="0 0 160 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="20" y="10" width="120" height="60" rx="8" fill="var(--accent-light)" stroke="var(--accent)" stroke-width="1.5" opacity="0.6"/>
+          <line x1="20" y1="28" x2="140" y2="28" stroke="var(--accent)" stroke-width="1.5" opacity="0.4"/>
+          <rect x="34" y="16" width="10" height="16" rx="3" fill="var(--accent)" opacity="0.3"/>
+          <rect x="116" y="16" width="10" height="16" rx="3" fill="var(--accent)" opacity="0.3"/>
+          <rect x="32" y="38" width="18" height="14" rx="3" fill="var(--green)" opacity="0.5"/>
+          <rect x="56" y="38" width="18" height="14" rx="3" fill="var(--accent)" opacity="0.7"/>
+          <rect x="80" y="38" width="18" height="14" rx="3" fill="var(--yellow)" opacity="0.5"/>
+          <rect x="104" y="38" width="18" height="14" rx="3" fill="var(--green)" opacity="0.3"/>
+          <rect x="32" y="56" width="28" height="10" rx="3" fill="var(--accent)" opacity="0.4"/>
+          <rect x="68" y="56" width="18" height="10" rx="3" fill="var(--yellow)" opacity="0.4"/>
+          <rect x="94" y="56" width="14" height="10" rx="3" fill="var(--green)" opacity="0.4"/>
+        </svg>
+      </div>
+      <div class="ob2-title">יש לך מחויבויות קבועות?</div>
+      <div class="ob2-sub">שיעורים, עבודה, אימון — המערכת לא תתכנן בזמנים אלו</div>
+      <div id="anchor-builder" style="max-height:45vh;overflow-y:auto;padding-left:2px"></div>
+      <button class="btn-add-anchor" onclick="addAnchorRow()" style="width:100%;margin-bottom:0.5rem">+ הוסף זמן קבוע</button>
+      <button class="ob2-next-btn" onclick="obStep(4)">המשך</button>
+      <button class="ob2-skip-lnk" onclick="obStep(4)">אין לי עכשיו — דלג</button>
+    </div>
+
+    <!-- Step 4: Focus time -->
+    <div class="ob2-slide" id="ob2-s4">
+      <div class="ob2-illus ob2-illus-sm">
+        <svg viewBox="0 0 160 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="35" cy="50" r="20" fill="var(--yellow-light)" stroke="var(--yellow)" stroke-width="2"/>
+          <path d="M35 30 Q45 20 55 30" stroke="var(--yellow)" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <circle cx="80" cy="44" r="24" fill="var(--accent-light)" stroke="var(--accent)" stroke-width="2.5"/>
+          <line x1="80" y1="44" x2="80" y2="30" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>
+          <line x1="80" y1="44" x2="91" y2="44" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="80" cy="44" r="3" fill="var(--accent)"/>
+          <circle cx="125" cy="50" r="20" fill="var(--surface2)" stroke="var(--border2)" stroke-width="2"/>
+          <path d="M115 55 Q120 40 125 38 Q130 40 135 55" stroke="var(--muted)" stroke-width="1.5" fill="none"/>
+          <circle cx="120" cy="44" r="2" fill="var(--muted)" opacity="0.5"/>
+          <circle cx="128" cy="42" r="1.5" fill="var(--muted)" opacity="0.4"/>
+        </svg>
+      </div>
+      <div class="ob2-title">מתי אתה הכי ממוקד?</div>
+      <div class="ob2-sub">נשבץ משימות קשות בשעות הטובות שלך</div>
+      <div class="ob2-choices" id="ob2-choices-4">
+        <button class="ob2-choice" data-qid="focus_time" data-val="בוקר 06–10" onclick="obSelectChoice(this)">
+          <div class="ob2-choice-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
+          </div>
+          <div class="ob2-choice-body"><div class="ob2-choice-label">בוקר</div><div class="ob2-choice-hint">06:00 – 10:00</div></div>
+          <div class="ob2-choice-check"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        </button>
+        <button class="ob2-choice" data-qid="focus_time" data-val="צהריים 10–14" onclick="obSelectChoice(this)">
+          <div class="ob2-choice-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="6"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
+          </div>
+          <div class="ob2-choice-body"><div class="ob2-choice-label">צהריים</div><div class="ob2-choice-hint">10:00 – 14:00</div></div>
+          <div class="ob2-choice-check"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        </button>
+        <button class="ob2-choice" data-qid="focus_time" data-val="אחה&quot;צ 14–18" onclick="obSelectChoice(this)">
+          <div class="ob2-choice-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 18a5 5 0 0 0-10 0"/><line x1="12" y1="2" x2="12" y2="9"/><line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/><line x1="1" y1="18" x2="3" y2="18"/><line x1="21" y1="18" x2="23" y2="18"/><line x1="18.36" y1="11.64" x2="19.78" y2="10.22"/></svg>
+          </div>
+          <div class="ob2-choice-body"><div class="ob2-choice-label">אחה"צ</div><div class="ob2-choice-hint">14:00 – 18:00</div></div>
+          <div class="ob2-choice-check"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        </button>
+        <button class="ob2-choice" data-qid="focus_time" data-val="ערב 18–23" onclick="obSelectChoice(this)">
+          <div class="ob2-choice-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </div>
+          <div class="ob2-choice-body"><div class="ob2-choice-label">ערב</div><div class="ob2-choice-hint">18:00 – 23:00</div></div>
+          <div class="ob2-choice-check"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        </button>
+      </div>
+      <button class="ob2-next-btn" onclick="obStep(5)">המשך</button>
+      <button class="ob2-skip-lnk" onclick="obStep(5)">דלג →</button>
+      <div class="ob2-skip-note">ניתן לשנות הכל בהגדרות בכל עת</div>
+    </div>
+
+    <!-- Step 5: Focus span -->
+    <div class="ob2-slide" id="ob2-s5">
+      <div class="ob2-illus ob2-illus-sm">
+        <svg viewBox="0 0 160 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="65" y="8" width="30" height="8" rx="4" fill="var(--accent)" opacity="0.4"/>
+          <rect x="72" y="6" width="16" height="6" rx="3" fill="var(--accent)" opacity="0.3"/>
+          <ellipse cx="80" cy="50" rx="32" ry="32" fill="var(--accent-light)" stroke="var(--accent)" stroke-width="2"/>
+          <line x1="80" y1="50" x2="80" y2="30" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="80" y1="50" x2="96" y2="56" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="80" cy="50" r="3.5" fill="var(--accent)"/>
+          <circle cx="80" cy="22" r="2" fill="var(--accent)" opacity="0.5"/>
+          <circle cx="108" cy="50" r="2" fill="var(--accent)" opacity="0.5"/>
+          <circle cx="52" cy="50" r="2" fill="var(--accent)" opacity="0.5"/>
+          <circle cx="80" cy="78" r="2" fill="var(--accent)" opacity="0.5"/>
+        </svg>
+      </div>
+      <div class="ob2-title">כמה זמן אתה מצליח להתרכז ברצף?</div>
+      <div class="ob2-sub">נתאים את אורך כל בלוק למידה</div>
+      <div class="ob2-choices">
+        <button class="ob2-choice" data-qid="focus_span" data-val="עד 25 דקות" onclick="obSelectChoice(this)">
+          <div class="ob2-choice-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><polyline points="12 9 12 13 14 15"/><path d="M9 2h6"/></svg>
+          </div>
+          <div class="ob2-choice-body"><div class="ob2-choice-label">עד 25 דקות</div><div class="ob2-choice-hint">בלוקים קצרים עם הפסקות תכופות</div></div>
+          <div class="ob2-choice-check"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        </button>
+        <button class="ob2-choice" data-qid="focus_span" data-val="30–45 דקות" onclick="obSelectChoice(this)">
+          <div class="ob2-choice-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><polyline points="12 9 12 13 15 15"/><path d="M9 2h6"/></svg>
+          </div>
+          <div class="ob2-choice-body"><div class="ob2-choice-label">30–45 דקות</div><div class="ob2-choice-hint">פוקוס טוב, קצב נוח</div></div>
+          <div class="ob2-choice-check"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        </button>
+        <button class="ob2-choice" data-qid="focus_span" data-val="60–75 דקות" onclick="obSelectChoice(this)">
+          <div class="ob2-choice-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><polyline points="12 8 12 13 16 15"/><path d="M9 2h6"/></svg>
+          </div>
+          <div class="ob2-choice-body"><div class="ob2-choice-label">60–75 דקות</div><div class="ob2-choice-hint">ריכוז עמוק, פחות הפסקות</div></div>
+          <div class="ob2-choice-check"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        </button>
+        <button class="ob2-choice" data-qid="focus_span" data-val="90+ דקות" onclick="obSelectChoice(this)">
+          <div class="ob2-choice-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><polyline points="12 7 12 13 17 16"/><path d="M9 2h6"/></svg>
+          </div>
+          <div class="ob2-choice-body"><div class="ob2-choice-label">90+ דקות</div><div class="ob2-choice-hint">זרימה מלאה, מרתון למידה</div></div>
+          <div class="ob2-choice-check"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        </button>
+      </div>
+      <button class="ob2-next-btn" onclick="obStep(6)">המשך</button>
+      <button class="ob2-skip-lnk" onclick="obStep(6)">דלג →</button>
+    </div>
+
+    <!-- Step 6: Learning style -->
+    <div class="ob2-slide" id="ob2-s6">
+      <div class="ob2-illus ob2-illus-sm">
+        <svg viewBox="0 0 160 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="18" y="15" width="34" height="50" rx="5" fill="var(--accent-light)" stroke="var(--accent)" stroke-width="1.8"/>
+          <rect x="58" y="15" width="34" height="50" rx="5" fill="var(--green-light)" stroke="var(--green)" stroke-width="1.8"/>
+          <rect x="98" y="15" width="34" height="50" rx="5" fill="var(--yellow-light)" stroke="var(--yellow)" stroke-width="1.8"/>
+          <line x1="26" y1="30" x2="44" y2="30" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" opacity="0.6"/>
+          <line x1="26" y1="38" x2="44" y2="38" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" opacity="0.6"/>
+          <line x1="26" y1="46" x2="38" y2="46" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" opacity="0.6"/>
+          <circle cx="75" cy="32" r="8" fill="var(--green)" opacity="0.25"/>
+          <line x1="75" y1="40" x2="75" y2="55" stroke="var(--green)" stroke-width="1.8" stroke-linecap="round" opacity="0.7"/>
+          <line x1="68" y1="47" x2="75" y2="55" stroke="var(--green)" stroke-width="1.8" stroke-linecap="round" opacity="0.7"/>
+          <line x1="82" y1="47" x2="75" y2="55" stroke="var(--green)" stroke-width="1.8" stroke-linecap="round" opacity="0.7"/>
+          <circle cx="115" cy="32" r="12" fill="var(--yellow)" opacity="0.2" stroke="var(--yellow)" stroke-width="1.5"/>
+          <line x1="110" y1="32" x2="120" y2="32" stroke="var(--yellow)" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+          <line x1="115" y1="27" x2="115" y2="37" stroke="var(--yellow)" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+        </svg>
+      </div>
+      <div class="ob2-title">מה שיטת הלמידה שלך?</div>
+      <div class="ob2-sub">נבחר את הפורמט שמתאים לך הכי טוב</div>
+      <div class="ob2-choices">
+        <button class="ob2-choice" data-qid="style" data-val="קריאה וסיכום" onclick="obSelectChoice(this)">
+          <div class="ob2-choice-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          </div>
+          <div class="ob2-choice-body"><div class="ob2-choice-label">קריאה וסיכום</div><div class="ob2-choice-hint">עיבוד עצמאי של חומר</div></div>
+          <div class="ob2-choice-check"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        </button>
+        <button class="ob2-choice" data-qid="style" data-val="פתרון תרגילים" onclick="obSelectChoice(this)">
+          <div class="ob2-choice-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>
+          </div>
+          <div class="ob2-choice-body"><div class="ob2-choice-label">פתרון תרגילים</div><div class="ob2-choice-hint">לימוד מתוך עשייה</div></div>
+          <div class="ob2-choice-check"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        </button>
+        <button class="ob2-choice" data-qid="style" data-val="האזנה / וידאו" onclick="obSelectChoice(this)">
+          <div class="ob2-choice-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+          </div>
+          <div class="ob2-choice-body"><div class="ob2-choice-label">האזנה / וידאו</div><div class="ob2-choice-hint">לימוד אודיו-ויזואלי</div></div>
+          <div class="ob2-choice-check"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        </button>
+        <button class="ob2-choice" data-qid="style" data-val="הסבר לאחרים" onclick="obSelectChoice(this)">
+          <div class="ob2-choice-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <div class="ob2-choice-body"><div class="ob2-choice-label">הסבר לאחרים</div><div class="ob2-choice-hint">לימוד על ידי הוראה</div></div>
+          <div class="ob2-choice-check"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        </button>
+      </div>
+      <button class="ob2-next-btn" onclick="obStep(7)">המשך</button>
+      <button class="ob2-skip-lnk" onclick="obStep(7)">דלג →</button>
+    </div>
+
+    <!-- Step 7: Exam fear -->
+    <div class="ob2-slide" id="ob2-s7">
+      <div class="ob2-illus ob2-illus-sm">
+        <svg viewBox="0 0 160 120" fill="none" xmlns="http://www.w3.org/2000/svg" style="max-height:90px;width:auto;display:block;margin:0 auto;">
+          <path d="M80 18 L138 40 L138 65 Q138 95 80 102 Q22 95 22 65 L22 40 Z" fill="var(--accent-light)" stroke="var(--accent)" stroke-width="2"/>
+          <path d="M80 30 L122 46 L122 64 Q122 88 80 94 Q38 88 38 64 L38 46 Z" fill="var(--accent)" opacity="0.1"/>
+          <polyline points="62,62 74,74 100,52" stroke="var(--accent)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <circle cx="126" cy="20" r="5" fill="var(--green)" opacity="0.7"/>
+          <circle cx="138" cy="34" r="3" fill="var(--yellow)" opacity="0.6"/>
+        </svg>
+      </div>
+      <div class="ob2-title">מה הכי מאתגר אותך לפני מבחן?</div>
+      <div class="ob2-sub">נשים דגש על החולשות שלך בבניית הלוז</div>
+      <div class="ob2-choices">
+        <button class="ob2-choice" data-qid="exam_fear" data-val="לא לסיים ללמוד" onclick="obSelectChoice(this)">
+          <div class="ob2-choice-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <div class="ob2-choice-body"><div class="ob2-choice-label">לא לסיים ללמוד</div><div class="ob2-choice-hint">חוסר זמן לכיסוי כל החומר</div></div>
+          <div class="ob2-choice-check"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        </button>
+        <button class="ob2-choice" data-qid="exam_fear" data-val="לא להבין לעומק" onclick="obSelectChoice(this)">
+          <div class="ob2-choice-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <div class="ob2-choice-body"><div class="ob2-choice-label">לא להבין לעומק</div><div class="ob2-choice-hint">תחושה שהחומר לא ברור</div></div>
+          <div class="ob2-choice-check"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        </button>
+        <button class="ob2-choice" data-qid="exam_fear" data-val="לשכוח בלחץ" onclick="obSelectChoice(this)">
+          <div class="ob2-choice-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="9" cy="10.5" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="10.5" r="1" fill="currentColor" stroke="none"/><path d="M7.5 8 L10 9"/><path d="M14 9 L16.5 8"/><line x1="9" y1="16" x2="15" y2="16"/></svg>
+          </div>
+          <div class="ob2-choice-body"><div class="ob2-choice-label">לשכוח בלחץ</div><div class="ob2-choice-hint">בלוק מנטלי בזמן הבחינה</div></div>
+          <div class="ob2-choice-check"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        </button>
+        <button class="ob2-choice" data-qid="exam_fear" data-val="שאלות מפתיעות" onclick="obSelectChoice(this)">
+          <div class="ob2-choice-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </div>
+          <div class="ob2-choice-body"><div class="ob2-choice-label">שאלות מפתיעות</div><div class="ob2-choice-hint">שאלות שלא ציפיתי להן</div></div>
+          <div class="ob2-choice-check"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        </button>
+      </div>
+      <button class="ob2-next-btn" onclick="obStep(8)">המשך</button>
+      <button class="ob2-skip-lnk" onclick="obStep(8)">דלג →</button>
+    </div>
+
+    <!-- Step 8: Done -->
+    <div class="ob2-slide" id="ob2-s8">
+      <div class="ob2-illus">
+        <svg viewBox="0 0 160 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="80" cy="62" r="40" fill="var(--green-light)" stroke="var(--green)" stroke-width="2.5"/>
+          <polyline points="60,62 74,76 102,50" stroke="var(--green)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <circle cx="118" cy="24" r="6" fill="var(--yellow)" opacity="0.8"/>
+          <circle cx="130" cy="40" r="4" fill="var(--accent)" opacity="0.6"/>
+          <circle cx="108" cy="16" r="3.5" fill="var(--green)" opacity="0.7"/>
+          <circle cx="42" cy="22" r="5" fill="var(--accent)" opacity="0.5"/>
+          <circle cx="30" cy="36" r="3" fill="var(--yellow)" opacity="0.6"/>
+          <circle cx="48" cy="14" r="2.5" fill="var(--green)" opacity="0.5"/>
+        </svg>
+      </div>
+      <div class="ob2-title">הכל מוכן!</div>
+      <div class="ob2-sub" id="ob2-summary-text">StudyFlow בנה לך פרופיל לימוד אישי</div>
+      <div class="ob2-summary-chips" id="ob2-chips"></div>
+      <button class="ob2-next-btn ob2-next-green" onclick="finishOnboarding()">כניסה למערכת</button>
+    </div>
+
+    <!-- Hidden inputs kept for JS compatibility -->
+    <input type="number" id="pomo-custom-duration" class="hidden" style="display:none" placeholder="דקות..." oninput="pomoSetCustomDuration(this.value)" min="1" max="300">
+  </div>
+</div>
+
+<div id="app-screen">
+
+  <!-- Mobile top bar -->
+  <div class="mobile-header" id="mobile-header">
+    <button class="hamburger-btn" id="hamburger-btn" onclick="toggleSidebar()" aria-label="תפריט">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="hdr-center">
+      <div class="hdr-page-name" id="hdr-page-name">היום</div>
+      <div class="hdr-date" id="hdr-date"></div>
+    </div>
+    <button class="mobile-settings-btn" onclick="openSettings()" aria-label="הגדרות">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+    </button>
+  </div>
+
+  <!-- Sidebar backdrop -->
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+  <div class="app-layout">
+
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar-hdr">
+        <div class="sidebar-logo">Study<span>Flow</span></div>
+      </div>
+      <div class="sidebar-sub">ה-Waze של הלימודים </div>
+      <button class="nav-item active" onclick="showPage('today',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span> <span>היום</span></button>
+      <button class="nav-item" onclick="showPage('planner',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span> <span>מתכנן לו"ז</span></button>
+      <button class="nav-item" onclick="showPage('schedule',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></span> <span>הלו״ז שלי</span></button>
+      <button class="nav-item" onclick="showPage('homework',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></span> <span>מטלות</span></button>
+      <button class="nav-item" onclick="showPage('exams',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span> <span>מבחנים</span></button>
+      <button class="nav-item" onclick="showPage('anchors',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="5" r="3"/><line x1="12" y1="22" x2="12" y2="8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/></svg></span> <span>עוגנים קבועים</span></button>
+      <button class="nav-item" onclick="showPage('progress',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> <span>התקדמות</span></button>
+
+      <button class="nav-item nav-item-wr" id="wr-sidebar-card" onclick="showPage('weekly-review',null);updateBottomNav('weekly-review');closeSidebar()">
+        <span class="nav-icon nav-icon-wr">
+          <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        </span>
+        <span class="nav-wr-text">
+          <span class="nav-wr-label">סיכום שבועי</span>
+          <span class="nav-wr-sub" id="wrs-status">טוען...</span>
+        </span>
+        <span class="nav-wr-badge" id="wrs-badge"></span>
+      </button>
+
+      <div class="sidebar-bottom">
+        <hr style="border:none; border-top:1px solid var(--border); margin:0.5rem 0;">
+<button class="nav-item" onclick="openSettings();closeSidebar()"><span class="nav-icon"><svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></span> <span>הגדרות</span></button>
+        <div class="user-chip" onclick="openSettings();closeSidebar()" style="cursor:pointer">
+          <div class="user-avatar" id="sb-avatar">?</div>
+          <div><div class="user-name" id="sb-name">—</div><div class="user-plan">גרסה חינמית</div></div>
+        </div>
+      </div>
+    </nav>
+
+    <div class="main-content">
+
+      <div class="page active" id="page-today">
+        <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div>
+            <div class="page-title" id="today-greeting">שלום </div>
+            <div class="page-sub" id="today-sub"></div>
+          </div>
+          <div class="streak-badge-top" title="ימי רצף ברציפות">
+            <span class="streak-icon">🔥</span>
+            <div class="streak-info">
+              <div class="streak-num" id="sc-streak">0</div>
+              <div class="streak-lbl">ימי רצף</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cards-grid" style="grid-template-columns: repeat(2, 1fr);">
+          <div class="stat-card blue"><div class="stat-num" id="sc-tasks">0</div><div class="stat-label">משימות היום</div></div>
+          <div class="stat-card green"><div class="stat-num" id="sc-done">0</div><div class="stat-label">הושלמו </div></div>
+          <div class="stat-card red"><div class="stat-num" id="sc-missed">0</div><div class="stat-label">לא בוצעו</div></div>
+          <div class="stat-card yellow"><div class="stat-num" id="sc-exams">0</div><div class="stat-label">מבחנים השבוע</div></div>
+        </div>
+
+        <div id="next-task-widget" class="next-task-widget hidden"></div>
+
+        <!-- Weekly Review Banner -->
+        <div id="wr-banner" class="hidden wr-banner" onclick="showPage('weekly-review',null);updateBottomNav('weekly-review')" style="cursor:pointer">
+          <div class="wr-banner-icon"></div>
+          <div style="flex:1">
+            <div class="wr-banner-title" id="wr-banner-msg">שבת שלום! זמן לסכם את השבוע</div>
+            <div class="wr-banner-sub">3 דקות שמשנות את השבוע הבא ←</div>
+          </div>
+        </div>
+
+        <div id="urgent-exam-banner" class="hidden exam-urgency-banner">
+          <span style="font-size:1.5rem">⚠️</span>
+          <div style="flex:1"><div style="font-weight:800;font-size:0.9rem" id="urgent-exam-text">מבחן קרוב!</div><div style="font-size:0.78rem;color:var(--muted)" id="urgent-exam-sub"></div></div>
+          <button class="btn-sm red" onclick="showPage('exams',document.querySelectorAll('.nav-item')[4])">צפה במבחנים</button>
+        </div>
+
+        <div class="focus-entry-card glass-box">
+          <div class="focus-entry-header">
+            <div class="focus-entry-icon"><svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="1.8" fill="none"><path d="M12 2a4 4 0 0 1 4 4c0 .34-.04.67-.1 1A4 4 0 0 1 19 11c0 1.45-.78 2.72-1.95 3.42A4 4 0 0 1 13 18h-2a4 4 0 0 1-4.05-3.58A4 4 0 0 1 5 11a4 4 0 0 1 3.1-3.9A4 4 0 0 1 12 2z"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg></div>
+            <div class="focus-entry-texts">
+              <div class="focus-entry-title">מצב פוקוס עמוק</div>
+              <div class="focus-entry-sub">חסום הסחות דעת והיכנס למצב למידה</div>
+            </div>
+          </div>
+          <input type="hidden" id="pomo-task-select" value="">
+          <div class="pomo-custom-select" id="pomo-cs-wrap">
+            <button class="pomo-cs-trigger" id="pomo-cs-trigger" onclick="togglePomoTaskDrop(event)" type="button">
+              <span id="pomo-cs-label">— בחר משימה (רשות) —</span>
+              <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="pomo-cs-list" id="pomo-cs-list"></div>
+          </div>
+          <div class="pomo-duration-row">
+            <button class="pomo-dur-btn" onclick="selectPomoDuration(25,this)">25'</button>
+            <button class="pomo-dur-btn" onclick="selectPomoDuration(45,this)">45'</button>
+            <button class="pomo-dur-btn" onclick="selectPomoDuration(60,this)">60'</button>
+            <button class="pomo-dur-btn active" onclick="selectPomoDuration(90,this)">90'</button>
+          </div>
+          <button class="btn-focus-start" id="btn-focus-start-main" onclick="openFocusMode()">התחל סשן 90 דקות </button>
+        </div>
+
+        <div class="section-box">
+          <div class="section-head">
+            <div class="section-title-sm">הלו"ז שלי להיום</div>
+            <div style="display:flex;gap:0.75rem;flex-wrap:wrap">
+              
+              <button class="btn-sm" style="display:flex;align-items:center;gap:0.5rem" onclick="showPage('planner',document.querySelectorAll('.nav-item')[1])">
+                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> למתכנן השבועי
+              </button>
+            </div>
+          </div>
+          <div id="today-tasks-wrap"><div class="empty-state">אין משימות או עוגנים להיום</div></div>
+        </div>
+      </div>
+
+      <div class="page" id="page-planner">
+        <div class="page-header">
+          <div class="page-title">הלימודים שלי</div>
+          <div class="page-sub">קורסים · מקצועות · תחביבים</div>
+        </div>
+
+        <!-- START HERE: First-time setup wizard (shown only when no courses) -->
+        <div id="pl-start-here" class="hidden">
+          <div class="pl-sh-card">
+            <div class="pl-sh-hero">
+              <div class="pl-sh-emoji">🎓</div>
+              <div class="pl-sh-title">כאן מתחילים!</div>
+              <div class="pl-sh-desc">הגדר את הלימודים שלך והמערכת תבנה לוז שבועי מותאם אישית לשבוע הראשון</div>
+            </div>
+
+            <!-- Section 1: Courses -->
+            <div class="pl-sh-section">
+              <div class="pl-sh-sec-title">📚 הקורסים / המקצועות שלי</div>
+              <div class="pl-sh-courses-header">
+                <span style="font-size:0.72rem;color:var(--muted);font-weight:700">שם הקורס / מקצוע</span>
+                <span style="font-size:0.72rem;color:var(--muted);font-weight:700">תאריך מבחן</span>
+                <span></span>
+              </div>
+              <div id="pl-sh-course-rows"></div>
+              <button class="btn-add-anchor" onclick="plShAddCourseRow()" style="margin-top:0.5rem">+ הוסף קורס / מקצוע</button>
+            </div>
+
+            <!-- Section 2: Hobbies (optional) -->
+            <div class="pl-sh-section">
+              <div class="pl-sh-sec-title">🎸 תחביבים קבועים <span class="pl-sh-optional">(אופציונלי)</span></div>
+              <div id="pl-sh-hobby-chips" class="pl-sh-chips"></div>
+              <div class="pl-sh-hobby-add">
+                <input type="text" id="pl-sh-hobby-inp" placeholder="ריצה, גיטרה, ערבית..." />
+                <button class="btn-sm green" onclick="plShAddHobby()">+ הוסף</button>
+              </div>
+            </div>
+
+            <!-- Section 2.5: Homework (optional) -->
+            <div class="pl-sh-section">
+              <div class="pl-sh-sec-title">📝 שיעורי בית לשבוע הקרוב <span class="pl-sh-optional">(אופציונלי)</span></div>
+              <div id="pl-sh-hw-rows"></div>
+              <button class="btn-add-anchor" onclick="plShAddHwRow()" style="margin-top:0.4rem;width:100%">+ הוסף מטלה</button>
+            </div>
+
+            <!-- Section 3: Study goal -->
+            <div class="pl-sh-section">
+              <div class="pl-sh-sec-title">🎯 כמה אתה רוצה ללמוד השבוע?</div>
+              <div class="pl-sh-goal-row">
+                <div class="pl-sh-goal-opt" data-val="min" onclick="plShSelectGoal(this)">
+                  <div class="pl-sh-goal-visual goal-easy">
+                    <svg viewBox="0 0 60 60" width="50" height="50"><defs><linearGradient id="g-easy" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#10b981"/><stop offset="100%" stop-color="#34d399"/></linearGradient></defs><circle cx="30" cy="30" r="28" fill="url(#g-easy)" opacity="0.15"/><circle cx="30" cy="30" r="28" fill="none" stroke="url(#g-easy)" stroke-width="3" stroke-dasharray="175.9" stroke-dashoffset="114" stroke-linecap="round" transform="rotate(-90 30 30)"/><text x="30" y="35" text-anchor="middle" font-size="14" font-weight="900" fill="#10b981">40%</text></svg>
+                  </div>
+                  <div class="pl-sh-goal-name">קל</div>
+                  <div class="pl-sh-goal-desc">40% מהזמן הפנוי</div>
+                </div>
+                <div class="pl-sh-goal-opt sel" data-val="ok" onclick="plShSelectGoal(this)">
+                  <div class="pl-sh-goal-visual goal-med">
+                    <svg viewBox="0 0 60 60" width="50" height="50"><defs><linearGradient id="g-med" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#6366f1"/><stop offset="100%" stop-color="#a78bfa"/></linearGradient></defs><circle cx="30" cy="30" r="28" fill="url(#g-med)" opacity="0.15"/><circle cx="30" cy="30" r="28" fill="none" stroke="url(#g-med)" stroke-width="3" stroke-dasharray="175.9" stroke-dashoffset="70" stroke-linecap="round" transform="rotate(-90 30 30)"/><text x="30" y="35" text-anchor="middle" font-size="14" font-weight="900" fill="#6366f1">62%</text></svg>
+                  </div>
+                  <div class="pl-sh-goal-name">בינוני</div>
+                  <div class="pl-sh-goal-desc">62% מהזמן הפנוי</div>
+                </div>
+                <div class="pl-sh-goal-opt" data-val="max" onclick="plShSelectGoal(this)">
+                  <div class="pl-sh-goal-visual goal-max">
+                    <svg viewBox="0 0 60 60" width="50" height="50"><defs><linearGradient id="g-max" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#f59e0b"/><stop offset="100%" stop-color="#ef4444"/></linearGradient></defs><circle cx="30" cy="30" r="28" fill="url(#g-max)" opacity="0.15"/><circle cx="30" cy="30" r="28" fill="none" stroke="url(#g-max)" stroke-width="3" stroke-dasharray="175.9" stroke-dashoffset="19" stroke-linecap="round" transform="rotate(-90 30 30)"/><text x="30" y="35" text-anchor="middle" font-size="14" font-weight="900" fill="#f59e0b">83%</text></svg>
+                  </div>
+                  <div class="pl-sh-goal-name">מקסימום</div>
+                  <div class="pl-sh-goal-desc">83% מהזמן הפנוי</div>
+                </div>
+              </div>
+            </div>
+
+            <button class="btn-primary" onclick="plShBuildFirstWeek()" id="pl-sh-build-btn">בנה לוז שבוע ראשון</button>
+          </div>
+        </div>
+
+        <!-- COURSES SECTION (shown after setup) -->
+        <div id="pl-courses-section">
+          <div class="pl-sec-hdr">
+            <span class="pl-sec-title"> הלימודים שלי</span>
+            <button class="pl-sec-add" onclick="openAddCourseModal()">+ הוסף</button>
+          </div>
+          <div id="pl-course-cards-wrap" class="pl-cards-grid"></div>
+        </div>
+
+        <!-- HOBBIES SECTION -->
+        <div id="pl-hobbies-section">
+          <div class="pl-sec-hdr">
+            <span class="pl-sec-title"> מטרות ותחביבים</span>
+            <button class="pl-sec-add" onclick="showPage('hobby',null);_hpShowSetup()">+ הוסף</button>
+          </div>
+          <div id="pl-hobby-cards-wrap" class="pl-cards-grid"></div>
+          <div id="pl-hobbies-empty-hint" class="pl-empty-hint hidden">הוסף מטרה — ריצה, גיטרה, שפה חדשה, קריאה...</div>
+        </div>
+
+        <!-- QUICK ACTIONS -->
+        <div class="pl-actions-row" id="pl-actions-row">
+          
+          
+          <button class="pl-action-chip" onclick="showPage('weekly-review',null);updateBottomNav('weekly-review')"> סיכום שבועי</button>
+        </div>
+
+        <!-- Hidden legacy IDs kept for JS compatibility -->
+        <div id="course-manager-list" style="display:none"></div>
+        <input type="hidden" id="pl-course" /><input type="hidden" id="pl-date" /><input type="hidden" id="pl-start-date" /><input type="hidden" id="pl-hours" /><input type="hidden" id="pl-conf" value="3" /><div id="plan-result-box" class="hidden"></div><div id="plan-table-wrap" style="display:none"></div><div id="semester-courses-list" style="display:none"></div><div id="semester-result-box" class="hidden"></div><div id="semester-table-wrap" style="display:none"></div>
+      </div>
+
+      <div class="page" id="page-schedule">
+        <div class="sch-page-hdr">
+          <div class="sch-hdr-left">
+            <div class="page-title">הלו״ז שלי</div>
+            <div class="page-sub">בחר יום לצפייה</div>
+          </div>
+          <div class="sch-week-nav">
+            <button class="sch-nav-btn" onclick="changeWeek(-1)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+            <div class="sch-week-label" id="week-label" onclick="toggleCalendarViewModal()">...</div>
+            <button class="sch-nav-btn" onclick="changeWeek(1)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="sch-container">
+
+          <!-- WEEKLY TIMELINE VIEW -->
+          <div id="schedule-weekly-view">
+            <div class="sch-top-area">
+              <div class="horizontal-date-slider" id="date-slider">
+                <!-- Slider days will be injected via JS -->
+              </div>
+              <div class="sch-action-bar">
+                <button class="sch-act-btn sch-act-green" onclick="openManualTaskModal()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  משימה
+                </button>
+                <button class="sch-act-btn sch-act-purple" onclick="toggleCalendarViewModal()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  יומן
+                </button>
+                <button class="sch-act-btn sch-act-blue" onclick="openTimeChart()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+                  זמן
+                </button>
+              </div>
+            </div>
+            <div id="day-timeline-view" class="timeline-container"></div>
+            <div id="schedule-wrap" class="hidden"></div>
+          </div>
+          
+          <!-- MONTHLY CALENDAR VIEW (Integrated) -->
+          <div id="schedule-monthly-view" style="display:none;">
+
+            <div class="month-cal-controls" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;padding:0.5rem;background:var(--surface2);border-radius:16px;">
+              <button class="btn-sm" onclick="changeCalMonth(-1)"> קודם</button>
+              <div id="cal-month-label" style="font-size:1.2rem;font-weight:900;letter-spacing:-0.5px;cursor:pointer" onclick="toggleCalendarViewModal()" title="חזרה ללוז שבועי">...</div>
+              <button class="btn-sm" onclick="changeCalMonth(1)">הבא </button>
+            </div>
+            <div id="month-cal-wrap"></div>
+            <button class="btn-sm" style="width:100%;margin-top:1rem;" onclick="toggleCalendarViewModal()">חזרה ללו"ז יומי / שבועי</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ HOMEWORK PAGE ══ -->
+<div class="page" id="page-homework">
+  <div class="page-header">
+    <div class="page-title">שיעורי בית ומטלות</div>
+    <div class="page-sub">המערכת תשבץ אותן אוטומטית לפני תאריך ההגשה</div>
+  </div>
+  
+  <!-- AA Redesign Add Task Form -->
+<div class="section-box aad-form-box">
+  <div class="aad-form-title">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+    הוסף מטלה חדשה
+  </div>
+  <div class="inline-form-grid inline-form-grid-2">
+    <div>
+      <label class="inline-form-label">קורס</label>
+      <select id="hw-course-select" class="inline-form-input"></select>
+      <div id="hw-no-course-msg" style="display:none;font-size:0.78rem;color:var(--accent);margin-top:0.35rem;font-weight:700">אין קורסים עדיין — <span style="cursor:pointer;text-decoration:underline" onclick="showPage('exams',document.querySelectorAll('.nav-item')[4])">הוסף קורס</span> כדי להתחיל</div>
+    </div>
+    <div>
+      <label class="inline-form-label">תיאור קצר</label>
+      <input type="text" id="hw-name" class="inline-form-input" placeholder="תיאור המטלה..." maxlength="80">
+    </div>
+    <div>
+      <label class="inline-form-label">תאריך הגשה</label>
+      <input type="date" id="hw-date" class="inline-form-input">
+    </div>
+    <div>
+      <label class="inline-form-label">זמן מוערך (דקות)</label>
+      <input type="number" id="hw-duration" class="inline-form-input" placeholder="45" value="45" min="5" max="480">
+    </div>
+  </div>
+  <button class="aad-submit-btn" onclick="addHomework()">+ הוסף למערכת</button>
+</div>
+
+  <div id="hw-empty-state" class="hw-empty" style="display:none">
+    <div class="hw-empty-icon">📚</div>
+    <div class="hw-empty-title">אין מטלות פתוחות</div>
+    <div class="hw-empty-sub">כל הכבוד! או... הוסף מטלה חדשה למעלה</div>
+  </div>
+
+  <div class="section-box" id="hw-open-section" style="margin-top:1rem;">
+    <div class="section-head"><div class="section-title-sm">מטלות פתוחות</div></div>
+    <div id="hw-list"></div>
+  </div>
+</div>
+<!-- ══ END HOMEWORK PAGE ══ -->
+<div class="page" id="page-exams">
+        <div class="page-header"><div class="page-title">מבחנים</div><div class="page-sub">מבחנים · בוחנים · הגשות</div></div>
+        <!-- AA Redesign Add Exam Form -->
+<div class="section-box aad-form-box aad-form-box-purple">
+  <div class="aad-form-title aad-form-title-purple">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+    הוסף תאריך יעד
+  </div>
+  <div class="inline-form-grid">
+    <div>
+      <label class="inline-form-label">שם הקורס</label>
+      <input type="text" id="ex-course" class="inline-form-input" placeholder="אנליזה..." list="ex-course-list" autocomplete="off">
+      <datalist id="ex-course-list"></datalist>
+    </div>
+    <div>
+      <label class="inline-form-label">תאריך</label>
+      <input type="date" id="ex-date" class="inline-form-input">
+    </div>
+    <div>
+      <label class="inline-form-label">סוג</label>
+      <select id="ex-type" class="inline-form-input">
+        <option value="מבחן">מבחן</option>
+        <option value="בוחן">בוחן</option>
+        <option value="עבודה">עבודה</option>
+        <option value="הגשה">הגשה</option>
+      </select>
+    </div>
+  </div>
+  <button class="aad-submit-btn aad-submit-purple" onclick="addExam()">+ הוסף</button>
+</div>
+        <div class="section-box" id="exams-list-wrap"></div>
+      </div>
+
+      <div class="page" id="page-anchors">
+        <div class="page-header">
+          <div class="page-title">עוגנים קבועים</div>
+          <div class="page-sub">שיעורים, אימונים וזמנים קבועים שהלוז לא יחפוף איתם</div>
+        </div>
+        <div class="anc-page-actions">
+          <button class="anc-action-btn anc-action-primary" onclick="showAddAnchorModal()">
+            <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            הוסף עוגן
+          </button>
+          <button class="anc-action-btn" onclick="openCalendarImport()" title="ייבוא מגוגל קאלנדר / אייפון">
+            <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            ייבוא יומן (.ics)
+          </button>
+          <button class="anc-action-btn anc-action-reminders" onclick="openReminders()">
+            🔔 תזכורות
+          </button>
+        </div>
+        <div class="anc-ics-tip">
+          <span>💡</span>
+          <span>ייצא קובץ .ics מגוגל / אייפון — שיעורים שבועיים יהפכו לעוגנים, אירועים חד-פעמיים יהפכו למשימות.</span>
+        </div>
+        <div id="anchors-list-wrap" style="margin-top:1rem"></div>
+        <input type="file" id="ics-file-input" accept=".ics,.ical" style="display:none" onchange="handleICSFile(event)">
+      </div>
+
+      <div class="page" id="page-progress">
+        <div class="page-header">
+          <div class="page-title">StudyQuest</div>
+          <div class="page-sub">עלה ברמות · צבור הישגים · שבור שיאים</div>
+        </div>
+
+        <!-- Duolingo-style week activity canvas -->
+        <div class="section-box sq-canvas-strip">
+          <div class="sq-canvas-header">
+            <span class="sq-canvas-title">פעילות השבוע</span>
+            <span class="sq-canvas-xp"><span id="sq-week-xp">0</span> XP</span>
+          </div>
+          <div class="sq-canvas-days">
+            <div class="sq-canvas-day"><div class="sq-cd-pip" id="sq-d0"></div><span>א</span></div>
+            <div class="sq-canvas-day"><div class="sq-cd-pip" id="sq-d1"></div><span>ב</span></div>
+            <div class="sq-canvas-day"><div class="sq-cd-pip" id="sq-d2"></div><span>ג</span></div>
+            <div class="sq-canvas-day"><div class="sq-cd-pip" id="sq-d3"></div><span>ד</span></div>
+            <div class="sq-canvas-day"><div class="sq-cd-pip" id="sq-d4"></div><span>ה</span></div>
+            <div class="sq-canvas-day"><div class="sq-cd-pip" id="sq-d5"></div><span>ו</span></div>
+            <div class="sq-canvas-day"><div class="sq-cd-pip" id="sq-d6"></div><span>ש</span></div>
+          </div>
+        </div>
+
+        <!-- XP Hero -->
+        <div class="sq-hero-card">
+          <div class="sq-ring-wrap">
+            <svg class="sq-ring-svg" viewBox="0 0 140 140">
+              <circle cx="70" cy="70" r="56" stroke="rgba(0,0,0,0.07)" stroke-width="11" fill="none"/>
+              <circle id="sq-ring-fill" cx="70" cy="70" r="56" stroke="url(#sqGrad)" stroke-width="11" fill="none"
+                stroke-linecap="round" transform="rotate(-90 70 70)"
+                stroke-dasharray="351.9" stroke-dashoffset="351.9"
+                style="transition:stroke-dashoffset 1.2s cubic-bezier(0.34,1.56,0.64,1);filter:drop-shadow(0 0 10px rgba(88,204,2,0.55))"/>
+              <defs>
+                <linearGradient id="sqGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#58CC02"/>
+                  <stop offset="100%" stop-color="#A3E635"/>
+                </linearGradient>
+              </defs>
+            </svg>
+            <div class="sq-ring-center">
+              <div class="sq-level-emoji" id="xp-level-emoji"></div>
+              <div class="sq-xp-num" id="tree-pts">0</div>
+              <div class="sq-xp-lbl">XP</div>
+            </div>
+          </div>
+          <div class="sq-hero-info">
+            <div class="sq-hero-level-name" id="tree-next">מתחיל</div>
+            <div class="sq-xp-bar-wrap"><div class="sq-xp-bar" id="sq-xp-bar" style="width:0%"></div></div>
+            <div class="sq-xp-caption" id="sq-xp-caption">0 / 100 XP לרמה הבאה</div>
+            <div class="sq-streak-chip">
+              <span class="sq-fire" id="sq-fire-icon">🔥</span>
+              <span class="sq-streak-num" id="streak-badge">0</span>
+              <span class="sq-streak-lbl">ימי רצף</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stats pills -->
+        <div class="sq-stats-row">
+          <div class="sq-stat-pill"><span class="sq-stat-n" id="stat-total-done">0</span><span class="sq-stat-l">הושלמו</span></div>
+          <div class="sq-stat-pill"><span class="sq-stat-n" id="stat-pct">0%</span><span class="sq-stat-l">אחוז</span></div>
+          <div class="sq-stat-pill"><span class="sq-stat-n" id="sq-exams-stat">0</span><span class="sq-stat-l">מבחנים</span></div>
+          <div class="sq-stat-pill sq-stat-gold"><span class="sq-stat-n" id="sq-pts-today">+0</span><span class="sq-stat-l">XP היום</span></div>
+        </div>
+        <span id="stat-total" style="display:none">0</span>
+
+        <!-- Daily missions -->
+        <div class="section-box">
+          <div class="section-head">
+            <div class="section-title-sm">משימות יומיות</div>
+            <span id="quest-reward" style="font-size:0.75rem;font-weight:700;color:var(--accent)"></span>
+          </div>
+          <div id="sq-missions-wrap"></div>
+          <div id="quest-text" style="display:none"></div>
+        </div>
+
+        <!-- Achievements -->
+        <div class="section-box">
+          <div class="section-head">
+            <div class="section-title-sm">הישגים</div>
+            <span id="sq-badge-count" style="font-size:0.72rem;color:var(--muted);font-weight:700"></span>
+          </div>
+          <div id="sq-badges-wrap" class="sq-badges-grid"></div>
+        </div>
+
+        <!-- Course breakdown -->
+        <div class="section-box">
+          <div class="section-head"><div class="section-title-sm">התקדמות לפי קורס</div></div>
+          <div id="course-progress-bars"></div>
+        </div>
+
+        <!-- Activity heatmap -->
+        <div class="section-box">
+          <div class="section-head"><div class="section-title-sm">פעילות לימודית</div><span style="font-size:0.7rem;color:var(--muted);font-weight:600">15 שבועות</span></div>
+          <div id="activity-heatmap" class="heatmap-outer"></div>
+          <div id="heatmap-legend" class="heatmap-legend"></div>
+        </div>
+
+      </div>
+
+      <!-- ══ HOBBY / PERSONAL GOALS PAGE ══ -->
+      <div class="page" id="page-hobby">
+
+        <!-- EMPTY STATE -->
+        <div id="hp-empty">
+          <div class="page-header">
+            <div class="page-title">מטרות אישיות</div>
+            <div class="page-sub">מסלול מגוון — ממתחיל עד המטרה</div>
+          </div>
+          <div class="hp-empty-card">
+            <div class="hp-empty-icon"></div>
+            <div class="hp-empty-title">מה המטרה האישית שלך?</div>
+            <div class="hp-empty-sub">ריצה, גיטרה, ציור, שפה חדשה — המערכת תבנה לך מסלול, ימצא זמן בלוז שלך ויעקוב אחר ההתקדמות בכל שבוע</div>
+            <button class="btn-primary" onclick="_hpShowSetup()" style="margin-top:1.5rem;width:100%;max-width:320px">+ הוסף מטרה / תחביב</button>
+          </div>
+        </div>
+
+        <!-- SETUP FORM -->
+        <div id="hp-setup" class="hidden">
+          <div class="hp-setup-card">
+            <div class="hp-setup-hdr">
+              <div class="hp-setup-hdr-text">
+                <div class="hp-setup-hdr-title">מטרה חדשה</div>
+                <div class="hp-setup-hdr-sub">המערכת תבנה לך מסלול מותאם</div>
+              </div>
+              <button class="anc-cancel-btn" style="padding:0.45rem 0.9rem;font-size:0.82rem" onclick="_hpShowEmpty()">← חזור</button>
+            </div>
+            <div class="hp-setup-body">
+              <div>
+                <label class="anc-label">שם התחביב / המטרה *</label>
+                <input type="text" id="hp-setup-name" class="anc-input" placeholder="" />
+              </div>
+              <div>
+                <label class="anc-label">מה המטרה? *</label>
+                <input type="text" id="hp-setup-goal" class="anc-input" placeholder="" />
+              </div>
+              <div class="anc-times-row">
+                <div>
+                  <label class="anc-label">פעמים בשבוע</label>
+                  <select id="hp-setup-freq" class="anc-input">
+                    <option value="1">1×</option>
+                    <option value="2">2×</option>
+                    <option value="3" selected>3×</option>
+                    <option value="4">4×</option>
+                    <option value="5">5×</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="anc-label">דקות לכל פעם</label>
+                  <select id="hp-setup-dur" class="anc-input">
+                    <option value="20">20′</option>
+                    <option value="30" selected>30′</option>
+                    <option value="45">45′</option>
+                    <option value="60">60′</option>
+                    <option value="90">90′</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="anc-label">רמה</label>
+                  <select id="hp-setup-level" class="anc-input">
+                    <option value="מתחיל">מתחיל</option>
+                    <option value="בינוני">בינוני</option>
+                    <option value="מתקדם">מתקדם</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label class="anc-label">למה זה חשוב לך? (רשות)</label>
+                <input type="text" id="hp-setup-motivation" class="anc-input" placeholder="" />
+              </div>
+            </div>
+            <div class="hp-setup-footer">
+              <button class="anc-save-btn" style="font-size:0.95rem;padding:0.85rem" onclick="hpCreateHobby()">בנה לי מסלול + תוכנית אישית</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- MAIN VIEW -->
+        <div id="hp-main" class="hidden">
+
+          <!-- Tabs (multiple hobbies) -->
+          <div id="hp-tabs" style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:1rem"></div>
+
+          <!-- Hero card -->
+          <div class="hp-hero-card" style="background:linear-gradient(135deg, var(--accent), var(--purple));border-radius:24px;padding:1.5rem;color:white;box-shadow:0 16px 32px rgba(79,110,247,0.3);position:relative;overflow:hidden;margin-bottom:1rem;">
+  <div style="position:absolute;top:-50px;right:-50px;width:150px;height:150px;background:rgba(255,255,255,0.1);border-radius:50%;filter:blur(24px);"></div>
+  <div style="position:relative;z-index:2;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.5rem;">
+      <div>
+        <div class="hp-hero-name" id="hp-hero-name" style="font-size:2rem;font-weight:900;letter-spacing:-0.03em;margin-bottom:0.25rem;text-shadow:0 2px 8px rgba(0,0,0,0.2);"></div>
+        <div class="hp-hero-goal" id="hp-hero-goal" style="font-size:1rem;font-weight:600;opacity:0.9;"></div>
+      </div>
+      <button onclick="hpDeleteHobby()" title="מחק תחביב" style="background:rgba(0,0,0,0.2);border:none;border-radius:12px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(4px);transition:all 0.2s;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <div style="display:flex;gap:0.75rem;background:rgba(0,0,0,0.2);padding:1rem;border-radius:16px;backdrop-filter:blur(8px);">
+      <div style="flex:1;text-align:center;">
+        <div id="hp-sessions-count" style="font-size:1.5rem;font-weight:900;line-height:1;">0</div>
+        <div style="font-size:0.75rem;font-weight:700;opacity:0.8;margin-top:0.25rem;">אימונים</div>
+      </div>
+      <div style="width:1px;background:rgba(255,255,255,0.2);"></div>
+      <div style="flex:1;text-align:center;">
+        <div id="hp-freq-count" style="font-size:1.5rem;font-weight:900;line-height:1;">3</div>
+        <div style="font-size:0.75rem;font-weight:700;opacity:0.8;margin-top:0.25rem;">תדירות</div>
+      </div>
+      <div style="width:1px;background:rgba(255,255,255,0.2);"></div>
+      <div style="flex:1;text-align:center;">
+        <div id="hp-next-date" style="font-weight:900;line-height:1;margin-top:0.25rem;">—</div>
+        <div style="font-size:0.75rem;font-weight:700;opacity:0.8;margin-top:0.25rem;">הבא</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+          <!-- Motivation card -->
+          <div id="hp-motivation-card" style="background:var(--accent-light);border-radius:12px;padding:0.6rem 0.9rem;margin-bottom:0.75rem;border:1px solid var(--border2);display:none"></div>
+
+          <!-- Track / Roadmap -->
+          <div class="section-box" style="padding:1.25rem 1rem 1.5rem">
+            <div class="section-head" style="margin-bottom:1rem">
+              <div class="section-title-sm">ההתקדמות שלך</div>
+            </div>
+            <div id="hp-track"></div>
+          </div>
+
+          <!-- Weekly report button -->
+          <button class="hp-report-btn" onclick="hpOpenReport()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            דווח על השבוע
+          </button>
+
+          <!-- Find slots button -->
+          <button class="btn-generate" id="hp-find-slots-btn" onclick="findHobbySlots()" style="background:linear-gradient(135deg,#f59e0b,#ef4444);margin-bottom:1rem">
+             מצא לי זמן בלוז שלי לאימונים
+          </button>
+
+          <!-- Upcoming sessions -->
+          <div class="section-box">
+            <div class="section-head" style="margin-bottom:0.75rem">
+              <div class="section-title-sm">אימונים מתוכננים</div>
+            </div>
+            <div id="hp-upcoming-list"></div>
+          </div>
+
+
+        </div>
+      </div>
+      <!-- ══ END HOBBY PAGE ══ -->
+
+      <!-- ══ WEEKLY REVIEW PAGE ══ -->
+      <div class="page" id="page-weekly-review">
+        <div class="page-header">
+          <div class="page-title">סיכום שבועי</div>
+          <div class="page-sub">כל שבת בערב — 3 דקות שמשנות את השבוע הבא</div>
+        </div>
+
+        <!-- Done state -->
+        <div id="wr-done" class="hidden">
+          <div class="wr-done-card">
+            <div class="wr-done-check">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="wr-done-title">השבוע תוכנן!</div>
+            <div class="wr-done-sub">הלוז מכסה עד <span id="wr-range-end"></span></div>
+            <div class="wr-done-primary-btns">
+              <button class="wr-done-btn-main" onclick="_wrPlanNextWeek=false;_wrForceRebuild=true;renderWeeklyReview()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
+                תכנן שבוע זה מחדש
+              </button>
+              <button class="wr-done-btn-next" onclick="_wrPlanNextWeek=true;_wrForceRebuild=true;renderWeeklyReview()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                תכנן שבוע הבא
+              </button>
+            </div>
+            <div class="wr-done-secondary">
+              <button class="wr-done-lnk" onclick="repeatLastSchedule()">שחזר לוז שבוע שעבר</button>
+              <span class="wr-done-sep">·</span>
+              <button class="wr-done-lnk" onclick="planPreviousWeek()">תכנן שבוע קודם</button>
+              <span class="wr-done-sep">·</span>
+              <button class="wr-done-lnk" onclick="saveFavoriteSchedule()">שמור כמועדף</button>
+              <span class="wr-done-sep">·</span>
+              <button class="wr-done-lnk" onclick="loadFavoriteSchedule()">טען מועדף</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Active review -->
+        <div id="wr-active">
+          <!-- Progress -->
+          <div class="wr-prog-wrap">
+            <div class="wr-prog-bar" id="wr-prog-bar" style="width:0%"></div>
+          </div>
+
+          <!-- Message feed -->
+          <div id="wr-msgs" class="wr-msgs"></div>
+
+          <!-- Choice buttons -->
+          <div id="wr-choices" class="wr-choices hidden"></div>
+
+          <!-- Plan preview + confirm -->
+          <div id="wr-result" class="hidden section-box" style="margin-top:1rem">
+            <div class="section-head">
+              <div class="section-title-sm">תוכנית השבוע הקרוב</div>
+            </div>
+            <div id="wr-preview"></div>
+            <div id="wr-result-actions" style="margin-top:1rem;display:flex;flex-direction:column;gap:0.6rem">
+              <button class="wr-confirm-btn" onclick="confirmWeeklyPlan()"> אשר ובנה את השבוע</button>
+              <button class="btn-sm" onclick="_wrInit()">← שאלות מחדש</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- ══ END WEEKLY REVIEW ══ -->
+
+    </div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV BAR -->
+<nav class="bottom-nav" id="bottom-nav">
+  <div class="bn-items">
+    <button class="bn-item active" id="bn-today" onclick="showPage('today',document.querySelectorAll('.nav-item')[0]);updateBottomNav('today')">
+      <div class="bn-icon"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+      <div class="bn-label">היום</div>
+    </button>
+    <button class="bn-item" id="bn-schedule" onclick="showPage('schedule',document.querySelectorAll('.nav-item')[2]);updateBottomNav('schedule')">
+      <div class="bn-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+      <div class="bn-label">לו"ז</div>
+    </button>
+    <button class="bn-item" id="bn-homework" onclick="showPage('homework',null);updateBottomNav('homework')">
+      <div class="bn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+      <div class="bn-label">מטלות</div>
+    </button>
+    <button class="bn-item" id="bn-progress" onclick="showPage('progress',document.querySelectorAll('.nav-item')[6]);updateBottomNav('progress')">
+      <div class="bn-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+      <div class="bn-label">הישגים</div>
+    </button>
+    <button class="bn-item" id="bn-weekly-review" onclick="showPage('weekly-review',null);updateBottomNav('weekly-review')">
+      <div class="bn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>
+      <div class="bn-label">שבועי</div>
+    </button>
+    <button class="bn-item" id="bn-ai" onclick="document.getElementById('magic-fab')?.click()" title="AI">
+      <span class="bn-icon">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+      </span>
+      <span class="bn-label">AI</span>
+    </button>
+    <button class="bn-item" id="bn-settings" onclick="openSettings()" title="הגדרות">
+      <span class="bn-icon">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </span>
+      <span class="bn-label">הגדרות</span>
+    </button>
+  </div>
+</nav>
+
+<div class="modal-overlay hidden" id="missed-modal">
+  <div class="modal-box">
+    <div class="modal-title">️ משימה לא בוצעה</div>
+    <div class="modal-sub" id="missed-task-name">מה קרה?</div>
+    <div class="modal-options">
+      <div class="modal-opt" onclick="selOpt(this)"> הייתי חולה / עייפות</div>
+      <div class="modal-opt" onclick="selOpt(this)"> עבודה / צבא / אילוץ</div>
+      <div class="modal-opt" onclick="selOpt(this)"> לא הספקתי</div>
+    </div>
+    <div class="modal-footer"><button class="btn-confirm" onclick="confirmMissed()">שמור סטטוס</button><button class="btn-cancel" onclick="closeModal('missed-modal')">ביטול</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="anchor-modal" onclick="if(event.target===this)closeModal('anchor-modal')">
+  <div class="anc-sheet">
+    <!-- Drag handle -->
+    <div class="anc-sheet-handle"></div>
+
+    <!-- Header -->
+    <div class="anc-sheet-hdr">
+      <span class="anc-sheet-title" id="anchor-modal-title">הוסף עוגן</span>
+      <button class="anc-sheet-close" onclick="closeModal('anchor-modal')" type="button">
+        <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <!-- Color picker — prominent at top -->
+    <div class="anc-color-row" id="anc-color-row">
+      <button class="anc-color-dot anc-color-selected" data-color="#4f6ef7" style="background:#4f6ef7" onclick="sfAncPickColor(this,'#4f6ef7')" type="button"></button>
+      <button class="anc-color-dot" data-color="#8b5cf6" style="background:#8b5cf6" onclick="sfAncPickColor(this,'#8b5cf6')" type="button"></button>
+      <button class="anc-color-dot" data-color="#10b981" style="background:#10b981" onclick="sfAncPickColor(this,'#10b981')" type="button"></button>
+      <button class="anc-color-dot" data-color="#ef4444" style="background:#ef4444" onclick="sfAncPickColor(this,'#ef4444')" type="button"></button>
+      <button class="anc-color-dot" data-color="#f59e0b" style="background:#f59e0b" onclick="sfAncPickColor(this,'#f59e0b')" type="button"></button>
+      <button class="anc-color-dot" data-color="#ec4899" style="background:#ec4899" onclick="sfAncPickColor(this,'#ec4899')" type="button"></button>
+      <button class="anc-color-dot" data-color="#64748b" style="background:#64748b" onclick="sfAncPickColor(this,'#64748b')" type="button"></button>
+    </div>
+
+    <!-- Name input -->
+    <input type="text" id="anc-name" class="anc-sheet-input" placeholder="שם (אימון, שיעור, עבודה...)" />
+
+    <!-- Type toggle -->
+    <div class="anc-type-toggle">
+      <button class="anc-type-btn active" id="anc-type-weekly-btn" onclick="setAnchorType('weekly')" type="button">🔁 שבועי</button>
+      <button class="anc-type-btn" id="anc-type-onetime-btn" onclick="setAnchorType('onetime')" type="button">📅 חד פעמי</button>
+    </div>
+
+    <!-- One-time date -->
+    <div id="anc-onetime-wrap" class="hidden">
+      <input type="date" id="anc-onetime-date" class="anc-sheet-input" />
+    </div>
+
+    <!-- Weekly: visual day pill buttons -->
+    <div id="anc-recurring-wrap">
+      <div class="anc-day-pills" id="anc-day-pills">
+        <button class="anc-day-pill" data-day="0" onclick="sfAncToggleDay(this)" type="button">א׳</button>
+        <button class="anc-day-pill" data-day="1" onclick="sfAncToggleDay(this)" type="button">ב׳</button>
+        <button class="anc-day-pill" data-day="2" onclick="sfAncToggleDay(this)" type="button">ג׳</button>
+        <button class="anc-day-pill" data-day="3" onclick="sfAncToggleDay(this)" type="button">ד׳</button>
+        <button class="anc-day-pill" data-day="4" onclick="sfAncToggleDay(this)" type="button">ה׳</button>
+        <button class="anc-day-pill" data-day="5" onclick="sfAncToggleDay(this)" type="button">ו׳</button>
+        <button class="anc-day-pill" data-day="6" onclick="sfAncToggleDay(this)" type="button">ש׳</button>
+      </div>
+      <!-- Hidden legacy inputs — app.js reads these -->
+      <div style="display:none" aria-hidden="true">
+        <div id="anc-single-day-wrap">
+          <select id="anc-day">
+            <option value="0">ראשון</option><option value="1">שני</option><option value="2">שלישי</option>
+            <option value="3">רביעי</option><option value="4">חמישי</option><option value="5">שישי</option><option value="6">שבת</option>
+          </select>
+        </div>
+        <div id="anc-days-selector">
+          <input type="checkbox" value="0"/><input type="checkbox" value="1"/><input type="checkbox" value="2"/>
+          <input type="checkbox" value="3"/><input type="checkbox" value="4"/><input type="checkbox" value="5"/><input type="checkbox" value="6"/>
+        </div>
+        <input type="checkbox" id="anc-recurring" />
+      </div>
+    </div>
+
+    <!-- Time pickers — two clean cards -->
+    <div class="anc-times-cards">
+      <div class="anc-time-card-new">
+        <div class="anc-time-card-lbl">התחלה</div>
+        <input type="time" id="anc-start" value="09:00" class="anc-time-inp-new" />
+      </div>
+      <div class="anc-times-arrow">←</div>
+      <div class="anc-time-card-new">
+        <div class="anc-time-card-lbl">סיום</div>
+        <input type="time" id="anc-end" value="16:00" class="anc-time-inp-new" />
+      </div>
+    </div>
+
+    <!-- Per-day times for multi-day (shown by app.js) -->
+    <div id="anc-per-day-times" class="hidden">
+      <div id="anc-day-rows"></div>
+    </div>
+
+    <!-- Travel time chips -->
+    <div class="anc-travel-row">
+      <span class="anc-travel-lbl">🚗 נסיעה</span>
+      <div class="anc-travel-chips">
+        <button class="anc-travel-chip anc-travel-sel" data-min="0" onclick="sfAncSetTravel(this,0)" type="button">ללא</button>
+        <button class="anc-travel-chip" data-min="10" onclick="sfAncSetTravel(this,10)" type="button">10′</button>
+        <button class="anc-travel-chip" data-min="15" onclick="sfAncSetTravel(this,15)" type="button">15′</button>
+        <button class="anc-travel-chip" data-min="30" onclick="sfAncSetTravel(this,30)" type="button">30′</button>
+        <button class="anc-travel-chip" data-min="45" onclick="sfAncSetTravel(this,45)" type="button">45′</button>
+        <button class="anc-travel-chip" data-min="60" onclick="sfAncSetTravel(this,60)" type="button">60′</button>
+        <button class="anc-travel-chip" data-min="-1" onclick="sfAncSetTravel(this,-1)" type="button">אחר</button>
+      </div>
+      <div class="anc-travel-custom hidden" id="anc-travel-custom-wrap">
+        <input type="number" id="anc-travel-custom-inp" class="anc-travel-custom-inp"
+               min="0" max="300" placeholder="דקות" oninput="sfAncCustomTravel(this)" />
+        <span class="anc-travel-custom-lbl">דק׳</span>
+      </div>
+    </div>
+
+    <!-- Hidden compatibility fields -->
+    <div style="display:none" aria-hidden="true">
+      <input type="number" id="anc-travel" value="0" min="0" max="300" />
+      <input type="color" id="anc-color" value="#4f6ef7" />
+      <input type="date" id="anc-end-date" disabled />
+      <input type="checkbox" id="anc-forever" checked />
+      <textarea id="anc-notes" maxlength="300"></textarea>
+    </div>
+
+    <!-- Footer -->
+    <div class="anc-sheet-footer">
+      <button class="anc-save-btn" onclick="saveAnchorManual()">שמור</button>
+      <button class="anc-cancel-btn" onclick="closeModal('anchor-modal')">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── REMINDERS MODAL ── -->
+<div class="modal-overlay hidden" id="reminders-modal" onclick="if(event.target===this)closeModal('reminders-modal')">
+  <div class="rem-card">
+    <div class="rem-hdr">
+      <div class="rem-hdr-title">🔔 תזכורות</div>
+      <button class="rem-hdr-close" onclick="closeModal('reminders-modal')">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="rem-body">
+      <!-- Add form -->
+      <div class="rem-add-form">
+        <input type="text" id="rem-text" class="rem-input" placeholder="מה לזכור?" maxlength="200" />
+        <div class="rem-form-row">
+          <div>
+            <label class="anc-label">תאריך</label>
+            <input type="date" id="rem-date" class="rem-input" />
+          </div>
+          <div>
+            <label class="anc-label">שעה (רשות)</label>
+            <input type="time" id="rem-time" class="rem-input" />
+          </div>
+        </div>
+        <button class="rem-add-btn" onclick="addReminder()">+ הוסף תזכורת</button>
+      </div>
+      <!-- List -->
+      <div id="rem-list" class="rem-list"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="recalc-overlay" onclick="if(event.target===this)closeRecalc()" style="display:flex; align-items:flex-start; justify-content:center; padding:40px 0; overflow-y:auto;">
+  <div class="rcm-card" style="background:var(--surface); border-radius:24px; padding:24px; width:90%; max-width:400px; box-shadow:0 20px 40px rgba(0,0,0,0.15); display:flex; flex-direction:column; gap:16px; margin:auto; position:relative; max-height:none; overflow:visible;">
+    <div class="rcm-header" style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div class="rcm-icon-wrap" id="rcm-icon" style="background:var(--accent-light); color:var(--accent); width:48px; height:48px; border-radius:16px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(92,110,245,0.15);">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div class="rcm-header-text">
+          <div class="rcm-title" id="chat-header-title" style="font-size:1.35rem; font-weight:900; color:var(--text); letter-spacing:-0.02em; line-height:1.2;">התנגשות בלו"ז</div>
+          <div class="rcm-sub" id="chat-header-sub" style="font-size:0.9rem; font-weight:600; color:var(--muted); margin-top:2px;">משימות שנדרסו על ידי עוגן</div>
+        </div>
+      </div>
+      <button class="rcm-close" onclick="closeRecalc()" style="background:var(--surface2); border:none; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--muted); cursor:pointer; transition:background 0.2s, color 0.2s;" onmouseover="this.style.background='var(--surface3)'; this.style.color='var(--text)';" onmouseout="this.style.background='var(--surface2)'; this.style.color='var(--muted)';">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="rcm-body" id="recalc-chat" style="display:flex; flex-direction:column; gap:12px;"></div>
+    <div class="rcm-actions" id="recalc-actions-zone" style="display:flex; flex-direction:column; gap:8px;"></div>
+  </div>
+</div>
+
+
+<!-- ── SETTINGS MODAL ── -->
+<div class="modal-overlay hidden" id="settings-modal">
+  <div class="settings-panel">
+    <div class="settings-hdr">
+      <div class="settings-hdr-title">הגדרות</div>
+      <button class="settings-hdr-close" onclick="closeModal('settings-modal')">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div class="settings-user-hero">
+      <div class="settings-user-avatar" id="settings-hero-avatar">?</div>
+      <div>
+        <div class="settings-user-name" id="settings-hero-name">—</div>
+        <div class="settings-user-sub">גרסה חינמית · StudyFlow</div>
+      </div>
+    </div>
+    <div class="settings-body">
+      <!-- Profile -->
+      <div class="settings-sec-label">פרופיל</div>
+      <div class="settings-card">
+        <div class="settings-row">
+          <div class="settings-row-icon" style="background:var(--accent-light);color:var(--accent)">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </div>
+          <label class="settings-row-label">שם</label>
+          <input type="text" class="settings-row-input" id="settings-name" placeholder="השם שלך" maxlength="50" />
+        </div>
+        <div class="settings-row settings-row-sep">
+          <div class="settings-row-icon" style="background:var(--purple-light);color:var(--purple)">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          </div>
+          <label class="settings-row-label">מוסד</label>
+          <input type="text" class="settings-row-input" id="settings-inst" placeholder="אוניברסיטה..." maxlength="80" />
+        </div>
+      </div>
+
+      <!-- Schedule -->
+      <div class="settings-sec-label">שעות לימוד</div>
+      <div class="settings-card">
+        <div class="settings-row">
+          <div class="settings-row-icon" style="background:#fef3c7;color:#d97706">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <label class="settings-row-label">שעת קימה</label>
+          <select class="settings-row-select" id="settings-wake">
+            <option value="05:00">05:00</option><option value="05:30">05:30</option>
+            <option value="06:00">06:00</option><option value="06:30">06:30</option>
+            <option value="07:00">07:00</option><option value="07:30">07:30</option>
+            <option value="08:00">08:00</option><option value="08:30">08:30</option>
+            <option value="09:00">09:00</option><option value="09:30">09:30</option>
+            <option value="10:00">10:00</option><option value="10:30">10:30</option>
+            <option value="11:00">11:00</option><option value="11:30">11:30</option>
+            <option value="12:00">12:00</option><option value="12:30">12:30</option>
+            <option value="13:00">13:00</option>
+          </select>
+        </div>
+        <div class="settings-row settings-row-sep">
+          <div class="settings-row-icon" style="background:#ede9fe;color:#7c3aed">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </div>
+          <label class="settings-row-label">שעת סיום</label>
+          <select class="settings-row-select" id="settings-sleep">
+            <option value="14:00">14:00</option><option value="15:00">15:00</option>
+            <option value="16:00">16:00</option><option value="17:00">17:00</option>
+            <option value="18:00">18:00</option><option value="19:00">19:00</option>
+            <option value="20:00">20:00</option><option value="21:00">21:00</option>
+            <option value="22:00">22:00</option><option value="23:00">23:00</option>
+            <option value="23:59">חצות</option>
+          </select>
+        </div>
+      </div>
+
+      
+
+      <!-- AI / Gemini API Key -->
+      <div class="settings-sec-label">🤖 AI — מפתח Gemini</div>
+      <div class="settings-card" id="acc-ai">
+        <div id="api-managed-banner" style="display:none;padding:0.6rem 0.8rem;border-radius:8px;font-size:0.8rem;margin-bottom:0.5rem;font-weight:600"></div>
+        <div class="settings-row">
+          <div class="settings-row-icon" style="background:#e8f5e9;color:#2e7d32">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </div>
+          <div style="flex:1">
+            <label class="settings-row-label" style="display:block">Gemini API Key</label>
+            <input type="text" class="settings-row-input" id="settings-api-key" placeholder="AIza..." style="width:100%;margin-top:0.25rem;font-size:0.8rem;font-family:monospace" autocomplete="off" />
+            <div id="api-key-status" style="font-size:0.75rem;margin-top:0.3rem;color:var(--muted)">⚠️ לא הוגדר — הזן מפתח Gemini</div>
+            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" style="font-size:0.72rem;color:var(--accent);display:block;margin-top:0.25rem">📎 קבל מפתח חינמי מ-Google AI Studio</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Appearance -->
+      <div class="settings-sec-label">מראה</div>
+      <div class="settings-card">
+        <div class="settings-row settings-row-action" onclick="toggleTheme()">
+          <div class="settings-row-icon" style="background:#f0f9ff;color:#0ea5e9">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg>
+          </div>
+          <label class="settings-row-label" id="theme-btn-label" style="cursor:pointer">מצב לילה / יום</label>
+          <svg viewBox="0 0 24 24" width="14" height="14" stroke="var(--muted)" stroke-width="2" fill="none"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+      </div>
+
+      <!-- Backup -->
+      <div class="settings-sec-label">גיבוי נתונים</div>
+      <div class="settings-card">
+        <div class="settings-row settings-row-action" onclick="exportData()">
+          <div class="settings-row-icon" style="background:#f0fdf4;color:#16a34a">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </div>
+          <label class="settings-row-label" style="cursor:pointer">ייצוא נתונים (JSON)</label>
+          <svg viewBox="0 0 24 24" width="14" height="14" stroke="var(--muted)" stroke-width="2" fill="none"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="settings-row settings-row-sep settings-row-action" onclick="document.getElementById('import-file-input').click()">
+          <div class="settings-row-icon" style="background:#eff6ff;color:#3b82f6">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <label class="settings-row-label" style="cursor:pointer">ייבוא נתונים</label>
+          <svg viewBox="0 0 24 24" width="14" height="14" stroke="var(--muted)" stroke-width="2" fill="none"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+      </div>
+      <input type="file" id="import-file-input" accept=".json" style="display:none" onchange="importData(event)">
+
+      <!-- Account -->
+      <div class="settings-sec-label">חשבון</div>
+      <div class="settings-card">
+        <div class="settings-row settings-row-action settings-row-danger" onclick="signOut()">
+          <div class="settings-row-icon" style="background:var(--red-light);color:var(--red)">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          </div>
+          <label class="settings-row-label" style="color:var(--red);cursor:pointer">יציאה מהחשבון</label>
+          <svg viewBox="0 0 24 24" width="14" height="14" stroke="var(--muted)" stroke-width="2" fill="none"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="settings-row settings-row-sep settings-row-action" onclick="confirmReset()">
+          <div class="settings-row-icon" style="background:var(--yellow-light);color:var(--yellow)">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </div>
+          <label class="settings-row-label" style="color:var(--muted);cursor:pointer">מחיקת כל הנתונים</label>
+          <svg viewBox="0 0 24 24" width="14" height="14" stroke="var(--muted)" stroke-width="2" fill="none"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-ftr">
+      <button class="btn-primary" style="width:100%;padding:0.9rem" onclick="saveSettings()">שמור שינויים</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="task-edit-modal" onclick="if(event.target===this)closeModal('task-edit-modal')">
+  <div class="tem-card">
+    <div class="tem-header">
+      <div class="tem-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </div>
+      <div id="task-modal-title" class="tem-title">עריכת משימה</div>
+      <button class="tem-close" onclick="closeModal('task-edit-modal')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="tem-body">
+      <div class="tem-field">
+        <label class="tem-label">שם המשימה</label>
+        <input type="text" id="edit-t-name" class="tem-input" placeholder="מה צריך לעשות?" />
+      </div>
+      <div class="tem-row2">
+        <div class="tem-field">
+          <label class="tem-label">קורס</label>
+          <input type="text" id="edit-t-course" class="tem-input" placeholder="שם הקורס" />
+        </div>
+        <div class="tem-field">
+          <label class="tem-label">תאריך</label>
+          <input type="date" id="edit-t-date" class="tem-input" />
+        </div>
+      </div>
+      <div class="tem-row2">
+        <div class="tem-field">
+          <label class="tem-label">שעה</label>
+          <input type="time" id="edit-t-time" class="tem-input" />
+        </div>
+        <div class="tem-field">
+          <label class="tem-label">משך (דקות)</label>
+          <input type="number" id="edit-t-dur" class="tem-input" placeholder="60" />
+        </div>
+      </div>
+      <div class="tem-field">
+        <label class="tem-label">הערות / חומר ללמוד</label>
+        <textarea id="edit-t-notes" class="tem-textarea" placeholder="פרקים, עמודים, נושאים ספציפיים..."></textarea>
+      </div>
+    </div>
+    <div class="tem-footer">
+      <button class="tem-save" onclick="saveManualTask()">שמור משימה</button>
+      <button class="tem-cancel" onclick="closeModal('task-edit-modal')">ביטול</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay hidden" id="rating-modal" onclick="if(event.target===this)finishTaskRating(true)">
+  <div class="modal-box rating-modal-box" style="text-align:center;max-width:360px;position:relative">
+    <button onclick="finishTaskRating(true)" style="position:absolute;top:0.75rem;left:0.75rem;background:var(--surface2);border:none;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted)">
+      <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <div class="rating-success-ring">
+      <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <div class="modal-title" style="font-size:1.2rem;margin-bottom:0.2rem">משימה הושלמה!</div>
+    <div class="modal-sub" id="rating-task-name" style="font-size:0.82rem;margin-top:0.2rem;color:var(--muted)"></div>
+    <div style="font-size:0.8rem;font-weight:700;color:var(--text);margin-top:1.1rem;margin-bottom:0">דרג את הפגישה</div>
+    <div class="star-row" id="star-row">
+      <button class="star-b" onclick="selectStar(1)"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+      <button class="star-b" onclick="selectStar(2)"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+      <button class="star-b" onclick="selectStar(3)"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+      <button class="star-b" onclick="selectStar(4)"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+      <button class="star-b" onclick="selectStar(5)"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+    </div>
+    <div id="rating-bad-wrap" class="hidden" style="text-align:right;margin-top:0.75rem">
+      <label class="field-label">מה היה קשה? המערכת תלמד מזה:</label>
+      <input type="text" id="rating-feedback" placeholder="החומר לא היה ברור, הייתי עייף..." />
+      <button class="btn-primary" style="margin-top:0.85rem;font-size:0.88rem;width:100%" onclick="finishTaskRating()">שמור ועדכן</button>
+    </div>
+    <button class="btn-primary" id="rating-skip-btn" style="margin-top:0.75rem;width:100%;background:var(--surface2);color:var(--muted);border:1px solid var(--border)" onclick="finishTaskRating(true)">דלג על הדירוג</button>
+  </div>
+</div>
+
+
+
+<div class="toast" id="toast"></div>
+
+<!-- HOBBY WEEKLY REPORT MODAL -->
+<div class="modal-overlay hidden" id="hobby-report-modal">
+  <div class="hqm-card">
+    <button class="hqm-close" onclick="closeModal('hobby-report-modal')" aria-label="סגור">
+      <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+    </button>
+    <div class="hqm-header">
+      <div class="hqm-icon" style="background:linear-gradient(135deg,var(--green-light),var(--accent-light))">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      </div>
+      <div>
+        <div class="hqm-title" id="hrm-title">דיווח שבועי</div>
+        <div class="hqm-sub">איך היה השבוע עם התחביב?</div>
+      </div>
+    </div>
+    <div class="hqm-fields">
+      <div class="hqm-row-label">כמה פעמים התאמנת השבוע?</div>
+      <div class="hqm-pills" id="hrm-sessions-pills">
+        <button class="hqm-pill" data-val="0" onclick="hqmPick(this,'hrm-sessions')">0</button>
+        <button class="hqm-pill" data-val="1" onclick="hqmPick(this,'hrm-sessions')">1</button>
+        <button class="hqm-pill" data-val="2" onclick="hqmPick(this,'hrm-sessions')">2</button>
+        <button class="hqm-pill hqm-pill-active" data-val="3" onclick="hqmPick(this,'hrm-sessions')">3</button>
+        <button class="hqm-pill" data-val="4" onclick="hqmPick(this,'hrm-sessions')">4</button>
+        <button class="hqm-pill" data-val="5" onclick="hqmPick(this,'hrm-sessions')">5+</button>
+      </div>
+      <div class="hqm-row-label">איך הרגשת?</div>
+      <div class="hqm-pills" id="hrm-feel-pills">
+        <button class="hqm-pill hqm-pill-active" data-val="great" onclick="hqmPick(this,'hrm-feel')">מעולה</button>
+        <button class="hqm-pill" data-val="ok" onclick="hqmPick(this,'hrm-feel')">בסדר</button>
+        <button class="hqm-pill" data-val="hard" onclick="hqmPick(this,'hrm-feel')">קשה</button>
+      </div>
+      <div class="hqm-row-label">הגעת למטרה השבוע?</div>
+      <div class="hqm-pills" id="hrm-goal-pills">
+        <button class="hqm-pill hqm-pill-active" data-val="yes" onclick="hqmPick(this,'hrm-goal')">כן</button>
+        <button class="hqm-pill" data-val="partial" onclick="hqmPick(this,'hrm-goal')">חלקית</button>
+        <button class="hqm-pill" data-val="no" onclick="hqmPick(this,'hrm-goal')">לא</button>
+      </div>
+      <textarea id="hrm-note" class="hqm-goal-inp" placeholder="הערה חופשית (אופציונלי)..." rows="2" style="resize:none"></textarea>
+    </div>
+    <button class="hqm-save-btn" onclick="hpReportSave()">שמור דיווח</button>
+  </div>
+</div>
+
+<!-- HOBBY QUICK-ADD MODAL (from planner start-here) -->
+<div class="modal-overlay hidden" id="hobby-quick-modal">
+  <div class="hqm-card">
+    <button class="hqm-close" onclick="closeModal('hobby-quick-modal')" aria-label="סגור">
+      <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+    </button>
+    <div class="hqm-header">
+      <div class="hqm-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+      </div>
+      <div>
+        <div class="hqm-title">תחביב / מטרה אישית</div>
+        <div class="hqm-sub">מה אתה רוצה לפתח בזמן הפנוי?</div>
+      </div>
+    </div>
+    <div class="hqm-fields">
+      <input type="text" id="hqm-name" class="hqm-big-inp" placeholder="שם התחביב" maxlength="60" />
+      <input type="text" id="hqm-goal" class="hqm-goal-inp" placeholder="המטרה שלי..." maxlength="100" />
+      <div class="hqm-row-label">כמה פעמים בשבוע?</div>
+      <div class="hqm-pills" id="hqm-freq-pills">
+        <button class="hqm-pill" data-val="1" onclick="hqmPick(this,'freq')">1×</button>
+        <button class="hqm-pill hqm-pill-active" data-val="2" onclick="hqmPick(this,'freq')">2×</button>
+        <button class="hqm-pill" data-val="3" onclick="hqmPick(this,'freq')">3×</button>
+        <button class="hqm-pill" data-val="4" onclick="hqmPick(this,'freq')">4×</button>
+        <button class="hqm-pill" data-val="5" onclick="hqmPick(this,'freq')">5×</button>
+      </div>
+      <div class="hqm-row-label">כמה דקות לפעילות?</div>
+      <div class="hqm-pills" id="hqm-dur-pills">
+        <button class="hqm-pill" data-val="20" onclick="hqmPick(this,'dur')">20'</button>
+        <button class="hqm-pill hqm-pill-active" data-val="30" onclick="hqmPick(this,'dur')">30'</button>
+        <button class="hqm-pill" data-val="45" onclick="hqmPick(this,'dur')">45'</button>
+        <button class="hqm-pill" data-val="60" onclick="hqmPick(this,'dur')">60'</button>
+        <button class="hqm-pill" data-val="90" onclick="hqmPick(this,'dur')">90'</button>
+      </div>
+    </div>
+    <button class="hqm-save-btn" onclick="plShHobbyQuickSave()">הוסף</button>
+  </div>
+</div>
+
+<!-- COURSE ADD MODAL -->
+<div class="modal-overlay hidden" id="course-add-modal" onclick="if(event.target===this)closeModal('course-add-modal')">
+  <div class="cam-card">
+    <div class="cam-hdr">
+      <div class="cam-hdr-icon">📚</div>
+      <div>
+        <div class="cam-hdr-title">הוספת קורס חדש</div>
+        <div class="cam-hdr-sub">הסיכום השבועי יקבע את שעות הלימוד</div>
+      </div>
+      <button class="anc-card-close" onclick="closeModal('course-add-modal')">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="cam-body">
+      <div>
+        <label class="anc-label">שם הקורס *</label>
+        <input type="text" id="cam-name" class="anc-input" placeholder="חשבון דיפרנציאלי, פסיכולוגיה..." maxlength="80" />
+      </div>
+      <div>
+        <label class="anc-label">תאריך מבחן *</label>
+        <input type="date" id="cam-exam-date" class="anc-input" />
+      </div>
+    </div>
+    <div class="cam-footer">
+      <button class="anc-save-btn" onclick="addPlannerCourse()">+ הוסף קורס</button>
+      <button class="anc-cancel-btn" onclick="closeModal('course-add-modal')">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     FOCUS LOCK MODE — Premium distraction blocker
+     ══════════════════════════════════════════ -->
+<div id="focus-lock-overlay" class="focus-lock-overlay hidden">
+  <!-- Animated background particles -->
+  <div class="fl-bg">
+    <div class="fl-orb fl-orb-1"></div>
+    <div class="fl-orb fl-orb-2"></div>
+    <div class="fl-orb fl-orb-3"></div>
+  </div>
+
+  <div class="fl-content">
+    <!-- Top bar -->
+    <div class="fl-top">
+      <div class="fl-mode-badge" id="fl-mode-badge"> מצב פוקוס</div>
+      <div class="fl-task-name" id="fl-task-name">לומד...</div>
+    </div>
+
+    <!-- Main timer orb -->
+    <div class="fl-timer-wrap">
+      <svg class="fl-ring-svg" viewBox="0 0 240 240">
+        <circle class="fl-ring-bg" cx="120" cy="120" r="108"/>
+        <circle class="fl-ring-fill" id="fl-ring-fill" cx="120" cy="120" r="108"/>
+      </svg>
+      <div class="fl-timer-inner">
+        <div class="fl-breathing" id="fl-breathing-icon"></div>
+        <div class="fl-digits" id="fl-digits">90:00</div>
+        <div class="fl-timer-label" id="fl-timer-label">דקות ריכוז</div>
+      </div>
+    </div>
+
+    <!-- Breathing guide -->
+    <div class="fl-breath-guide" id="fl-breath-guide">
+      <div class="fl-breath-dot"></div>
+      <span id="fl-breath-text">שאף... </span>
+    </div>
+
+    <!-- Stats row -->
+    <div class="fl-stats">
+      <div class="fl-stat">
+        <div class="fl-stat-val" id="fl-sessions-done">0</div>
+        <div class="fl-stat-lbl">סשנים היום</div>
+      </div>
+      <div class="fl-stat">
+        <div class="fl-stat-val" id="fl-focus-pct">0%</div>
+        <div class="fl-stat-lbl">התקדמות</div>
+      </div>
+      <div class="fl-stat">
+        <div class="fl-stat-val" id="fl-xp-earned">+0</div>
+        <div class="fl-stat-lbl">XP בסשן</div>
+      </div>
+    </div>
+
+    <!-- Exit challenge -->
+    <div class="fl-exit-section">
+      <button class="fl-exit-trigger" onclick="focusLockShowChallenge()">
+         יציאה ממצב פוקוס
+      </button>
+    </div>
+  </div>
+
+  <!-- Challenge modal (appears over the lock) -->
+  <div class="fl-challenge" id="fl-challenge">
+    <div class="fl-challenge-card">
+      <div class="fl-challenge-icon"></div>
+      <div class="fl-challenge-title">כדי לצאת — פתור את השאלה:</div>
+      <div class="fl-challenge-q" id="fl-challenge-q">15 + 27 = ?</div>
+      <input type="number" id="fl-challenge-ans" class="fl-challenge-input"
+             placeholder="התשובה שלך" onkeydown="if(event.key==='Enter')focusLockCheckAnswer()" />
+      <div class="fl-challenge-err hidden" id="fl-challenge-err"> לא נכון — נסה שוב!</div>
+      <div style="display:flex;gap:0.75rem;justify-content:center;margin-top:1rem">
+        <button class="fl-challenge-submit" onclick="focusLockCheckAnswer()">אשר </button>
+        <button class="fl-challenge-cancel" onclick="focusLockHideChallenge()">ביטול</button>
+      </div>
+      <div class="fl-challenge-motivate">אתה כמעט שם! עוד קצת ריכוז </div>
+    </div>
+  </div>
+</div>
+
+  <div class="action-sheet-backdrop" id="task-action-backdrop" onclick="closeTaskActionSheet()"></div>
+  <div class="action-sheet-modal" id="task-sheet-panel">
+    <div class="action-sheet-drag"></div>
+    <div class="action-sheet-title" id="task-action-title">שם המשימה</div>
+    <div class="action-sheet-options" id="task-action-options">
+      <!-- Options injected by JS -->
+    </div>
+    <button class="action-btn action-cancel-btn" onclick="closeTaskActionSheet()" style="margin-top:0.5rem;background:var(--surface2);color:var(--muted)">ביטול</button>
+  </div>
+
+<!-- TASK EDIT BOTTOM SHEET -->
+<div class="action-sheet-backdrop" id="tes-backdrop" onclick="closeTaskEditSheet()"></div>
+<div class="tes-panel" id="tes-panel">
+  <div class="tes-drag"></div>
+  <div class="tes-task-title" id="tes-task-title">עריכת משימה</div>
+  <div class="tes-quick-row" id="tes-quick-row">
+    <button class="tes-qbtn done"   onclick="tesDoneTask()"> סיים</button>
+    <button class="tes-qbtn missed" onclick="tesMissTask()"> פוספסה</button>
+    <button class="tes-qbtn del"    onclick="tesDeleteTask()"> מחק</button>
+  </div>
+  <div class="tes-fields">
+    <div class="tes-field"><label>שם המשימה</label><input type="text" id="tes-name" placeholder="שם..." maxlength="80" /></div>
+    <div class="tes-field-row">
+      <div class="tes-field"><label>תאריך</label><input type="date" id="tes-date" /></div>
+      <div class="tes-field"><label>שעה</label><input type="time" id="tes-time" /></div>
+    </div>
+    <div class="tes-field-row">
+      <div class="tes-field"><label>קורס</label><input type="text" id="tes-course" placeholder="קורס..." /></div>
+      <div class="tes-field"><label>משך (דק׳)</label><input type="number" id="tes-dur" min="15" max="480" step="15" /></div>
+    </div>
+  </div>
+  
+  
+  <button class="tes-save-btn" onclick="saveTaskEditSheet()">שמור שינויים</button>
+</div>
+
+
+<!-- TIME CHART MODAL -->
+<div class="modal-overlay hidden" id="time-chart-modal">
+  <div class="modal-box action-sheet-modal" id="time-chart-modal-box" style="max-width:480px; touch-action:none; overscroll-behavior-y:contain;">
+    <div class="action-sheet-drag"></div>
+    <div class="modal-title">הקצאת זמן — השבוע</div>
+    <div style="font-size:0.8rem;color:var(--muted);font-weight:700;margin-bottom:1rem" id="tc-total-label"></div>
+    <div id="tc-chart-wrap"></div>
+    <div style="margin-top:1rem;font-size:0.68rem;color:var(--muted);line-height:1.5"> עוגנים קבועים ·  משימות לימוד השבוע ·  זמן פנוי · מחושב לפי שעות קימה–שינה</div>
+    <button class="btn-cancel" onclick="closeModal('time-chart-modal')" style="width:100%;margin-top:1rem">סגור</button>
+  </div>
+</div>
+
+<script src="scheduler.js?v=33"></script>
+<script src="app_v58.js?v=10"></script>
+<script>
+/* ── Timeline: 80px/hour (airy spacing) ── */
+try { TL_HOUR_PX = 80; TL_PX_MIN = 80/60; } catch(e) {}
+
+/* ── Dynamic header: page name + date ── */
+(function(){
+  var PAGE_NAMES = {
+    'today':'היום','schedule':'לוח זמנים','homework':'מטלות',
+    'exams':'מבחנים','progress':'התקדמות','planner':'מתכנן',
+    'anchors':'עוגנים','weekly-review':'סיכום שבועי','settings':'הגדרות','hobby':'תחביבים'
+  };
+  var DAYS_HE = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+  var MONTHS_HE = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+  function formatDate(){
+    var d=new Date();
+    return DAYS_HE[d.getDay()]+', '+d.getDate()+' ב'+MONTHS_HE[d.getMonth()];
+  }
+  function syncHeader(){
+    var active=document.querySelector('.page.active');
+    if(!active) return;
+    var id=active.id.replace('page-','');
+    var nameEl=document.getElementById('hdr-page-name');
+    if(nameEl) nameEl.textContent=PAGE_NAMES[id]||id;
+  }
+  var dateEl=document.getElementById('hdr-date');
+  if(dateEl) dateEl.textContent=formatDate();
+  var obs=new MutationObserver(syncHeader);
+  document.querySelectorAll('.page').forEach(function(p){
+    obs.observe(p,{attributes:true,attributeFilter:['class']});
+  });
+  syncHeader();
+})();
+
+/* ── SPLASH & ATTRIBUTION HELPERS ── */
+function sfShowAuth() {
+  var ss = document.getElementById('setup-screen');
+  if (ss) ss.style.display = '';
+  var spl = document.getElementById('sf-splash');
+  if (!spl) return;
+  spl.classList.add('spl-exit');
+  setTimeout(function(){ spl.classList.add('spl-gone'); }, 290);
+}
+function sfShowAuthSignin() {
+  // Free version: no Supabase — go to name step so user sets up locally.
+  var ss = document.getElementById('setup-screen');
+  if (ss) ss.style.display = '';
+  var spl = document.getElementById('sf-splash');
+  if (spl) { spl.classList.add('spl-exit'); setTimeout(function(){ spl.classList.add('spl-gone'); }, 290); }
+  sfGoToS1();
+}
+function sfObSetType(type, btn) {
+  S.userType = type;
+  document.querySelectorAll('.ob2-ut-btn').forEach(function(b) { b.classList.remove('ob2-ut-sel'); });
+  btn.classList.add('ob2-ut-sel');
+}
+function sfQuickJoin() {
+  // One-step join: validate name, skip all onboarding questions, enter app.
+  var name = (document.getElementById('inp-name')?.value || '').trim();
+  if (!name) { if (window.toast) toast('נא למלא את שמך'); return; }
+  S.userType = S.userType || 'university';
+  // Write wake/sleep from step-2 selects so they are not lost on quick join
+  var wakeEl = document.getElementById('inp-wake');
+  var sleepEl = document.getElementById('inp-sleep');
+  if (wakeEl && wakeEl.value) S.wakeTime = wakeEl.value;
+  if (sleepEl && sleepEl.value) S.sleepTime = sleepEl.value;
+  obStep(8);          // validates + writes S.userName
+  finishOnboarding(); // save + launch app immediately
+}
+function sfChipSel(btn, groupId) {
+  document.querySelectorAll('#' + groupId + ' .sf-attr-chip').forEach(function(b){ b.classList.remove('sf-sel'); });
+  btn.classList.toggle('sf-sel', !btn.classList.contains('sf-sel'));
+}
+function sfUpdateAvailHours() {
+  var wakeEl = document.getElementById('inp-wake');
+  var sleepEl = document.getElementById('inp-sleep');
+  var preview = document.getElementById('ob2-avail-preview');
+  if (!wakeEl || !sleepEl || !preview) return;
+  var wParts = wakeEl.value.split(':');
+  var sParts = sleepEl.value.split(':');
+  var wMins = parseInt(wParts[0]) * 60 + parseInt(wParts[1] || 0);
+  var sMins = parseInt(sParts[0]) * 60 + parseInt(sParts[1] || 0);
+  var totalMins = sMins - wMins;
+  if (totalMins <= 0) { preview.textContent = 'שעות הקימה והשינה חופפות — נא לתקן'; preview.style.color = 'var(--red, #FF3B30)'; return; }
+  preview.style.color = '';
+  var hrs = Math.floor(totalMins / 60);
+  var mins = totalMins % 60;
+  preview.textContent = mins > 0 ? hrs + ' שעות ו-' + mins + ' דקות פנויות ביום' : hrs + ' שעות פנויות ביום';
+}
+function sfGoToS1() {
+  var sAiob = document.getElementById('ob2-s-aiob');
+  var s0 = document.getElementById('ob2-s0');
+  var s1 = document.getElementById('ob2-s1');
+  if (sAiob) sAiob.classList.remove('ob2-active');
+  if (s0) s0.classList.remove('ob2-active');
+  if (s1) s1.classList.add('ob2-active');
+  // Fix 1: show back button (hidden on S0)
+  var backBtn = document.getElementById('ob2-back');
+  if (backBtn) backBtn.classList.remove('hidden');
+  // Fix 2: progress bar at 12.5% (step 1/8)
+  var fill = document.getElementById('ob2-fill');
+  if (fill) fill.style.width = '12.5%';
+  // Fix 2: show counter
+  var counter = document.getElementById('ob2-counter');
+  if (counter) { counter.classList.remove('hidden'); counter.textContent = '1 / 8'; }
+  // Fix 4: init available hours preview
+  sfUpdateAvailHours();
+}
+function sfAttrNext() {
+  var sel = document.querySelector('#sf-attr-chips .sf-attr-chip.sf-sel');
+  if (sel) {
+    try {
+      var s = JSON.parse(localStorage.getItem('sf_free_v1') || '{}');
+      s.attribution = sel.dataset.val;
+      localStorage.setItem('sf_free_v1', JSON.stringify(s));
+    } catch(e) {}
+  }
+  sfGoToS1();
+}
+/* After app.js window.onload: show attribution step (s0) instead of s1 for new users */
+window.addEventListener('load', function() {
+  var hasUser = false;
+  try { var parsed = JSON.parse(localStorage.getItem('sf_free_v1') || '{}'); hasUser = !!parsed.userName; } catch(e) {}
+  if (typeof S !== 'undefined') S.userType = S.userType || 'university';
+  var spl = document.getElementById('sf-splash');
+  if (hasUser) { if (spl) spl.classList.add('spl-gone'); return; }
+  // app.js already set setup-screen display:''. Re-hide it — splash covers UI,
+  // setup-screen will be shown only when user clicks "התחל בחינם" / "כבר נרשמתי".
+  var ss = document.getElementById('setup-screen');
+  if (ss) ss.style.display = 'none';
+  var s1 = document.getElementById('ob2-s1');
+  var s0 = document.getElementById('ob2-s0');
+  var sAiob = document.getElementById('ob2-s-aiob');
+  if (s1) s1.classList.remove('ob2-active');
+  if (s0) s0.classList.remove('ob2-active');
+  if (sAiob) sAiob.classList.add('ob2-active');
+  // AI onboarding has no back / counter / progress
+  var backBtn = document.getElementById('ob2-back');
+  if (backBtn) backBtn.classList.add('hidden');
+  var counter = document.getElementById('ob2-counter');
+  if (counter) counter.classList.add('hidden');
+  var fill = document.getElementById('ob2-fill');
+  if (fill) fill.style.width = '0%';
+});
+
+/* ── SETUP GUIDE + FEATURE TOUR ── */
+(function() {
+  var _TOUR = [
+    { icon: '🎉', title: 'ברוכים הבאים ל-StudyFlow!', desc: 'בואו נסביר לך מה יש כאן ואיך להשתמש בכל חלק — לוקח פחות מדקה.' },
+    { icon: '📅', title: 'היום', desc: 'הדף הבית שלך. כאן תראה את כל המשימות, השיעורים והמבחנים שתוכננו להיום. מתעדכן אוטומטית בהתאם ללוז שלך.' },
+    { icon: '⚡', title: 'מתכנן לו"ז', desc: 'כאן מוסיפים קורסים ובונים את הלוז השבועי. הלב של האפליקציה — הכל מתחיל כאן.' },
+    { icon: '📚', title: 'מבחנים', desc: 'הוסף תאריכי מבחנים — האפליקציה תזכיר לך ותתכנן איתך לימוד מראש בצורה חכמה.' },
+    { icon: '✅', title: 'מטלות', desc: 'שיעורי בית ומשימות. סמן שהושלמו ועקוב אחר ההתקדמות שלך לאורך השבוע.' },
+    { icon: '🎸', title: 'תחביבים — איפה הם?', desc: 'ריצה, גיטרה, ספורט, שפה חדשה... 👉 נמצאים ב"מתכנן לו"ז" — גלול למטה לחלק "תחביבים" ← לחץ "+ הוסף". המערכת תמצא לך זמן בלוז ותעקוב אחר ההתקדמות שבועית!' },
+    { icon: '⚓', title: 'עוגנים קבועים', desc: 'שיעורים, עבודה, אימונים — הגדר פה זמנים קבועים שהלוז לעולם לא יחפוף איתם.' },
+    { icon: '📊', title: 'סיכום שבועי', desc: 'כל שבת — 3 דקות לסכם את השבוע, לתת ציון לעצמך ולבנות לוז מותאם לשבוע הבא.' },
+  ];
+  var _tourIdx = 0;
+  var _pollInterval = null;
+  var _GUIDE_KEY = 'sf_guide_v1';
+  var _TOUR_VER = 2;
+
+  /* App data — read-only here, managed by app.js (sf_free_v1) */
+  function _gd() { try { return JSON.parse(localStorage.getItem('sf_free_v1') || '{}'); } catch(e) { return {}; } }
+  /* Guide state — separate key, never overwritten by app.js save() */
+  function _gg() {
+    try {
+      var g = JSON.parse(localStorage.getItem(_GUIDE_KEY) || '{}');
+      /* Reset tourDone whenever tour version changes — forces re-show on new versions */
+      if (g.tourVersion !== _TOUR_VER) {
+        g.tourDone = false;
+        g.tourVersion = _TOUR_VER;
+        localStorage.setItem(_GUIDE_KEY, JSON.stringify(g));
+      }
+      return g;
+    } catch(e) { return {}; }
+  }
+  function _gs(k, v) { try { var g = _gg(); g[k] = v; localStorage.setItem(_GUIDE_KEY, JSON.stringify(g)); } catch(e) {} }
+
+  function _anchDone() { var d = _gd(); return Array.isArray(d.anchors) && d.anchors.length > 0; }
+  function _courDone() { var d = _gd(); return Array.isArray(d.courses) && d.courses.length > 0; }
+  function _scheduleDone() {
+    var d = _gd();
+    if (!Array.isArray(d.tasks) || !d.tasks.length) return false;
+    var now = new Date();
+    var today = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+    return d.tasks.some(function(t) { return !t.done && !t.missed && t.date >= today; });
+  }
+
+  function _nav(page, idx, extra) { return "showPage('" + page + "',document.querySelectorAll('.nav-item')[" + idx + "])" + (extra ? ';' + extra : ''); }
+  function _step(done, icon, label, hint, optional, action) {
+    return '<div class="sf-guide-step' + (done ? ' done' : '') + '">' +
+      '<div class="sf-guide-check' + (done ? ' done' : '') + '">' + (done ? '✓' : '') + '</div>' +
+      '<div class="sf-guide-step-label">' + icon + ' <b>' + label + '</b>' +
+      (hint ? '<br><span class="sf-guide-opt">' + hint + (optional ? ' — אופציונלי' : '') + '</span>' : (optional ? '<br><span class="sf-guide-opt">אופציונלי</span>' : '')) +
+      '</div><button class="sf-guide-go" onclick="' + action + '">' + (done ? '✓' : '←') + '</button></div>';
+  }
+
+  function _startPoll() {
+    if (_pollInterval) return;
+    _pollInterval = setInterval(function() {
+      if (!document.getElementById('sf-guide-card')) { clearInterval(_pollInterval); _pollInterval = null; return; }
+      sfRenderGuide();
+    }, 1500);
+  }
+
+  window.sfRenderGuide = function() {
+    var ex = document.getElementById('sf-guide-card');
+    var d = _gd(), g = _gg();
+    if (!d.userName || g.guideDismissed || !g.tourDone) { if (ex) ex.remove(); return; }
+    var a = _anchDone(), c = _courDone(), s = _scheduleDone();
+    if (a && c && s) {
+      if (ex) { ex.style.transition = 'opacity 0.5s'; ex.style.opacity = '0'; setTimeout(function() { if (ex.parentNode) ex.remove(); }, 500); }
+      if (_pollInterval) { clearInterval(_pollInterval); _pollInterval = null; }
+      return;
+    }
+    var html =
+      '<div class="sf-guide">' +
+      '<div class="sf-guide-title"><span>🚀 בואו נגדיר אותך!</span><button class="sf-guide-close" onclick="sfDismissGuide()">✕</button></div>' +
+      _step(a, '⚓', 'עוגנים קבועים', 'שיעורים, עבודה, אימונים', false, _nav('anchors', 5)) +
+      _step(c, '📚', 'קורסים', 'מה אתה לומד השסמסטר?', false, _nav('planner', 1)) +
+      _step(false, '🎸', 'תחביבים', null, true, _nav('planner', 1)) +
+      _step(false, '✅', 'שיעורי בית', null, true, _nav('homework', 3)) +
+      _step(s, '⚡', 'בנה לוז שבועי', null, false, _nav('planner', 1, "setTimeout(function(){var b=document.getElementById('pl-sh-build-btn');if(b)b.scrollIntoView({behavior:'smooth',block:'center'})},400)")) +
+      '</div>';
+    var wrap = document.createElement('div');
+    wrap.id = 'sf-guide-card';
+    wrap.innerHTML = html;
+    var page = document.getElementById('page-today');
+    if (!page) return;
+    var grid = page.querySelector('.cards-grid');
+    if (grid) { if (ex) ex.remove(); grid.parentNode.insertBefore(wrap, grid); }
+    _startPoll();
+  };
+  window.sfDismissGuide = function() {
+    var c = document.getElementById('sf-guide-card'); if (c) c.remove();
+    if (_pollInterval) { clearInterval(_pollInterval); _pollInterval = null; }
+    _gs('guideDismissed', true);
+  };
+  /* ── Feature Tour ── */
+  window.sfStartTour = function() {
+    if (document.getElementById('sf-tour-overlay')) return;
+    _tourIdx = 0; _sfRT();
+  };
+  function _sfRT() {
+    var ex = document.getElementById('sf-tour-overlay'); if (ex) ex.remove();
+    var s = _TOUR[_tourIdx], last = _tourIdx === _TOUR.length - 1;
+    var dots = _TOUR.map(function(_, i) { return '<div class="sf-tour-dot' + (i === _tourIdx ? ' active' : '') + '"></div>'; }).join('');
+    var ov = document.createElement('div');
+    ov.id = 'sf-tour-overlay'; ov.className = 'sf-tour-overlay';
+    ov.innerHTML = '<div class="sf-tour-sheet"><div class="sf-tour-dots">' + dots + '</div>' +
+      '<div class="sf-tour-icon">' + s.icon + '</div>' +
+      '<div class="sf-tour-title">' + s.title + '</div>' +
+      '<div class="sf-tour-desc">' + s.desc + '</div>' +
+      '<button class="sf-tour-btn" onclick="sfTourNext()">' + (last ? 'בואו נתחיל! 🚀' : 'הבא ←') + '</button>' +
+      (!last ? '<button class="sf-tour-skip" onclick="sfTourDone()">דלג על הסיור</button>' : '') + '</div>';
+    document.body.appendChild(ov);
+  }
+  window.sfTourNext = function() { if (_tourIdx < _TOUR.length - 1) { _tourIdx++; _sfRT(); } else sfTourDone(); };
+  window.sfTourDone = function() {
+    var ov = document.getElementById('sf-tour-overlay'); if (ov) ov.remove();
+    _gs('tourDone', true); _gs('tourVersion', _TOUR_VER); sfRenderGuide();
+  };
+  window.addEventListener('load', function() {
+    setTimeout(function() {
+      var d = _gd(), g = _gg();
+      if (d.userName && !g.tourDone) { sfStartTour(); return; }
+      sfRenderGuide();
+    }, 300);
+  });
+})();
+
+/* ── Anchor bottom sheet helpers ── */
+function sfAncPickColor(dot, color) {
+  document.querySelectorAll('#anc-color-row .anc-color-dot').forEach(function(d) {
+    d.classList.remove('anc-color-selected');
+  });
+  dot.classList.add('anc-color-selected');
+  var inp = document.getElementById('anc-color');
+  if (inp) inp.value = color;
+}
+
+function sfAncToggleDay(btn) {
+  var day = parseInt(btn.dataset.day);
+  var recCb = document.getElementById('anc-recurring');
+  var modal = document.getElementById('anchor-modal');
+  var isEditMode = modal && modal.dataset.editId;
+
+  if (isEditMode) {
+    // In edit mode: exclusive single-day selection — clear all pills first
+    document.querySelectorAll('.anc-day-pill').forEach(function(p) { p.classList.remove('anc-day-active'); });
+    document.querySelectorAll('#anc-days-selector input').forEach(function(c) { c.checked = false; });
+    btn.classList.add('anc-day-active');
+    var cb2 = document.querySelector('#anc-days-selector input[value="' + day + '"]');
+    if (cb2) cb2.checked = true;
+    if (recCb) recCb.checked = false;
+    var daySelectEl2 = document.getElementById('anc-day');
+    if (daySelectEl2) daySelectEl2.value = String(day);
+    document.getElementById('anc-per-day-times')?.classList.add('hidden');
+    return;
+  }
+
+  // Add mode: carry the single-day selection into multi-day before toggling
+  if (recCb && !recCb.checked) {
+    var daySelect = document.getElementById('anc-day');
+    var currentDay = daySelect ? parseInt(daySelect.value) : 0;
+    if (currentDay !== day) {
+      var existingCb = document.querySelector('#anc-days-selector input[value="' + currentDay + '"]');
+      if (existingCb) existingCb.checked = true;
+      var existingPill = document.querySelector('.anc-day-pill[data-day="' + currentDay + '"]');
+      if (existingPill) existingPill.classList.add('anc-day-active');
+    }
+  }
+
+  btn.classList.toggle('anc-day-active');
+  var isActive = btn.classList.contains('anc-day-active');
+
+  // Sync hidden checkbox
+  var cb = document.querySelector('#anc-days-selector input[value="' + day + '"]');
+  if (cb) cb.checked = isActive;
+
+  var activePills = document.querySelectorAll('.anc-day-pill.anc-day-active');
+  var count = activePills.length;
+
+  // Update recurring checkbox (app.js saveAnchorManual reads this)
+  if (recCb) recCb.checked = count > 0;
+
+  // Keep single-day select pointing to first active day (edit mode compat)
+  var daySelectEl = document.getElementById('anc-day');
+  if (daySelectEl && count > 0) daySelectEl.value = String(parseInt(activePills[0].dataset.day));
+
+  // Toggle between global time cards (single day) and per-day rows (multi-day)
+  var timeCards = document.querySelector('.anc-times-cards');
+  if (count > 1) {
+    if (timeCards) timeCards.classList.add('hidden');
+    document.getElementById('anc-per-day-times')?.classList.remove('hidden');
+    if (typeof updateDayTimeRows === 'function') updateDayTimeRows();
+  } else {
+    if (timeCards) timeCards.classList.remove('hidden');
+    document.getElementById('anc-per-day-times')?.classList.add('hidden');
+  }
+}
+
+function sfAncSetTravel(chip, min) {
+  document.querySelectorAll('.anc-travel-chip').forEach(function(c) { c.classList.remove('anc-travel-sel'); });
+  chip.classList.add('anc-travel-sel');
+  var customWrap = document.getElementById('anc-travel-custom-wrap');
+  if (min === -1) {
+    if (customWrap) customWrap.classList.remove('hidden');
+    var ci = document.getElementById('anc-travel-custom-inp');
+    if (ci) ci.focus();
+  } else {
+    if (customWrap) customWrap.classList.add('hidden');
+    var inp = document.getElementById('anc-travel');
+    if (inp) inp.value = String(min);
+  }
+}
+function sfAncCustomTravel(el) {
+  var val = Math.max(0, Math.min(300, parseInt(el.value) || 0));
+  var inp = document.getElementById('anc-travel');
+  if (inp) inp.value = String(val);
+}
+
+function sfSyncAnchorModal() {
+  // Sync visual day pills from hidden checkboxes (for edit mode)
+  document.querySelectorAll('.anc-day-pill').forEach(function(pill) {
+    var cb = document.querySelector('#anc-days-selector input[value="' + pill.dataset.day + '"]');
+    var recChecked = document.getElementById('anc-recurring')?.checked;
+    // In edit mode anc-recurring is false (single day) — use anc-day select instead
+    var daySelect = document.getElementById('anc-day');
+    var isSingleMatch = daySelect && String(daySelect.value) === pill.dataset.day && !recChecked;
+    pill.classList.toggle('anc-day-active', (cb && cb.checked) || isSingleMatch);
+  });
+
+  // Sync color dots from hidden color input
+  var colorVal = (document.getElementById('anc-color')?.value || '#4f6ef7').toLowerCase();
+  var matched = false;
+  document.querySelectorAll('#anc-color-row .anc-color-dot').forEach(function(dot) {
+    var matches = (dot.dataset.color || '').toLowerCase() === colorVal;
+    dot.classList.toggle('anc-color-selected', matches);
+    if (matches) matched = true;
+  });
+  // If color not in palette, select first dot as default
+  if (!matched) {
+    var first = document.querySelector('#anc-color-row .anc-color-dot');
+    if (first) first.classList.add('anc-color-selected');
+  }
+
+  // Sync travel time chip
+  var travelVal = parseInt(document.getElementById('anc-travel')?.value || '0');
+  var chipMatched = false;
+  document.querySelectorAll('.anc-travel-chip').forEach(function(chip) {
+    var matches = parseInt(chip.dataset.min) === travelVal;
+    chip.classList.toggle('anc-travel-sel', matches);
+    if (matches) chipMatched = true;
+  });
+  if (!chipMatched && travelVal > 0) {
+    // Custom value not in palette — select "אחר" chip and show input
+    var otherChip = document.querySelector('.anc-travel-chip[data-min="-1"]');
+    if (otherChip) otherChip.classList.add('anc-travel-sel');
+    var customWrap = document.getElementById('anc-travel-custom-wrap');
+    if (customWrap) customWrap.classList.remove('hidden');
+    var ci = document.getElementById('anc-travel-custom-inp');
+    if (ci) ci.value = String(travelVal);
+  } else if (!chipMatched) {
+    var firstChip = document.querySelector('.anc-travel-chip');
+    if (firstChip) firstChip.classList.add('anc-travel-sel');
+  }
+}
+
+// Auto-sync visual state when anchor modal opens
+(function() {
+  var mo = document.getElementById('anchor-modal');
+  if (!mo) return;
+  var obs = new MutationObserver(function(mutations) {
+    mutations.forEach(function(m) {
+      if (m.attributeName === 'class' && !mo.classList.contains('hidden')) {
+        setTimeout(sfSyncAnchorModal, 20);
+      }
+    });
+  });
+  obs.observe(mo, { attributes: true, attributeFilter: ['class'] });
+})();
+
+/* ═══════════════════════════════════════════════════════════════
+   ALGORITHM PATCHES — fixes applied on top of app.js/scheduler.js
+   All overrides are monkey-patches; originals are saved first.
+   ═══════════════════════════════════════════════════════════════ */
+(function() {
+  'use strict';
+
+  /* ── PATCH 1: getDayFreeMinutes
+     Bug: called _buildBlocked(dateStr) with no alreadyPlaced,
+     so pending (undone) tasks were invisible → free time overestimated
+     → scheduler committed to more sessions than could fit → silent drops. */
+  window.getDayFreeMinutes = function(dateStr) {
+    var wake  = timeToMins(S.wakeTime  || '07:00');
+    var sleep = timeToMins(S.sleepTime || '23:00');
+    var now = new Date();
+    var todayStr = typeof ld === 'function' ? ld(now) : now.toISOString().split('T')[0];
+    if (dateStr === todayStr) {
+      wake = Math.max(wake, now.getHours() * 60 + now.getMinutes() + 30);
+    }
+    // Include pending tasks so free time is not overestimated
+    var pendingForDay = (S.tasks || []).filter(function(t) {
+      return t.date === dateStr && !t.done && !t.missed && t.time;
+    });
+    var merged = _buildBlocked(dateStr, pendingForDay);
+    var free = 0, cursor = wake;
+    for (var i = 0; i < merged.length; i++) {
+      if (merged[i].s > cursor) free += merged[i].s - cursor;
+      cursor = Math.max(cursor, merged[i].e);
+    }
+    if (sleep > cursor) free += sleep - cursor;
+    return Math.max(0, free);
+  };
+
+  /* ── PATCH 2: _findSlotsInRange
+     Bug 1: anchor time parsed with only hours (split(':')[0]), discarding minutes.
+             e.g., anchor 13:45–14:30 was treated as 13:00–14:00 → slot at 14:00 was
+             NOT blocked, placing tasks inside the anchor window.
+     Bug 2: no 20-min rest buffer after anchor end (mismatched with _buildBlocked). */
+  window._findSlotsInRange = function(fromDateStr, limitDateStr, maxCount) {
+    var validTimes = ['08:00','09:00','10:00','11:00','12:00','13:00',
+                      '14:00','15:00','16:00','17:00','18:00','19:00','20:00'];
+    var wakeH  = parseInt((S.wakeTime  || '08:00').split(':')[0]);
+    var sleepH = parseInt((S.sleepTime || '23:00').split(':')[0]);
+    var results = [];
+    var usedKeys = new Set();
+    var d = new Date(fromDateStr + 'T12:00:00');
+    while (results.length < maxCount) {
+      var dateStr = ld(d);
+      if (dateStr > limitDateStr) break;
+      var dow = d.getDay();
+      d.setDate(d.getDate() + 1);
+      if (dow === 6) continue; // skip Saturday
+      for (var si = 0; si < validTimes.length; si++) {
+        if (results.length >= maxCount) break;
+        var slot = validTimes[si];
+        var h = parseInt(slot.split(':')[0]);
+        if (h < wakeH || h >= sleepH) continue;
+        var key = dateStr + '|' + slot;
+        if (usedKeys.has(key)) continue;
+        var sm = h * 60;
+        var anchorBusy = (S.anchors || []).some(function(a) {
+          if (a.oneTimeDate) { if (a.oneTimeDate !== dateStr) return false; }
+          else {
+            if (parseInt(a.day) !== dow) return false;
+            if (a.endDate && dateStr > a.endDate) return false;
+          }
+          var travel = a.travelMin || 0;
+          // FIX: use full time (hours + minutes) + 20-min post-anchor rest buffer
+          var as2 = timeToMins(a.start || '00:00') - travel;
+          var ae2 = timeToMins(a.end   || '00:00') + travel + 20;
+          return sm < ae2 && (sm + 90) > as2;
+        });
+        if (anchorBusy) continue;
+        if (!S.tasks.some(function(t) {
+          return t.date === dateStr && t.time === slot && !t.done && !t.missed;
+        })) {
+          results.push({ date: dateStr, time: slot });
+          usedKeys.add(key);
+        }
+      }
+    }
+    return results;
+  };
+
+  /* ── PATCH 3: getAvailableSlots
+     Bug 1: startDateStr parsed without T12:00:00 → midnight UTC → off-by-one day
+             in negative-UTC-offset timezones.
+     Bug 2: anchor blocked range missing the 20-min post-anchor rest buffer that
+             _buildBlocked adds, causing AI planner to suggest slots the deterministic
+             scheduler will reject. */
+  window.getAvailableSlots = function(startDateStr, endDateStr, currentPriority) {
+    var dn = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+    var available = '', totalMinutes = 0, anchorDetails = '';
+    var fmtM = function(m) {
+      return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+    };
+    // FIX: append T12:00:00 to avoid midnight-UTC timezone bug
+    var startD = startDateStr ? new Date(startDateStr + 'T12:00:00') : new Date();
+    var endD   = new Date(endDateStr + 'T12:00:00');
+    var daysLeft = Math.ceil((endD - startD) / 86400000);
+    var maxDays = Math.min(daysLeft, 14);
+    var wake  = parseInt((S.wakeTime  || '08:00').split(':')[0]) * 60
+              + parseInt((S.wakeTime  || '08:00').split(':')[1]);
+    var sleep = parseInt((S.sleepTime || '22:00').split(':')[0]) * 60
+              + parseInt((S.sleepTime || '22:00').split(':')[1]);
+    for (var i = 0; i <= maxDays; i++) {
+      var d = new Date(startD);
+      d.setDate(d.getDate() + i);
+      var dateStr = ld(d);
+      var dayIdx = d.getDay();
+      var dayAnchors = (S.anchors || []).filter(function(a) {
+        if (a.oneTimeDate) return a.oneTimeDate === dateStr;
+        return parseInt(a.day) === dayIdx && !(a.endDate && dateStr > a.endDate);
+      });
+      var dayTasks = (S.tasks || []).filter(function(t) {
+        return t.date === dateStr && !t.done && !t.missed;
+      });
+      var nowMins = 0;
+      if (dateStr === ld(new Date())) {
+        var nowObj = new Date();
+        nowMins = nowObj.getHours() * 60 + nowObj.getMinutes();
+      }
+      var blocked = [{ s: 0, e: Math.max(wake, nowMins) }, { s: sleep, e: 24 * 60 }];
+      dayAnchors.forEach(function(a) {
+        var travel = a.travelMin || 0;
+        var as2 = parseInt((a.start || '00:00').split(':')[0]) * 60
+                + parseInt((a.start || '00:00').split(':')[1]);
+        var ae2 = parseInt((a.end   || '00:00').split(':')[0]) * 60
+                + parseInt((a.end   || '00:00').split(':')[1]);
+        // FIX: add 20-min rest buffer to match _buildBlocked behaviour
+        blocked.push({ s: as2 - travel, e: ae2 + travel + 20 });
+      });
+      dayTasks.forEach(function(t) {
+        var ts2 = parseInt((t.time || '00:00').split(':')[0]) * 60
+                + parseInt((t.time || '00:00').split(':')[1]);
+        var dur2 = parseInt((String(t.duration || '60').match(/\d+/) || ['60'])[0]);
+        blocked.push({ s: ts2, e: ts2 + dur2 });
+      });
+      blocked.sort(function(a, b) { return a.s - b.s; });
+      var merged = [];
+      blocked.forEach(function(b) {
+        if (merged.length && b.s <= merged[merged.length - 1].e)
+          merged[merged.length - 1].e = Math.max(merged[merged.length - 1].e, b.e);
+        else merged.push({ s: b.s, e: b.e });
+      });
+      var windows = [], prev = 0;
+      merged.forEach(function(b) {
+        if (b.s > prev) {
+          var fs = Math.max(prev, wake), fe = b.s;
+          if (fe - fs >= 20) { windows.push({ s: fs, e: fe, m: fe - fs }); totalMinutes += fe - fs; }
+        }
+        prev = Math.max(prev, b.e);
+      });
+      if (prev < sleep) {
+        var fs = Math.max(prev, wake);
+        if (sleep - fs >= 20) { windows.push({ s: fs, e: sleep, m: sleep - fs }); totalMinutes += sleep - fs; }
+      }
+      if (dayAnchors.length) {
+        anchorDetails += '  ' + dn[dayIdx] + ' (' + dateStr + '): ';
+        anchorDetails += dayAnchors.map(function(a) {
+          var tr = a.travelMin || 0;
+          var aStart = parseInt(a.start.split(':')[0]) * 60 + parseInt(a.start.split(':')[1]);
+          var aEnd   = parseInt(a.end.split(':')[0])   * 60 + parseInt(a.end.split(':')[1]);
+          return '"' + a.name + '" ' + a.start + '–' + a.end
+            + (tr > 0 ? ' (+' + tr + 'דק\' נסיעה, חסום ' + fmtM(aStart - tr) + '–' + fmtM(aEnd + tr + 20) + ')' : '');
+        }).join(', ') + '\n';
+      }
+      if (windows.length) {
+        available += '- ' + dateStr + ' (' + dn[dayIdx] + '): ';
+        available += windows.map(function(w) {
+          return fmtM(w.s) + '–' + fmtM(w.e) + ' (' + w.m + ' דק\' פנויות)';
+        }).join(', ') + '\n';
+      }
+    }
+    return { text: available || 'אין זמנים פנויים', totalMinutes: totalMinutes, anchorDetails: anchorDetails };
+  };
+
+  /* ── PATCH 4: generateWeeklySchedule — feedback loop + load balancing
+     Bug: _wrAnalyzeInsights / _calcStudyAllocation (which factor in star ratings
+     and miss rates) were wired to the semester planner, not the weekly schedule.
+     The weekly schedule only used course "feel" (hard/easy). Star rating data and
+     miss rates had zero effect on session allocation.
+     Fix: wrap generateWeeklySchedule to enhance courseDifficulty from task history
+     before calling the original, and rebalance sessions across days after generation. */
+  var _origGWS = window.generateWeeklySchedule;
+  window.generateWeeklySchedule = function(answers) {
+    var enhanced = Object.assign({}, answers);
+    var courseDiff = Object.assign({}, answers.courseDifficulty || {});
+
+    // Compute per-course avg rating + miss rate from full task history
+    var stats = {};
+    (S.tasks || []).forEach(function(t) {
+      var c = t.course;
+      if (!c) return;
+      if (!stats[c]) stats[c] = { ratings: [], total: 0, missed: 0 };
+      stats[c].total++;
+      if (t.missed) stats[c].missed++;
+      if (t.rating && t.rating >= 1 && t.rating <= 5) stats[c].ratings.push(t.rating);
+    });
+
+    (S.courses || []).forEach(function(course) {
+      var c = course.name;
+      var stat = stats[c];
+      if (!stat || stat.total < 3) return; // need at least 3 data points
+      var base = courseDiff[c] !== undefined ? courseDiff[c] : 3;
+      var adj = base;
+      var avgRating = stat.ratings.length
+        ? stat.ratings.reduce(function(a, b) { return a + b; }, 0) / stat.ratings.length
+        : null;
+      var missRate = stat.total > 0 ? stat.missed / stat.total : 0;
+      if (avgRating !== null && avgRating < 2.5) adj = Math.min(5, adj + 1); // struggling → more sessions
+      if (missRate > 0.4)                         adj = Math.min(5, adj + 1); // often missed → more sessions
+      if (avgRating !== null && avgRating > 4.0 && missRate < 0.1)
+                                                   adj = Math.max(1, adj - 1); // going well → slightly fewer
+      courseDiff[c] = Math.max(1, Math.min(5, adj));
+    });
+
+    enhanced.courseDifficulty = courseDiff;
+
+    var result = _origGWS(enhanced);
+
+    // Post-generation: redistribute movable sessions more evenly across days
+    if (result && result.tasks && result.tasks.length > 1) {
+      result.tasks = _sfRebalanceDays(result.tasks);
+      // Final safety pass: drop any task still overlapping an anchor after rebalancing
+      result.tasks = result.tasks.filter(function(t) {
+        var tStart = (typeof timeToMins === 'function') ? timeToMins(t.time) : 0;
+        var tDur = parseInt((String(t.duration || '60').match(/\d+/) || ['60'])[0]);
+        var tEnd = tStart + tDur;
+        var dayIdx = new Date(t.date + 'T12:00').getDay();
+        return !(S.anchors || []).some(function(a) {
+          if (parseInt(a.day) !== dayIdx) return false;
+          if (a.endDate && t.date > a.endDate) return false;
+          if (a.oneTimeDate && a.oneTimeDate !== t.date) return false;
+          var aStart = (typeof timeToMins === 'function') ? timeToMins(a.start) - (a.travelMin || 0) : 0;
+          var aEnd = (typeof timeToMins === 'function') ? timeToMins(a.end) + (a.travelMin || 0) : 0;
+          return tStart < aEnd && tEnd > aStart;
+        });
+      });
+    }
+    return result;
+  };
+
+  /* Rebalance study sessions across days without violating homework deadlines.
+     Hobby sessions are unmoved (they already have gap enforcement).
+     Course sessions are redistributed so no day has more than ceil(total/days)+1. */
+  window._sfRebalanceDays = function(tasks) {
+    var movable = tasks.filter(function(t) { return !t.isHomework && !t.isHobby; });
+    var fixed   = tasks.filter(function(t) { return t.isHomework || t.isHobby; });
+    if (movable.length <= 1) return tasks;
+
+    var dates = Object.keys(movable.reduce(function(acc, t) {
+      acc[t.date] = true; return acc;
+    }, {})).sort();
+    if (dates.length <= 1) return tasks;
+
+    var target = Math.ceil(movable.length / dates.length);
+    var buckets = {};
+    dates.forEach(function(d) { buckets[d] = []; });
+
+    // Sort movable by priority then original date (preserve relative urgency)
+    var priOrder = { 'קריטי': 0, 'גבוה': 1, 'בינוני': 2, 'נמוך': 3, 'תחביב': 4 };
+    movable.sort(function(a, b) {
+      var pa = priOrder[a.priority] !== undefined ? priOrder[a.priority] : 2;
+      var pb = priOrder[b.priority] !== undefined ? priOrder[b.priority] : 2;
+      if (pa !== pb) return pa - pb;
+      return a.date < b.date ? -1 : 1;
+    });
+
+    // Round-robin fill into buckets, capped at target+1
+    var di = 0;
+    movable.forEach(function(task) {
+      var start = di;
+      var placed = false;
+      for (var tries = 0; tries < dates.length; tries++) {
+        var day = dates[(start + tries) % dates.length];
+        if (buckets[day].length <= target) {
+          var t2 = Object.assign({}, task, { date: day });
+          // Re-compute time via findBestFreeSlot to avoid collisions
+          var alreadyOnDay = fixed.concat(
+            Object.values(buckets).reduce(function(acc, arr) { return acc.concat(arr); }, [])
+          ).filter(function(t) { return t.date === day; });
+          var dur = parseInt((String(t2.duration || '60').match(/\d+/) || ['60'])[0]);
+          var slot = (typeof findBestFreeSlot === 'function')
+            ? findBestFreeSlot(day, alreadyOnDay, dur + 15, null) : null;
+          if (slot !== null) {
+            t2.time = typeof minsToTime === 'function' ? minsToTime(slot) : t2.time;
+            buckets[day].push(t2);
+            di = (start + tries + 1) % dates.length;
+            placed = true;
+            break;
+          }
+          // slot === null means no room on this day — try next day
+        }
+      }
+      if (!placed) {
+        // No valid slot on any day — keep task on its original day/time
+        var fallback = Object.assign({}, task);
+        buckets[fallback.date] = buckets[fallback.date] || [];
+        buckets[fallback.date].push(fallback);
+      }
+    });
+
+    var balanced = fixed.slice();
+    Object.values(buckets).forEach(function(arr) { balanced = balanced.concat(arr); });
+    balanced.sort(function(a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+    return balanced;
+  };
+
+})(); // end algorithm patches
+
+/* Populate exam course datalist on every navigation to exams page */
+(function() {
+  function _fillExamDatalist() {
+    var dl = document.getElementById('ex-course-list');
+    if (!dl || !window.S) return;
+    var names = (window.S.courses || []).map(function(c) { return c.name; });
+    dl.innerHTML = names.map(function(n) { return '<option value="' + n.replace(/"/g, '&quot;') + '">'; }).join('');
+  }
+  window.addEventListener('load', function() {
+    _fillExamDatalist();
+    var _origSP = window.showPage;
+    if (typeof _origSP === 'function') {
+      window.showPage = function(page, el) {
+        _origSP(page, el);
+        if (page === 'exams') _fillExamDatalist();
+        if (page === 'today' && window.sfRenderGuide) window.sfRenderGuide();
+      };
+    }
+  });
+})();
+
+/* Patch: hide "מטלות פתוחות" section-box when homework list is empty */
+(function() {
+  var _origRH = window.renderHomework;
+  if (typeof _origRH === 'function') {
+    window.renderHomework = function() {
+      _origRH();
+      var sec = document.getElementById('hw-open-section');
+      var list = document.getElementById('hw-list');
+      if (sec && list) sec.style.display = list.innerHTML.trim() ? '' : 'none';
+    };
+  }
+})();
+
+/* Patch: changeWeek closes monthly calendar view before switching week */
+(function() {
+  var _origCW = window.changeWeek;
+  if (typeof _origCW === 'function') {
+    window.changeWeek = function(dir) {
+      var mv = document.getElementById('schedule-monthly-view');
+      var wv = document.getElementById('schedule-weekly-view');
+      if (mv && mv.style.display === 'block') {
+        mv.style.display = 'none';
+        if (wv) wv.style.display = 'block';
+      }
+      _origCW(dir);
+    };
+  }
+})();
+
+/* Replace "חסום ל-AI" label (app.js hardcode) with neutral scheduling language */
+(function() {
+  function _fixAiLabel(root) {
+    (root || document).querySelectorAll('.tl-notes').forEach(function(el) {
+      if (el.innerHTML.includes('חסום ל-AI')) {
+        el.innerHTML = el.innerHTML.replace(/חסום ל-AI/g, 'חסום לתכנון');
+      }
+    });
+  }
+  var _aiObs = new MutationObserver(function(mutations) {
+    mutations.forEach(function(m) {
+      m.addedNodes.forEach(function(n) {
+        if (n.nodeType === 1) _fixAiLabel(n);
+      });
+    });
+  });
+  window.addEventListener('load', function() {
+    _fixAiLabel();
+    _aiObs.observe(document.body, { childList: true, subtree: true });
+  });
+})();
+
+/* ── Patch plShAddHwRow: add column headers + "זמן משוער" label on duration select ── */
+window.addEventListener('load', function() {
+  var _origHw = window.plShAddHwRow;
+  if (typeof _origHw !== 'function') return;
+  window.plShAddHwRow = function() {
+    var wrap = document.getElementById('pl-sh-hw-rows');
+    if (wrap && !wrap.querySelector('.plsh-hw-head')) {
+      var head = document.createElement('div');
+      head.className = 'plsh-hw-head';
+      head.innerHTML = '<span>שם המטלה</span><span>קורס</span><span>זמן משוער</span><span></span>';
+      wrap.appendChild(head);
+    }
+    _origHw();
+    var rows = wrap ? wrap.querySelectorAll('.pl-sh-hw-row') : [];
+    var last = rows[rows.length - 1];
+    if (last) {
+      var sel = last.querySelector('.plsh-hw-dur');
+      if (sel) sel.title = 'זמן משוער לסיום המטלה';
+    }
+  };
+});
+
+/* ── Bug 3: scroll weekly-review messages into view on mobile ── */
+window.addEventListener('load', function() {
+  var _orig = window._wrMsg;
+  if (typeof _orig !== 'function') return;
+  window._wrMsg = function(text, isUser) {
+    _orig(text, isUser);
+    setTimeout(function() {
+      var choices = document.getElementById('wr-choices');
+      var msgs = document.getElementById('wr-msgs');
+      var target = (choices && !choices.classList.contains('hidden')) ? choices : (msgs ? msgs.lastElementChild : null);
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 60);
+  };
+});
+
+/* ── Recalc V2 — selective checkbox reschedule ── */
+(function() {
+  'use strict';
+  var _bl = new Set();
+  var _proposals = [];
+  var _rcV2Mode = null;
+  var _exhausted = false;
+  var _TIMES = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00'];
+
+  function _todayStr() {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+
+  function _findOneSlot() {
+    if (typeof _endOfWeek !== 'function') return null;
+    var endWeek = _endOfWeek();
+    var todayStr = _todayStr();
+    var wakeH  = parseInt((S.wakeTime  || '08:00').split(':')[0]);
+    var sleepH = parseInt((S.sleepTime || '23:00').split(':')[0]);
+    var d = new Date(todayStr + 'T12:00:00');
+    while (true) {
+      var dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+      if (dateStr > endWeek) break;
+      var dow = d.getDay();
+      d.setDate(d.getDate() + 1);
+      if (dow === 6) continue;
+      for (var ti = 0; ti < _TIMES.length; ti++) {
+        var slot = _TIMES[ti];
+        var h = parseInt(slot);
+        if (h < wakeH || h >= sleepH) continue;
+        var key = dateStr + '|' + slot;
+        if (_bl.has(key)) continue;
+        var sm = h * 60;
+        var busy = false;
+        var anchors = S.anchors || [];
+        for (var ai = 0; !busy && ai < anchors.length; ai++) {
+          var a = anchors[ai];
+          if (a.oneTimeDate) { if (a.oneTimeDate !== dateStr) continue; }
+          else { if (parseInt(a.day) !== dow) continue; if (a.endDate && dateStr > a.endDate) continue; }
+          var as2 = parseInt((a.start||'00:00').split(':')[0])*60 - (a.travelMin||0);
+          var ae2 = parseInt((a.end  ||'00:00').split(':')[0])*60 + (a.travelMin||0);
+          if (sm < ae2 && (sm + 90) > as2) busy = true;
+        }
+        if (busy) continue;
+        var tasks = S.tasks || [];
+        for (var ki = 0; !busy && ki < tasks.length; ki++) {
+          var t = tasks[ki];
+          if (t.date !== dateStr || t.done || t.missed) continue;
+          var tst = parseInt((t.time||'00:00').split(':')[0])*60 + parseInt((t.time||'00:00').split(':')[1]);
+          var ten = tst + parseInt(t.duration||90);
+          if (sm < ten && (sm + 90) > tst) busy = true;
+        }
+        if (busy) continue;
+        return { date: dateStr, time: slot };
+      }
+    }
+    return null;
+  }
+
+  function _buildProposals(tasks) {
+    return tasks.map(function(task) {
+      var slot = _findOneSlot();
+      if (slot) _bl.add(slot.date + '|' + slot.time);
+      return { task: task, slot: slot, checked: !!slot };
+    });
+  }
+
+  function _fmtDate(ds) {
+    if (typeof formatPrettyDate === 'function') return formatPrettyDate(ds);
+    return ds;
+  }
+
+  function _renderV2UI() {
+    var zone = document.getElementById('recalc-actions-zone');
+    if (!zone) return;
+    var hasChecked  = _proposals.some(function(p) { return p.checked && p.slot; });
+    var hasUnchecked = _proposals.some(function(p) { return !p.checked; });
+    var rows = _proposals.map(function(p, i) {
+      var name = p.task.course || p.task.name || 'משימה';
+      if (p.slot) {
+        return '<div class="rcm-proposal-row">' +
+          '<label class="rcm-pcb-wrap"><input type="checkbox" class="rcm-pcb"' +
+          (p.checked ? ' checked' : '') +
+          ' onchange="window._sfRcToggle(' + i + ',this.checked)"></label>' +
+          '<div class="rcm-proposal-info">' +
+          '<span class="rcm-proposal-name">' + name + '</span>' +
+          '<span class="rcm-slot-time">' + _fmtDate(p.slot.date) + ' · ' + p.slot.time + '</span>' +
+          '</div></div>';
+      }
+      return '<div class="rcm-proposal-row rcm-no-slot">' +
+        '<label class="rcm-pcb-wrap"><input type="checkbox" class="rcm-pcb" disabled></label>' +
+        '<div class="rcm-proposal-info">' +
+        '<span class="rcm-proposal-name">' + name + '</span>' +
+        '<span class="rcm-slot-no">לא נמצא זמן פנוי</span>' +
+        '</div></div>';
+    }).join('');
+
+    var noSlotsMsg = (_exhausted && hasUnchecked) ?
+      '<div class="rcm-no-slots-msg">לא נמצאו זמנים פנויים נוספים בשבוע זה</div>' : '';
+
+    zone.innerHTML =
+      '<div class="rcm-proposals">' + rows + '</div>' +
+      noSlotsMsg +
+      '<button class="rcm-approve-btn" onclick="window._sfRcApprove()">' +
+        (hasChecked ? 'אישור והמשך' : 'סגור ואל תשבץ') +
+      '</button>' +
+      (!_exhausted && hasUnchecked ? '<button class="rcm-other-btn" onclick="window._sfRcFindOther()">חפש זמנים אחרים</button>' : '') +
+      '<button class="rcm-cancel-btn" onclick="closeRecalc()">ביטול</button>';
+  }
+
+  window._sfRcToggle = function(i, checked) {
+    if (_proposals[i]) _proposals[i].checked = !!checked;
+    _exhausted = false;
+    _renderV2UI();
+  };
+
+  window._sfRcApprove = function() {
+    var approved = _proposals.filter(function(p) { return p.checked && p.slot; });
+    var rejected  = _proposals.filter(function(p) { return !p.checked || !p.slot; });
+    if (_rcV2Mode === 'collision') {
+      approved.forEach(function(p) {
+        S.tasks.push(Object.assign({}, p.task, {
+          id: uid(), date: p.slot.date, time: p.slot.time, done: false, missed: false
+        }));
+      });
+    } else {
+      approved.forEach(function(p) {
+        var found = (S.tasks || []).find(function(x) { return x.id === p.task.id; });
+        if (found) { found.date = p.slot.date; found.time = p.slot.time; found.missed = false; delete found.missedReason; }
+      });
+    }
+    save(); renderAll();
+    var msg = '';
+    if (approved.length) msg += approved.length + ' משימות שובצו מחדש';
+    if (rejected.length) {
+      if (msg) msg += ' · ';
+      msg += rejected.length + (_rcV2Mode === 'collision' ? ' נמחקו' : ' נשארו כפוספסות');
+    }
+    if (!msg) msg = 'לא בוצע שינוי';
+    var zone = document.getElementById('recalc-actions-zone');
+    var chat = document.getElementById('recalc-chat');
+    if (zone) zone.innerHTML = '<div class="rcm-result success"><span class="rcm-result-icon">✅</span><span>' + msg + '</span></div><button class="rcm-close-action" onclick="closeRecalc()">סגור</button>';
+    if (chat) chat.innerHTML = '';
+    _proposals = []; _rcV2Mode = null; _bl.clear(); _exhausted = false;
+  };
+
+  window._sfRcFindOther = function() {
+    var anyNew = false;
+    _proposals.forEach(function(p) {
+      if (p.checked) return;
+      var slot = _findOneSlot();
+      if (slot) {
+        _bl.add(slot.date + '|' + slot.time);
+        p.slot = slot; p.checked = true; anyNew = true;
+      } else {
+        p.slot = null; p.checked = false;
+      }
+    });
+    _exhausted = !anyNew;
+    _renderV2UI();
+  };
+
+  window.openRecalcForCollision = function(anchor, tasks) {
+    _bl.clear(); _exhausted = false; _rcV2Mode = 'collision';
+    _rcPendingTasks = tasks;
+    openRecalc('collision');
+    var totalMins = tasks.reduce(function(s, t) { return s + parseInt(t.duration||90); }, 0);
+    var chat = document.getElementById('recalc-chat');
+    if (chat) chat.innerHTML =
+      '<div class="rcm-conflict-info"><div class="rcm-conflict-anchor">העוגן <strong>"' + anchor.name +
+      '"</strong> דרס ' + tasks.length + ' משימ' + (tasks.length === 1 ? 'ה' : 'ות') +
+      ' (~' + (Math.round(totalMins / 60 * 10) / 10) + ' שעות)</div></div>' +
+      '<div class="rcm-question">בחר מה לשבץ מחדש:</div>';
+    _proposals = _buildProposals(tasks);
+    _renderV2UI();
+  };
+
+  window.checkPastDueTasks = function() {
+    var todayStr = _todayStr();
+    var missed = [];
+    (S.tasks || []).forEach(function(t) {
+      if (t.date < todayStr && !t.done && !t.missed) {
+        t.missed = true; t.missedReason = 'לא בוצע (עבר)'; missed.push(t);
+      }
+    });
+    if (!missed.length) return;
+    _bl.clear(); _exhausted = false; _rcV2Mode = 'morning';
+    _rcPendingTasks = missed;
+    save();
+    openRecalc('morning');
+    var chat = document.getElementById('recalc-chat');
+    if (chat) chat.innerHTML =
+      '<div class="rcm-conflict-info"><div class="rcm-conflict-anchor">נשארו ' + missed.length +
+      ' משימ' + (missed.length === 1 ? 'ה' : 'ות') + ' לא גמורות מהימים האחרונים</div></div>' +
+      '<div class="rcm-question">בחר מה לשבץ מחדש:</div>';
+    _proposals = _buildProposals(missed);
+    _renderV2UI();
+  };
+})();
+</script>
+
+  </body>
