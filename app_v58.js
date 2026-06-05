@@ -662,13 +662,13 @@ function openSettings() {
   if (heroName) heroName.textContent = S.userName || 'משתמש';
   const wakeEl = document.getElementById('settings-wake');
   const sleepEl = document.getElementById('settings-sleep');
-  if (wakeEl) wakeEl.value = S.wakeTime || '08:00';
-  if (sleepEl) sleepEl.value = S.sleepTime || '22:00';
+  if (wakeEl) wakeEl.value = S.wakeTime || '07:00';
+  if (sleepEl) sleepEl.value = S.sleepTime || '23:00';
   const keyEl = document.getElementById('settings-api-key');
   if (keyEl) keyEl.value = S.apiKey || '';
   const keyStatus = document.getElementById('api-key-status');
   if (keyStatus) {
-    keyStatus.textContent = S.apiKey ? `✓ מפתח שמור: ${S.apiKey.slice(0,8)}...` : '⚠️ לא הוגדר — הזן מפתח Gemini';
+    keyStatus.textContent = S.apiKey ? ` מפתח שמור: ${S.apiKey.slice(0,7)}...` : '️ לא הוגדר — AI לא יעבודק';
     keyStatus.style.color = S.apiKey ? 'var(--green)' : '#f59e0b';
   }
   const banner = document.getElementById('api-managed-banner');
@@ -680,7 +680,7 @@ function openSettings() {
       banner.style.background = 'var(--orange-light, #fff7ed)';
       banner.style.border = '1px solid #f59e0b';
       banner.style.color = '#b45309';
-      banner.textContent = '⚠️ נדרש מפתח Gemini API — הכנס למטה';
+      banner.textContent = '️ נדרש מפתח API כדי שהמערכת תפעל — הכנס למטה';
     }
   }
   const lbl = document.getElementById('theme-btn-label');
@@ -716,157 +716,7 @@ function saveSettings() {
   if (sbName) sbName.textContent = S.userName || '—';
   const sbAvatar = document.getElementById('sb-avatar');
   if (sbAvatar) sbAvatar.textContent = (S.userName || '?')[0].toUpperCase();
-  toast(apiKey ? `✓ הגדרות נשמרו · Gemini Key: ${apiKey.slice(0,8)}...` : '✓ הגדרות נשמרו');
-}
-
-// ── AI ONBOARDING ──
-let _aiObParsed = null; // stores parsed AI result
-
-async function _startAIOnboarding() {
-  const textEl = document.getElementById('aiob-text');
-  const btn = document.getElementById('aiob-btn');
-  const loadEl = document.getElementById('aiob-loading');
-  const resultEl = document.getElementById('aiob-result');
-  const text = (textEl?.value || '').trim();
-
-  if (!text || text.length < 10) {
-    toast('אנא ספר/י קצת על הלימודים שלך');
-    return;
-  }
-
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ מעבד...'; }
-  if (loadEl) loadEl.classList.remove('hidden');
-  if (resultEl) resultEl.classList.add('hidden');
-
-  const today = ld(new Date());
-  const systemPrompt = `אתה עוזר להגדרת לוח לימודים ישראלי. קרא את הטקסט של המשתמש והחזר JSON בלבד ללא טקסט נוסף.
-שדות חובה: name (שם המשתמש, אם לא מוזכר - "סטודנט"), wakeTime (HH:MM, ברירת מחדל "07:00"), sleepTime (HH:MM, ברירת מחדל "23:00"), courses (מערך עם {name:string, examDate:"YYYY-MM-DD"|null}), anchors (מערך עם {name:string, day:number (0=ראשון, 1=שני...6=שבת), start:"HH:MM", end:"HH:MM"}, hobbies (מערך מחרוזות).
-תאריכי מבחנים יחסיים (כמו "סוף יוני") — חשב לפי היום שהוא ${today}. אם חסרים נתונים — השתמש בברירות מחדל סבירות. החזר רק JSON תקין.`;
-
-  try {
-    const raw = await callAI({
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: text }
-      ],
-      temperature: 0.3,
-      json: true,
-      maxTokens: 2048
-    });
-    const parsed = extractJSON(raw);
-    if (!parsed || !parsed.courses) throw new Error('לא הצלחתי להבין את הפרטים — נסה להיות יותר ספציפי');
-    _aiObParsed = parsed;
-    _showAIObResult(parsed);
-  } catch(e) {
-    if (loadEl) loadEl.classList.add('hidden');
-    if (btn) { btn.disabled = false; btn.textContent = '✨ בנה לי לוז'; }
-    toast(`שגיאה: ${e.message}`);
-  }
-}
-
-function _showAIObResult(parsed) {
-  const loadEl = document.getElementById('aiob-loading');
-  const resultEl = document.getElementById('aiob-result');
-  const btn = document.getElementById('aiob-btn');
-  if (loadEl) loadEl.classList.add('hidden');
-  if (btn) { btn.disabled = false; btn.textContent = '✨ בנה לי לוז'; }
-
-  const coursesList = (parsed.courses || []).map(c =>
-    `<li>${c.name}${c.examDate ? ` — מבחן ${c.examDate}` : ''}</li>`
-  ).join('');
-  const anchorsList = (parsed.anchors || []).map(a => {
-    const dayNames = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
-    return `<li>${a.name} — יום ${dayNames[a.day] || a.day}, ${a.start}–${a.end}</li>`;
-  }).join('');
-
-  if (resultEl) {
-    resultEl.innerHTML = `
-      <div class="aiob-result-title">🤖 הנה מה שהבנתי:</div>
-      <div class="aiob-result-grid">
-        <div class="aiob-chip accent">👤 ${parsed.name || 'סטודנט'}</div>
-        <div class="aiob-chip">🌅 ${parsed.wakeTime || '07:00'} – 🌙 ${parsed.sleepTime || '23:00'}</div>
-      </div>
-      ${coursesList ? `<div class="aiob-result-sec">📚 קורסים:</div><ul class="aiob-result-list">${coursesList}</ul>` : ''}
-      ${anchorsList ? `<div class="aiob-result-sec">📌 עוגנים:</div><ul class="aiob-result-list">${anchorsList}</ul>` : ''}
-      <div class="aiob-result-actions">
-        <button class="ob2-next-btn" onclick="_confirmAIOnboarding()">✅ נכון! בנה לוז</button>
-        <button class="ob2-skip-lnk" onclick="document.getElementById('aiob-result').classList.add('hidden');document.getElementById('aiob-text').focus()">✏️ ערוך</button>
-      </div>
-    `;
-    resultEl.classList.remove('hidden');
-  }
-}
-
-function _confirmAIOnboarding() {
-  if (!_aiObParsed) return;
-  try {
-    _applyAIOnboarding(_aiObParsed);
-    toast('🎉 הפרופיל שלך נוצר! מייצר לוז...');
-    // initApp() hides setup-screen, shows app-screen, initializes nav
-    initApp();
-    // Navigate to weekly review after initApp runs
-    setTimeout(() => {
-      showPage('weekly-review', null);
-      updateBottomNav('weekly-review');
-      setTimeout(() => {
-        if (typeof renderWeeklyReview === 'function') renderWeeklyReview();
-      }, 300);
-    }, 500);
-  } catch(e) {
-    toast('שגיאה: ' + e.message);
-  }
-}
-
-function _applyAIOnboarding(data) {
-  // Set basic profile
-  S.userName = (data.name || 'סטודנט').trim();
-  S.wakeTime = data.wakeTime || '07:00';
-  S.sleepTime = data.sleepTime || '23:00';
-
-  // Create courses + exams
-  const existingNames = new Set((S.courses || []).map(c => c.name));
-  (data.courses || []).forEach(c => {
-    if (!c.name || existingNames.has(c.name)) return;
-    const id = uid();
-    S.courses = S.courses || [];
-    S.courses.push({ id, name: c.name, color: getCourseColor(c.name) });
-    if (c.examDate) {
-      S.exams = S.exams || [];
-      S.exams.push({ id: uid(), course: c.name, date: c.examDate, note: '' });
-    }
-    existingNames.add(c.name);
-  });
-
-  // Create anchors
-  const existingAnchors = new Set((S.anchors || []).map(a => a.name + '|' + a.day));
-  (data.anchors || []).forEach(a => {
-    const key = a.name + '|' + a.day;
-    if (!a.name || existingAnchors.has(key)) return;
-    S.anchors = S.anchors || [];
-    S.anchors.push({
-      id: uid(),
-      name: a.name,
-      day: parseInt(a.day ?? 0),
-      start: a.start || '09:00',
-      end: a.end || '10:00',
-      color: '#4f6ef7',
-      travelMin: 0
-    });
-    existingAnchors.add(key);
-  });
-
-  // Set hobbies
-  (data.hobbies || []).forEach(h => {
-    if (typeof h === 'string' && h.trim()) {
-      S.hobbies = S.hobbies || [];
-      if (!S.hobbies.some(x => x.name === h)) {
-        S.hobbies.push({ id: uid(), name: h, timesPerWeek: 2 });
-      }
-    }
-  });
-
-  S.onboardingDone = true;
-  save();
+  toast(apiKey ? ` הגדרות נשמרו · API Key: ${apiKey.slice(0,7)}...` : ' הגדרות נשמרו');
 }
 
 // ── OB2: Modern step-by-step onboarding ──
@@ -1188,46 +1038,48 @@ function updateBottomNav(name) {
 }
 
 
-// Developer API key — users don't need to enter their own key
-const _DEV_API_KEY = 'AIza_REPLACE_WITH_DEMO_GEMINI_KEY';
+// Developer API key — proxy is the primary AI path (server-side Gemini key).
+// Direct-call fallback hits Gemini directly when a personal key is set.
+const _DEV_API_KEY = '';
 
+// Direct Gemini call (used when a personal API key is set, or as proxy fallback).
+// Converts OpenAI-style {role, content} messages → Gemini contents/system_instruction.
 async function _callGeminiDirect({ messages, temperature, json, maxTokens }) {
-  const key = (S.apiKey || _DEV_API_KEY).trim();
-  if (!key || key.startsWith('AIza_REPLACE')) throw new Error('נדרש מפתח Gemini API — הכנס אותו בהגדרות ️');
-  const model = 'gemini-2.0-flash';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+  const key = S.apiKey || _DEV_API_KEY;
+  if (!key || key.startsWith('gsk_placeholder')) throw new Error('נדרש מפתח Gemini API — הכנס אותו בהגדרות ️');
 
-  const systemMsg = messages.find(m => m.role === 'system');
-  const userMsgs = messages.filter(m => m.role !== 'system');
+  const systemParts = [];
+  const contents = [];
+  for (const m of (messages || [])) {
+    if (m.role === 'system') { systemParts.push({ text: String(m.content || '') }); continue; }
+    contents.push({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: String(m.content || '') }] });
+  }
 
   const body = {
-    contents: userMsgs.map(m => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }]
-    })),
+    contents,
     generationConfig: {
-      temperature: temperature ?? 0.7,
-      maxOutputTokens: maxTokens ?? 4096,
+      temperature: typeof temperature === 'number' ? temperature : 0.7,
+      maxOutputTokens: maxTokens || 4096,
       ...(json ? { responseMimeType: 'application/json' } : {})
     }
   };
-  if (systemMsg) body.system_instruction = { parts: [{ text: systemMsg.content }] };
+  if (systemParts.length) body.system_instruction = { parts: systemParts };
 
+  const model = 'gemini-2.0-flash';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   });
-  if (res.status === 400) {
-    const d = await res.json().catch(() => ({}));
-    throw new Error(`Gemini שגיאה: ${d.error?.message || res.status}`);
-  }
-  if (res.status === 401 || res.status === 403) throw new Error('Gemini API Key לא תקין — בדוק בהגדרות ️');
+  if (res.status === 400 || res.status === 401 || res.status === 403) throw new Error('Gemini API Key לא תקין — בדוק בהגדרות ️');
   if (res.status === 429) throw new Error('חריגת מגבלת API — נסה שוב בעוד דקה');
   if (!res.ok) throw new Error(`שגיאת שרת (${res.status})`);
   const d = await res.json();
   if (d.error) throw new Error(typeof d.error === 'string' ? d.error : (d.error.message || 'שגיאה ב-AI'));
-  return d.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  const text = d.candidates?.[0]?.content?.parts?.map(p => p.text).filter(Boolean).join('') || '';
+  if (!text) throw new Error('תגובה ריקה מ-AI — נסה שוב');
+  return text;
 }
 
 async function _retryOn429(fn, maxRetries = 2) {
@@ -1246,11 +1098,589 @@ async function _retryOn429(fn, maxRetries = 2) {
 }
 
 async function callAI({ messages, temperature = 0.7, json = false, maxTokens = 4096 }) {
-  return await _retryOn429(() => _callGeminiDirect({ messages, temperature, json, maxTokens }));
+  // Personal key set → skip proxy entirely (avoids 3-5s 404 wait on static hosts)
+  if (S.apiKey && !S.apiKey.startsWith('gsk_placeholder')) {
+    return await _retryOn429(() => _callGeminiDirect({ messages, temperature, json, maxTokens }));
+  }
+  return await _retryOn429(async () => {
+    try {
+      const res = await fetch('/api/groq-proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages, temperature, json, maxTokens })
+      });
+      if (res.status === 503) throw new Error('תכונות AI אינן זמינות בגרסה החינמית');
+      if (res.status === 429) throw new Error('חריגת מגבלת AI — נסה שוב בעוד דקה');
+      if (res.status === 401) throw new Error('מפתח API לא תקין — עדכן בהגדרות ️');
+      if (res.status === 500) {
+        const d = await res.json().catch(() => ({}));
+        if (d.error && d.error.includes('GEMINI_API_KEY')) throw new Error('GEMINI_API_KEY לא מוגדר בשרת — הגדר אותו ב-Vercel Environment Variables');
+      }
+      if (res.ok) {
+        const d = await res.json();
+        if (d.error) throw new Error(typeof d.error === 'string' ? d.error : (d.error.message || 'שגיאה ב-AI'));
+        return d.choices[0].message.content;
+      }
+      // 404 = proxy not deployed, fall through to direct
+    } catch (e) {
+      if (e.message && (e.message.includes('חריגת') || e.message.includes('GEMINI_API_KEY') || e.message.includes('לא תקין'))) throw e;
+    }
+    return await _callGeminiDirect({ messages, temperature, json, maxTokens });
+  });
 }
 
 async function gemini(prompt) {
   return callAI({ messages: [{ role: 'user', content: prompt }] });
+}
+
+// ── SCHEDULE UPLOAD: multimodal extraction ──────────────────────────────────
+// Used by the home-screen schedule upload feature. Bypasses callAI to send
+// responseSchema/files/thinkingConfig directly to the proxy (callAI's wrapper
+// only forwards the legacy 4 fields).
+//
+// fileContent: for image/PDF → base64 string; for CSV → raw CSV text.
+// mimeType:    binary MIME for image/PDF, "text/csv" (or similar) for CSV.
+async function _extractScheduleFromFile(fileContent, mimeType) {
+  const TIMEOUT_MS = 30000;
+  const isCsv = /^(text\/csv|application\/csv|text\/plain)/i.test(mimeType || '');
+
+  const systemPrompt = 'אתה מקבל מערכת שעות שבועית של סטודנט באוניברסיטה. חלץ ממנה את כל המפגשים השבועיים, כולל סוג המפגש (הרצאה או תרגול) ושם המרצה אם זמין. החזר JSON בלבד.';
+  const baseUserPrompt = `חלץ את כל המפגשים במערכת השעות. עבור כל מפגש החזר:
+- course_name: שם בסיס נקי של הקורס בלבד. הסר סוגריים כמו "(תרגול)" או "(תר')" והסר שם מרצה. דוגמה: מהמחרוזת "חדו"א 2 (תרגול)- אכרם סאלח" החזר course_name="חדו"א 2".
+- session_type: "tutorial" אם בכותרת מופיע "תרגול" / "תר'" / "(תרגול)" / "(תר')", אחרת "lecture". כל מפגש שלא מסומן במפורש כתרגול הוא הרצאה.
+- teacher: שם המרצה אם כתוב במפורש (בדרך כלל אחרי קו מפריד "-" או אחרי הסוגריים). מחרוזת ריקה אם לא נמצא בבירור.
+- day_of_week: יום בשבוע (sunday/monday/tuesday/wednesday/thursday/friday/saturday).
+- start_time: שעת התחלה בפורמט HH:MM.
+- end_time: שעת סיום בפורמט HH:MM.
+אם השדות לא ברורים — דלג ואל תנחש.`;
+  const userPrompt = isCsv
+    ? `${baseUserPrompt}\n\nתוכן ה-CSV:\n${fileContent}`
+    : baseUserPrompt;
+
+  const body = {
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ],
+    temperature: 0.2,
+    responseSchema: {
+      type: 'object',
+      properties: {
+        schedule: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              course_name:  { type: 'string' },
+              day_of_week:  { type: 'string', enum: ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'] },
+              start_time:   { type: 'string', description: 'HH:MM' },
+              end_time:     { type: 'string', description: 'HH:MM' },
+              session_type: { type: 'string', enum: ['lecture', 'tutorial'] },
+              teacher:      { type: 'string', description: 'שם המרצה אם נמצא בכותרת — אחרת מחרוזת ריקה' },
+            },
+            required: ['course_name', 'day_of_week', 'start_time', 'end_time', 'session_type'],
+          },
+        },
+      },
+      required: ['schedule'],
+    },
+    thinkingConfig: { thinkingBudget: 0 },
+  };
+  if (!isCsv) {
+    body.files = [{ mime_type: mimeType, data: fileContent }];
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+  let res;
+  try {
+    res = await fetch('/api/groq-proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch (e) {
+    if (e.name === 'AbortError') {
+      throw new Error('החילוץ נמשך זמן רב מדי. נסה תמונה אחרת או קובץ אחר.');
+    }
+    throw new Error(`שגיאת רשת: ${e.message}`);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  if (!res.ok) {
+    let errMsg = `שגיאת שרת (${res.status})`;
+    try {
+      const d = await res.json();
+      if (d?.error) errMsg = typeof d.error === 'string' ? d.error : (d.error.message || errMsg);
+    } catch (_) {}
+    throw new Error(errMsg);
+  }
+
+  const data = await res.json();
+  const content = data?.choices?.[0]?.message?.content;
+  if (!content) throw new Error('ה-AI לא החזיר תוכן.');
+
+  let parsed;
+  try {
+    parsed = JSON.parse(content);
+  } catch (_) {
+    // responseSchema should guarantee valid JSON; this is belt-and-suspenders
+    try { parsed = extractJSON(content); } catch (__) {
+      throw new Error('לא הצלחנו לפענח את התוצאה.');
+    }
+  }
+
+  const schedule = parsed?.schedule;
+  if (!Array.isArray(schedule)) throw new Error('המבנה שהוחזר לא תקין.');
+  return schedule;
+}
+
+// ── MOODLE ICS IMPORT: deadline extraction ──────────────────────────────────
+// Same direct-fetch + responseSchema + thinkingBudget:0 pattern as
+// _extractScheduleFromFile. ICS is always plain text, so no inline_data
+// branch — the raw file content is embedded in the user prompt.
+async function _extractTasksFromICS(icsText) {
+  const TIMEOUT_MS = 30000;
+  // YYYY-MM-DD in Asia/Jerusalem regardless of user machine timezone
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
+
+  const systemPrompt = 'אתה מקבל קובץ ICS (יומן iCalendar) של סטודנט מ-Moodle. חלץ ממנו רק אירועי מועד הגשה של מטלות. החזר JSON בלבד.';
+  const userPrompt = `חלץ מהקובץ רק אירועים שמתארים מועדי הגשה של מטלות. עבור כל אירוע:
+- title: כותרת המטלה כפי שמופיעה ב-SUMMARY (נקה סיומות כמו "יש להגיש את ", השאר רק את שם המטלה)
+- course: שם הקורס מהשדה CATEGORIES — החלק שלפני הרווח-מקף-רווח הראשון
+- due_date: תאריך ההגשה בפורמט YYYY-MM-DD בשעון ישראל
+- due_time: שעת ההגשה בפורמט HH:MM בשעון ישראל
+- description: תיאור מקוצר עד 100 תווים — נקה מ-DESCRIPTION את הסדרות \\, ו-\\n והשאר טקסט קריא
+
+חוקים:
+1. כלול רק אירועים שתאריך ההגשה שלהם הוא ${today} ואילך — דלג על אירועים שכבר עברו.
+2. דלג על אירועים שכותרתם בנוסח "נפתח ב..." — אלו הודעות פתיחה, לא הגשות.
+3. כלול רק אירועים בנוסח "יש להגיש" או "תאריך הגשה".
+4. הזמנים בקובץ הם UTC (סיומת Z). המר לשעון ישראל: UTC+3 לחודשים מאי-אוקטובר (IDT), UTC+2 לחודשים נובמבר-אפריל (IST). שים לב לחציית חצות בהמרה.
+5. אם השדות לא ברורים — דלג ואל תנחש.
+
+תוכן ה-ICS:
+${icsText}`;
+
+  const body = {
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ],
+    temperature: 0.2,
+    maxTokens: 8000,
+    responseSchema: {
+      type: 'object',
+      properties: {
+        tasks: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              title:       { type: 'string' },
+              course:      { type: 'string' },
+              due_date:    { type: 'string', description: 'YYYY-MM-DD local Israel time' },
+              due_time:    { type: 'string', description: 'HH:MM local Israel time' },
+              description: { type: 'string', description: 'shortened, max 100 chars' },
+            },
+            required: ['title', 'course', 'due_date', 'due_time'],
+          },
+        },
+      },
+      required: ['tasks'],
+    },
+    thinkingConfig: { thinkingBudget: 0 },
+  };
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+  let res;
+  try {
+    res = await fetch('/api/groq-proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch (e) {
+    if (e.name === 'AbortError') {
+      throw new Error('החילוץ נמשך זמן רב מדי. נסה קובץ אחר.');
+    }
+    throw new Error(`שגיאת רשת: ${e.message}`);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  if (!res.ok) {
+    let errMsg = `שגיאת שרת (${res.status})`;
+    try {
+      const d = await res.json();
+      if (d?.error) errMsg = typeof d.error === 'string' ? d.error : (d.error.message || errMsg);
+    } catch (_) {}
+    throw new Error(errMsg);
+  }
+
+  const data = await res.json();
+  const content = data?.choices?.[0]?.message?.content;
+  if (!content) throw new Error('ה-AI לא החזיר תוכן.');
+
+  let parsed;
+  try {
+    parsed = JSON.parse(content);
+  } catch (_) {
+    try { parsed = extractJSON(content); } catch (__) {
+      throw new Error('לא הצלחנו לפענח את התוצאה.');
+    }
+  }
+
+  const tasks = parsed?.tasks;
+  if (!Array.isArray(tasks)) throw new Error('המבנה שהוחזר לא תקין.');
+  return tasks;
+}
+
+// ── SCHEDULE UPLOAD: UI wiring ──────────────────────────────────────────────
+
+let _scheduleUploadPending = null;  // parsed schedule[] between extract and approve
+
+const _SU_DAY_HE = { sunday:'ראשון', monday:'שני', tuesday:'שלישי', wednesday:'רביעי', thursday:'חמישי', friday:'שישי', saturday:'שבת' };
+const _SU_DAY_NUM = { sunday:0, monday:1, tuesday:2, wednesday:3, thursday:4, friday:5, saturday:6 };
+
+function openScheduleUploadModal() {
+  document.getElementById('schedule-upload-modal').classList.remove('hidden');
+  _setBodyLock(true);
+  _scheduleUploadPending = null;
+  document.getElementById('schedule-upload-input-area').classList.remove('hidden');
+  document.getElementById('schedule-upload-loading').classList.add('hidden');
+  document.getElementById('schedule-upload-preview').classList.add('hidden');
+  document.getElementById('schedule-upload-error').classList.add('hidden');
+  document.getElementById('schedule-upload-buttons').classList.add('hidden');
+  // Approve button can be hidden by _suDeleteRow when last row goes — restore it on each open
+  const approveBtn = document.querySelector('#schedule-upload-buttons button:first-child');
+  if (approveBtn) approveBtn.style.display = '';
+  const fileInp = document.getElementById('schedule-upload-file');
+  if (fileInp) fileInp.value = '';
+}
+
+function closeScheduleUploadModal() {
+  document.getElementById('schedule-upload-modal').classList.add('hidden');
+  _setBodyLock(false);
+  _scheduleUploadPending = null;
+}
+
+function _suShowError(msg) {
+  const el = document.getElementById('schedule-upload-error');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  document.getElementById('schedule-upload-input-area').classList.remove('hidden');
+  document.getElementById('schedule-upload-loading').classList.add('hidden');
+}
+
+function _suFileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => {
+      const result = r.result || '';
+      const comma = String(result).indexOf(',');
+      resolve(comma >= 0 ? String(result).slice(comma + 1) : String(result));
+    };
+    r.onerror = () => reject(new Error('שגיאה בקריאת הקובץ.'));
+    r.readAsDataURL(file);
+  });
+}
+
+async function handleScheduleUploadFile(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  document.getElementById('schedule-upload-input-area').classList.add('hidden');
+  document.getElementById('schedule-upload-loading').classList.remove('hidden');
+  document.getElementById('schedule-upload-error').classList.add('hidden');
+  document.getElementById('schedule-upload-preview').classList.add('hidden');
+  document.getElementById('schedule-upload-buttons').classList.add('hidden');
+
+  try {
+    const isCsv = /\.csv$/i.test(file.name) || /^(text\/csv|application\/csv|text\/plain)/i.test(file.type);
+    let content, mimeType;
+    if (isCsv) {
+      content = await file.text();
+      mimeType = 'text/csv';
+    } else {
+      content = await _suFileToBase64(file);
+      mimeType = file.type || 'application/octet-stream';
+    }
+    const schedule = await _extractScheduleFromFile(content, mimeType);
+    if (!schedule.length) {
+      _suShowError('לא נמצאו שיעורים בקובץ. נסה תמונה ברורה יותר.');
+      return;
+    }
+    _scheduleUploadPending = schedule;
+    _suSortSchedule(_scheduleUploadPending);   // sort ONCE, before first render
+    _suRenderPreview(_scheduleUploadPending);
+  } catch (e) {
+    _suShowError(e.message || 'שגיאה בחילוץ');
+  }
+}
+
+function _suSortSchedule(arr) {
+  arr.sort((a, b) => {
+    const da = _SU_DAY_NUM[a.day_of_week] ?? 99;
+    const db = _SU_DAY_NUM[b.day_of_week] ?? 99;
+    if (da !== db) return da - db;
+    return String(a.start_time || '').localeCompare(String(b.start_time || ''));
+  });
+}
+
+function _suRenderPreview(schedule) {
+  document.getElementById('schedule-upload-loading').classList.add('hidden');
+  document.getElementById('schedule-upload-preview').classList.remove('hidden');
+  document.getElementById('schedule-upload-buttons').classList.remove('hidden');
+  document.getElementById('schedule-upload-count').textContent = schedule.length;
+  const tbody = document.getElementById('schedule-upload-preview-tbody');
+  const dayPairs = [
+    ['sunday','ראשון'], ['monday','שני'], ['tuesday','שלישי'],
+    ['wednesday','רביעי'], ['thursday','חמישי'], ['friday','שישי'], ['saturday','שבת'],
+  ];
+  tbody.innerHTML = schedule.map((item, idx) => {
+    const dayOpts = dayPairs.map(([v, h]) =>
+      `<option value="${v}"${item.day_of_week === v ? ' selected' : ''}>${h}</option>`
+    ).join('');
+    return `
+      <tr style="border-top:1px solid var(--border)">
+        <td style="padding:0.45rem 0.5rem; width:95px">
+          <select onchange="_suEditDay(${idx}, this.value)" style="background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:0.35rem 0.4rem; font-family:var(--sans); font-size:0.85rem; font-weight:700; cursor:pointer; direction:rtl; width:100%">${dayOpts}</select>
+        </td>
+        <td style="padding:0.45rem 0.5rem">
+          <input type="text" value="${escapeHtml(String(item.course_name || ''))}" oninput="_suEditCourse(${idx}, this.value)" style="background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:0.35rem 0.55rem; font-family:var(--sans); font-size:0.85rem; width:100%; direction:rtl">
+        </td>
+        <td style="padding:0.45rem 0.5rem; width:100px">
+          <input type="time" value="${escapeHtml(String(item.start_time || ''))}" onchange="_suEditStart(${idx}, this.value)" style="background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:0.35rem 0.4rem; font-family:var(--mono); font-size:0.85rem; width:100%">
+        </td>
+        <td style="padding:0.45rem 0.5rem; width:100px">
+          <input type="time" value="${escapeHtml(String(item.end_time || ''))}" onchange="_suEditEnd(${idx}, this.value)" style="background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:0.35rem 0.4rem; font-family:var(--mono); font-size:0.85rem; width:100%">
+        </td>
+        <td style="padding:0.45rem 0.3rem; width:34px">
+          <button onclick="_suDeleteRow(${idx})" title="מחק שורה" aria-label="מחק שורה" style="background:transparent; border:none; color:var(--muted); cursor:pointer; padding:0.3rem 0.4rem; font-size:1rem; border-radius:6px; opacity:0.65" onmouseover="this.style.opacity='1'; this.style.color='var(--red)'" onmouseout="this.style.opacity='0.65'; this.style.color='var(--muted)'">✕</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function _suEditDay(idx, val)    { if (_scheduleUploadPending?.[idx]) _scheduleUploadPending[idx].day_of_week = val; }
+function _suEditCourse(idx, val) { if (_scheduleUploadPending?.[idx]) _scheduleUploadPending[idx].course_name = val; }
+function _suEditStart(idx, val)  { if (_scheduleUploadPending?.[idx]) _scheduleUploadPending[idx].start_time = val; }
+function _suEditEnd(idx, val)    { if (_scheduleUploadPending?.[idx]) _scheduleUploadPending[idx].end_time = val; }
+
+function _suDeleteRow(idx) {
+  if (!Array.isArray(_scheduleUploadPending)) return;
+  _scheduleUploadPending.splice(idx, 1);
+  if (_scheduleUploadPending.length === 0) {
+    const tbody = document.getElementById('schedule-upload-preview-tbody');
+    tbody.innerHTML = '<tr><td colspan="5" style="padding:1.2rem; text-align:center; color:var(--muted); font-weight:700">לא נשארו שיעורים. בטל וצלם שוב.</td></tr>';
+    document.getElementById('schedule-upload-count').textContent = '0';
+    const approveBtn = document.querySelector('#schedule-upload-buttons button:first-child');
+    if (approveBtn) approveBtn.style.display = 'none';
+    return;
+  }
+  _suRenderPreview(_scheduleUploadPending);
+}
+
+// ── ICS UPLOAD: UI wiring ───────────────────────────────────────────────────
+
+let _icsUploadPending = null;  // parsed tasks[] between extract and approve
+
+function openIcsUploadModal() {
+  document.getElementById('ics-upload-modal').classList.remove('hidden');
+  _setBodyLock(true);
+  _icsUploadPending = null;
+  document.getElementById('ics-upload-input-area').classList.remove('hidden');
+  document.getElementById('ics-upload-loading').classList.add('hidden');
+  document.getElementById('ics-upload-preview').classList.add('hidden');
+  document.getElementById('ics-upload-error').classList.add('hidden');
+  document.getElementById('ics-upload-buttons').classList.add('hidden');
+  const approveBtn = document.querySelector('#ics-upload-buttons button:first-child');
+  if (approveBtn) approveBtn.style.display = '';
+  const fileInp = document.getElementById('ics-upload-file');
+  if (fileInp) fileInp.value = '';
+}
+
+function closeIcsUploadModal() {
+  document.getElementById('ics-upload-modal').classList.add('hidden');
+  _setBodyLock(false);
+  _icsUploadPending = null;
+}
+
+function _icsShowError(msg) {
+  const el = document.getElementById('ics-upload-error');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  document.getElementById('ics-upload-input-area').classList.remove('hidden');
+  document.getElementById('ics-upload-loading').classList.add('hidden');
+}
+
+async function handleIcsUploadFile(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  document.getElementById('ics-upload-input-area').classList.add('hidden');
+  document.getElementById('ics-upload-loading').classList.remove('hidden');
+  document.getElementById('ics-upload-error').classList.add('hidden');
+  document.getElementById('ics-upload-preview').classList.add('hidden');
+  document.getElementById('ics-upload-buttons').classList.add('hidden');
+
+  try {
+    const icsText = await file.text();
+    const tasks = await _extractTasksFromICS(icsText);
+    if (!tasks.length) {
+      _icsShowError('לא נמצאו מטלות עתידיות בקובץ.');
+      return;
+    }
+    _icsUploadPending = tasks;
+    _icsSortTasks(_icsUploadPending);   // sort ONCE: due_date asc, then due_time
+    _icsRenderPreview(_icsUploadPending);
+  } catch (e) {
+    _icsShowError(e.message || 'שגיאה בחילוץ');
+  }
+}
+
+function _icsSortTasks(arr) {
+  arr.sort((a, b) => {
+    const dCmp = String(a.due_date || '').localeCompare(String(b.due_date || ''));
+    if (dCmp !== 0) return dCmp;
+    return String(a.due_time || '').localeCompare(String(b.due_time || ''));
+  });
+}
+
+function _icsRenderPreview(tasks) {
+  document.getElementById('ics-upload-loading').classList.add('hidden');
+  document.getElementById('ics-upload-preview').classList.remove('hidden');
+  document.getElementById('ics-upload-buttons').classList.remove('hidden');
+  document.getElementById('ics-upload-count').textContent = tasks.length;
+  const tbody = document.getElementById('ics-upload-preview-tbody');
+  tbody.innerHTML = tasks.map((item, idx) => `
+    <tr style="border-top:1px solid var(--border)">
+      <td style="padding:0.55rem 0.6rem; color:var(--text); font-weight:600">${escapeHtml(String(item.title || ''))}</td>
+      <td style="padding:0.55rem 0.6rem; color:var(--muted); font-size:0.82rem">${escapeHtml(String(item.course || ''))}</td>
+      <td style="padding:0.55rem 0.6rem; font-family:var(--mono); color:var(--text); font-size:0.82rem">${escapeHtml(String(item.due_date || ''))}</td>
+      <td style="padding:0.55rem 0.6rem; font-family:var(--mono); color:var(--muted); font-size:0.82rem">${escapeHtml(String(item.due_time || ''))}</td>
+      <td style="padding:0.45rem 0.3rem; width:34px">
+        <button onclick="_icsDeleteRow(${idx})" title="מחק שורה" aria-label="מחק שורה" style="background:transparent; border:none; color:var(--muted); cursor:pointer; padding:0.3rem 0.4rem; font-size:1rem; border-radius:6px; opacity:0.65" onmouseover="this.style.opacity='1'; this.style.color='var(--red)'" onmouseout="this.style.opacity='0.65'; this.style.color='var(--muted)'">✕</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function _icsDeleteRow(idx) {
+  if (!Array.isArray(_icsUploadPending)) return;
+  _icsUploadPending.splice(idx, 1);
+  if (_icsUploadPending.length === 0) {
+    const tbody = document.getElementById('ics-upload-preview-tbody');
+    tbody.innerHTML = '<tr><td colspan="5" style="padding:1.2rem; text-align:center; color:var(--muted); font-weight:700">לא נשארו מטלות. בטל ונסה קובץ אחר.</td></tr>';
+    document.getElementById('ics-upload-count').textContent = '0';
+    const approveBtn = document.querySelector('#ics-upload-buttons button:first-child');
+    if (approveBtn) approveBtn.style.display = 'none';
+    return;
+  }
+  _icsRenderPreview(_icsUploadPending);
+}
+
+function confirmIcsUpload() {
+  if (!Array.isArray(_icsUploadPending) || !_icsUploadPending.length) return;
+  if (!Array.isArray(S.tasks)) S.tasks = [];
+
+  let added = 0;
+  for (const item of _icsUploadPending) {
+    const title  = String(item.title  || '').trim();
+    const course = String(item.course || '').trim();
+    const date   = item.due_date;
+    const time   = item.due_time;
+    if (!title) continue;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+    if (!/^\d{2}:\d{2}$/.test(time)) continue;
+    // Dedup: skip if a task with same name+date already exists
+    if (S.tasks.find(t => t.name === title && t.date === date)) continue;
+    // Mirror the Oracle assistant task shape at app_v58.js:6630
+    // (no time whitelist — Moodle deadlines are point-in-time, often 23:55)
+    const newTask = {
+      id: uid(),
+      name: title,
+      course,
+      date,
+      time,
+      duration: "60 דק'",
+      priority: 'בינוני',
+      done: false,
+      missed: false,
+    };
+    const desc = String(item.description || '').slice(0, 100).trim();
+    if (desc) newTask.notes = desc;
+    S.tasks.push(newTask);
+    added++;
+  }
+
+  // Batch — save() and renderAll() once after the loop, not per item
+  save();
+  renderAll();
+
+  closeIcsUploadModal();
+  toast(added > 0 ? `${added} משימות נוצרו` : 'לא נוספו משימות (כפילויות)');
+}
+
+function confirmScheduleUpload() {
+  if (!Array.isArray(_scheduleUploadPending) || !_scheduleUploadPending.length) return;
+  if (!Array.isArray(S.anchors)) S.anchors = [];
+  if (!Array.isArray(S.courses)) S.courses = [];
+
+  let added = 0;
+  const uniqueCourseNames = new Set();
+  for (const item of _scheduleUploadPending) {
+    const day = _SU_DAY_NUM[item.day_of_week];
+    if (day === undefined) continue;
+    if (!/^\d{2}:\d{2}$/.test(item.start_time) || !/^\d{2}:\d{2}$/.test(item.end_time)) continue;
+    const baseName = String(item.course_name || '').trim();
+    const typeLabel = item.session_type === 'tutorial' ? 'תרגול מרצה' : 'הרצאה';
+    const teacher = String(item.teacher || '').trim();
+    let anchorName;
+    if (!baseName) {
+      anchorName = 'עוגן';
+    } else if (teacher) {
+      anchorName = `${baseName} - ${typeLabel} (${teacher})`;
+    } else {
+      anchorName = `${baseName} - ${typeLabel}`;
+    }
+    S.anchors.push({
+      id: uid(),
+      name: anchorName,
+      day,
+      start: item.start_time,
+      end: item.end_time,
+      travelMin: 0,
+      color: getCourseColor(baseName),
+    });
+    added++;
+    if (baseName) uniqueCourseNames.add(baseName);
+  }
+
+  // Register any new courses (skip ones already in S.courses by exact name match).
+  // Empty examDate by design — user adds it later via the exam tracker.
+  let addedCourses = 0;
+  for (const name of uniqueCourseNames) {
+    if (!S.courses.find(c => c.name === name)) {
+      S.courses.push({ id: uid(), name, examDate: '', hoursPerWeek: 6 });
+      addedCourses++;
+    }
+  }
+
+  // Batch — call save() and renderAll() once after the loop, not per item
+  save();
+  renderAll();
+
+  closeScheduleUploadModal();
+  toast(addedCourses > 0
+    ? ` נוצרו ${added} עוגנים ו-${addedCourses} קורסים חדשים`
+    : ` נוצרו ${added} עוגנים`);
 }
 
 // ── XP LEVEL SYSTEM ──
@@ -1634,8 +2064,8 @@ function getAvailableSlots(startDateStr, endDateStr, currentPriority){
   let endD = new Date(endDateStr);
   let daysLeft = Math.ceil((endD - startD) / 86400000);
   let maxDays = Math.min(daysLeft, 14);
-  const wake = parseInt((S.wakeTime||"08:00").split(':')[0])*60 + parseInt((S.wakeTime||"08:00").split(':')[1]);
-  const sleep = parseInt((S.sleepTime||"22:00").split(':')[0])*60 + parseInt((S.sleepTime||"22:00").split(':')[1]);
+  const wake = parseInt((S.wakeTime||"07:00").split(':')[0])*60 + parseInt((S.wakeTime||"07:00").split(':')[1]);
+  const sleep = parseInt((S.sleepTime||"23:00").split(':')[0])*60 + parseInt((S.sleepTime||"23:00").split(':')[1]);
   for(let i=0; i<=maxDays; i++){
     let d = new Date(startD); d.setDate(startD.getDate()+i);
     let dateStr = ld(d); let dayIdx = d.getDay();
@@ -1692,8 +2122,8 @@ function isTimeInFreeWindow(dateStr, timeStr, durationMins) {
   const dayAnchors = (S.anchors||[]).filter(a => parseInt(a.day)===dayIdx && !(a.endDate && dateStr>a.endDate));
   const tStart = parseInt(timeStr.split(':')[0])*60 + parseInt(timeStr.split(':')[1]);
   const tEnd = tStart + (durationMins||60);
-  const wake = parseInt((S.wakeTime||"08:00").split(':')[0])*60 + parseInt((S.wakeTime||"08:00").split(':')[1]);
-  const sleep = parseInt((S.sleepTime||"22:00").split(':')[0])*60 + parseInt((S.sleepTime||"22:00").split(':')[1]);
+  const wake = parseInt((S.wakeTime||"07:00").split(':')[0])*60 + parseInt((S.wakeTime||"07:00").split(':')[1]);
+  const sleep = parseInt((S.sleepTime||"23:00").split(':')[0])*60 + parseInt((S.sleepTime||"23:00").split(':')[1]);
   if (tStart < wake || tEnd > sleep) return false;
   for (const a of dayAnchors) {
     const travel = a.travelMin||0;
@@ -2297,8 +2727,8 @@ function renderTimeChart() {
   const weekEnd = ld(weekEndD);
 
   // Weekly available hours (wake to sleep × 7 days) — always based on user settings
-  const [wkH,wkM] = (S.wakeTime||'08:00').split(':').map(Number);
-  const [slH,slM] = (S.sleepTime||'22:00').split(':').map(Number);
+  const [wkH,wkM] = (S.wakeTime||'07:00').split(':').map(Number);
+  const [slH,slM] = (S.sleepTime||'23:00').split(':').map(Number);
   const dailyAvailH = ((slH*60+slM) - (wkH*60+wkM)) / 60;
   const weeklyAvailH = dailyAvailH * 7;
 
@@ -3201,7 +3631,22 @@ function renderTodayTasks(){
   items.sort((a,b)=>(a.time||'00:00').localeCompare(b.time||'00:00'));
   const wrap = document.getElementById('today-tasks-wrap');
   if (!wrap) return;
-  if(!items.length){ wrap.innerHTML = '<div class="empty-state">היום פנוי לגמרי! הוסף משימות מהמתכנן.</div>'; renderPomoTaskSelect(); return; }
+  if(!items.length){
+    wrap.innerHTML = `
+      <div style="padding:1rem 1.25rem 0">
+        <button onclick="openScheduleUploadModal()" class="btn-primary" style="margin-top:0; padding:1.2rem 1rem; display:flex; flex-direction:column; align-items:center; gap:0.3rem">
+          <div style="display:flex; align-items:center; gap:0.55rem; font-size:1.05rem"><span style="font-size:1.4rem">📷</span><span>צלם את מערכת השעות שלך</span></div>
+          <div style="font-size:0.78rem; font-weight:600; opacity:0.92">תמונה, PDF או CSV — נחלץ הכל אוטומטית</div>
+        </button>
+        <button onclick="openIcsUploadModal()" style="margin-top:0.55rem; width:100%; padding:0.85rem 1rem; background:var(--surface2); color:var(--text); border:1px solid var(--border); border-radius:var(--r); font-family:var(--sans); font-size:0.92rem; font-weight:700; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; justify-content:center; gap:0.55rem">
+          <span style="font-size:1.1rem">📅</span><span>ייבא משימות מ-Moodle</span>
+        </button>
+      </div>
+      <div class="empty-state">היום פנוי לגמרי! הוסף משימות מהמתכנן.</div>
+    `;
+    renderPomoTaskSelect();
+    return;
+  }
 
   const priColor={גבוה:'var(--red)',בינוני:'var(--yellow)',שוטף:'var(--green)'};
   const priBg={גבוה:'var(--red-light)',בינוני:'var(--yellow-light)',שוטף:'var(--green-light)'};
@@ -3938,7 +4383,7 @@ function saveAnchorManual(){
     if (start === end) { toast('⚠️ שעת ההתחלה חייבת להיות שונה משעת הסיום'); return; }
     const [sh, sm] = start.split(':').map(Number); const [eh, em] = end.split(':').map(Number);
     if ((eh*60+em)-(sh*60+sm) > 16*60) { toast('⚠️ משמרת לא יכולה להיות יותר מ-16 שעות'); return; }
-    { const wm = (S.wakeTime||'08:00').split(':').map(Number); const slm = (S.sleepTime||'22:00').split(':').map(Number); const wakeMin = wm[0]*60+wm[1]; const sleepMin = slm[0]*60+slm[1]; if (sh*60+sm < wakeMin || eh*60+em > sleepMin) toast('💡 שים לב: העוגן מחוץ לשעות הערות שלך'); }
+    { const wm = (S.wakeTime||'07:00').split(':').map(Number); const slm = (S.sleepTime||'23:00').split(':').map(Number); const wakeMin = wm[0]*60+wm[1]; const sleepMin = slm[0]*60+slm[1]; if (sh*60+sm < wakeMin || eh*60+em > sleepMin) toast('💡 שים לב: העוגן מחוץ לשעות הערות שלך'); }
     const updatedAnchor = { ...S.anchors[idx], name, day, start, end, travelMin, color, endDate, notes };
     if (isOneTime) { updatedAnchor.oneTimeDate = oneTimeDate; updatedAnchor.day = new Date(oneTimeDate+'T12:00:00').getDay(); }
     else { delete updatedAnchor.oneTimeDate; }
@@ -4223,7 +4668,7 @@ function _endOfWeek() {
 // Finds up to maxCount free slots between fromDateStr and limitDateStr (inclusive)
 function _findSlotsInRange(fromDateStr, limitDateStr, maxCount, ignoreSlots = []) {
   const validTimes = ["08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00"];
-  const wakeH  = parseInt((S.wakeTime||'08:00').split(':')[0]);
+  const wakeH  = parseInt((S.wakeTime||'07:00').split(':')[0]);
   const sleepH = parseInt((S.sleepTime||'23:00').split(':')[0]);
   const results = [];
   const usedKeys = new Set();
@@ -4353,6 +4798,12 @@ function _rcDoSpreadWeek(isAlternative = false) {
     if (_rcPendingTasks[0].date > minDate) {
       minDate = _rcPendingTasks[0].date;
     }
+  }
+  if (isAlternative) {
+    // Advance by +1 day so alternative search lands on a truly different date
+    const d0 = new Date(minDate + 'T12:00:00');
+    d0.setDate(d0.getDate() + 1);
+    minDate = ld(d0);
   }
   const today = minDate;
   const d = new Date(today + 'T12:00:00');
@@ -4761,6 +5212,9 @@ function _hpRenderHobby(idx) {
   if (el('hp-hero-goal')) el('hp-hero-goal').textContent = hobby.goal;
   if (el('hp-sessions-count')) el('hp-sessions-count').textContent = done;
   if (el('hp-freq-count')) el('hp-freq-count').textContent = hobby.timesPerWeek + ' פעמים/שבוע';
+  const _hpLabel = _hobbyLabel(hobby.name);
+  if (el('hp-label-sessions')) el('hp-label-sessions').textContent = _hpLabel;
+  if (el('hp-label-button'))   el('hp-label-button').textContent   = _hpLabel;
   if (el('hp-next-date')) {
     if (upcoming[0]) {
       const dParts = upcoming[0].date.split('-');
@@ -4825,6 +5279,20 @@ function _hobbyEmoji(name) {
   if (/ספרדית|צרפתית|אנגלית|שפה|ערבית/.test(n)) return '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>';
   // Default
   return '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>';
+}
+
+// Category-aware noun for hobby UI strings (e.g., "0 ___" stat label, "find time for ___" CTA).
+// Mirrors the regex classification approach used in _hobbyEmoji.
+function _hobbyLabel(name) {
+  if (!name) return 'מפגשים';
+  const n = name.toLowerCase();
+  if (/קריאה|ספרים|ספר/.test(n)) return 'מפגשי קריאה';
+  if (/בישול|אפייה|מתכון/.test(n)) return 'מפגשי בישול';
+  if (/גיימינג|משחקים|משחק|gaming|game/.test(n)) return 'סשנים';
+  if (/גיטרה|בס|מוזיקה|פסנתר|כינור|תוף/.test(n)) return 'שיעורי תרגול';
+  if (/ציור|אמנות|יצירה|קרמיקה/.test(n)) return 'מפגשי יצירה';
+  if (/ריצה|ג'וגינג|מרוץ|שחייה|בריכה|יוגה|מדיטציה|מיינדפולנס|כדורגל|כדורסל|כדורעף|טניס|ספורט/.test(n)) return 'אימונים';
+  return 'מפגשים';
 }
 
 function _hpRenderInsight(hobby, done) {
@@ -5523,8 +5991,23 @@ function _wrInit() {
   )];
   const activeHobbies = S.hobbies || [];
 
-  _wrPlanNextWeek = false;
-  _wr = { qs: [{ type: 'goal' }], qi: 0, answers: { courses:{}, load:null }, coursesLastWeek, activeHobbies, pendingPlan: null };
+  const qs = [];
+  // Always ask which week to plan (unless first week where only current makes sense)
+  if (!firstWeek) {
+    qs.push({ type: '_week_choice' });
+    coursesLastWeek.forEach(c => qs.push({ type:'course_feel', c }));
+    // Hobby check-ins for hobbies not checked in for 6+ days
+    activeHobbies.forEach(h => {
+      const daysSince = h.lastCheckIn
+        ? Math.floor((Date.now() - new Date(h.lastCheckIn).getTime()) / 86400000) : 999;
+      if (daysSince >= 6) qs.push({ type: 'hobby_checkin', hobby: h });
+    });
+    qs.push({ type: 'homework_check' });
+  }
+  qs.push({ type:'goal' });
+
+  _wrPlanNextWeek = false; // reset
+  _wr = { qs, qi: 0, answers: { courses:{}, load:null }, coursesLastWeek, activeHobbies, pendingPlan: null };
 
   const wrMsgsEl = document.getElementById('wr-msgs');
   wrMsgsEl.innerHTML = '';
@@ -5542,70 +6025,19 @@ function _wrInit() {
     recentDeleted.forEach(d => { byCourse[d.course] = (byCourse[d.course]||0) + 1; });
     const summary = Object.entries(byCourse).map(([c,n]) => `${c} (${n})`).join(', ');
     _wr.deletedCollisionSummary = `⚠️ השבוע נמחקו ${recentDeleted.length} משימות בגלל התנגשות עם עוגנים: ${summary}`;
+    // Clear old entries after noting them
     S.deletedCollisions = (S.deletedCollisions||[]).filter(d => d.deletedAt < weekAgo);
     save();
   }
 
-  const range = _wrGetTargetRange();
-  const greeting = firstWeek
-    ? `שלום ${S.userName || 'סטודנט'}! 🎉\nנבנה יחד את לוז השבוע הראשון שלך (${range.start} – ${range.end}).`
-    : `שלום ${S.userName || 'סטודנט'}! 📅\nבוא נתכנן את השבוע הקרוב (${range.start} – ${range.end}).`;
-
-  _wrMsg(greeting);
-  if (_wr.deletedCollisionSummary) {
-    setTimeout(() => _wrMsg(_wr.deletedCollisionSummary), 400);
+  if (firstWeek) {
+    const range = _wrGetTargetRange();
+    _wrMsg(`שלום ${S.userName}! \nברוך הבא — נבנה יחד את לוז השבוע הראשון שלך (${range.start} – ${range.end}).`);
+  } else {
+    const deletedNote = _wr.deletedCollisionSummary ? `\n\n${_wr.deletedCollisionSummary}` : '';
+    _wrMsg(`שלום ${S.userName}!${deletedNote}`);
   }
-
-  // Try AI summary first, fall back to simple question
-  setTimeout(() => _wrAISummary(), 800);
-}
-
-async function _wrAISummary() {
-  // Build context for AI
-  const today = ld(new Date());
-  const range = _wrGetTargetRange();
-  const upcomingExams = (S.exams || [])
-    .filter(e => e.date >= today)
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, 5)
-    .map(e => {
-      const daysLeft = Math.ceil((new Date(e.date + 'T12:00') - new Date(today + 'T12:00')) / 86400000);
-      return `${e.course}: ${e.date} (עוד ${daysLeft} ימים)`;
-    });
-
-  const missedCount = (S.tasks || []).filter(t => t.missed && t.date >= range.start && t.date <= range.end).length;
-  const courses = (S.courses || []).map(c => c.name).join(', ');
-
-  // Build a short AI insight
-  try {
-    const prompt = `אתה עוזר תכנון לימודים. תן תובנה קצרה בעברית (משפט אחד, עד 20 מילה) על השבוע הקרוב לסטודנט.
-קורסים: ${courses || 'אין'}
-מבחנים קרובים: ${upcomingExams.length ? upcomingExams.join('; ') : 'אין'}
-משימות שהוחמצו השבוע: ${missedCount}
-תכנון: ${range.start} – ${range.end}
-החזר משפט אחד בעברית בלבד, ישיר ועם אימוג'י.`;
-
-    const insight = await callAI({
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.6,
-      maxTokens: 100
-    });
-    if (insight && insight.trim()) {
-      _wrMsg(`💡 ${insight.trim()}`);
-    }
-  } catch(e) {
-    // AI not available — skip insight, just show load question
-  }
-
-  // Show the single load question
-  setTimeout(() => {
-    _wrMsg('📊 כמה לטעון השבוע?');
-    _wrChoices([
-      { v: 'min', l: '🎯 קל — רק מה שחייב' },
-      { v: 'ok',  l: '📚 מאוזן — קצב רגוע' },
-      { v: 'max', l: '🔥 מקסימום — ניצול מלא' }
-    ]);
-  }, 600);
+  setTimeout(() => _wrNext(), 700);
 }
 
 function _wrNext() {
@@ -5942,7 +6374,7 @@ function _wrShowPreview(tasks) {
       if (cur.getDay() === a.day) {
         const dateStr = ld(cur);
         if (!byDate[dateStr]) byDate[dateStr] = [];
-        byDate[dateStr].push({ date: dateStr, time: a.start, name: a.name, course: '', duration: '', _anchor: true, color: a.color || 'var(--accent)' });
+        byDate[dateStr].push({ date: dateStr, time: a.start, end: a.end, name: a.name, course: '', duration: '', _anchor: true, color: a.color || 'var(--accent)' });
       }
       cur.setDate(cur.getDate() + 1);
     }
@@ -5953,18 +6385,21 @@ function _wrShowPreview(tasks) {
     const sorted = ts.slice().sort((a,b) => (a.time||'').localeCompare(b.time||''));
     return `<div class="wr-day-group">
       <div class="wr-day-label">${dow} · ${date}</div>
-      ${sorted.map(t => t._anchor
-        ? `<div class="wr-task-row wr-anchor-row">
-            <span class="wr-task-time">${t.time}</span>
+      ${sorted.map(t => {
+        if (t._anchor) {
+          return `<div class="wr-task-row wr-anchor-row">
+            <span class="wr-task-time">${t.time} - ${t.end}</span>
             <span class="wr-anchor-dot" style="background:${t.color}"></span>
             <span class="wr-task-name" style="flex:1;text-align:right;color:var(--muted)">${t.name}</span>
-           </div>`
-        : `<div class="wr-task-row">
-            <span class="wr-task-time">${t.time}</span>
+           </div>`;
+        }
+        const dur = parseInt(String(t.duration||'').match(/\d+/)?.[0] || 60);
+        const endStr = minsToTime(timeToMins(t.time) + dur);
+        return `<div class="wr-task-row">
+            <span class="wr-task-time">${t.time} - ${endStr}</span>
             <span class="wr-task-name" style="flex:1;text-align:right;margin-right:1rem">${t.course}${t.name !== t.course ? ` - ${t.name}` : ''}</span>
-            <span class="wr-task-dur">${t.duration}</span>
-           </div>`
-      ).join('')}
+           </div>`;
+      }).join('')}
     </div>`;
   }).join('');
 
@@ -6985,7 +7420,6 @@ Object.assign(window, {
   // ── App init / onboarding ──
   initApp, obNext, addAnchorRow, _abCheckEmpty, toggleObDay, updateObPerDayRows,
   renderProfileQs, selectProfileOpt, finishOnboarding,
-  _startAIOnboarding, _confirmAIOnboarding, _applyAIOnboarding,
   // ── Navigation ──
   toggleSidebar, closeSidebar, openSettings, saveSettings, toggleAccordion,
   showPage, updateBottomNav,
@@ -7022,7 +7456,7 @@ Object.assign(window, {
   // ── Weekly review ──
   renderWeeklyReview, confirmWeeklyPlan, repeatLastSchedule, planPreviousWeek,
   saveFavoriteSchedule, loadFavoriteSchedule,
-  _wrAnswer, _wrAdjustAnswer, _wrNext, _wrDislikeFlow, _wrInit, _wrAISummary,
+  _wrAnswer, _wrAdjustAnswer, _wrNext, _wrDislikeFlow, _wrInit,
   renderWRSidebarCard,
   // ── Planner ──
   generatePlan, renderPlanTable, addPlanToSchedule, setPlannerMode,

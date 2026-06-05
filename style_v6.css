@@ -2322,17 +2322,16 @@ input[type="date"], input[type="time"] {
 
 /* ─── HOMEWORK ROW COLUMN HEADER ─── */
 .plsh-hw-head {
-  display: grid !important;
-  grid-template-columns: 1fr auto auto auto !important;
-  gap: 0.5rem !important;
+  display: flex;
+  gap: 6px;
   padding: 0 2px 4px;
   font-size: 0.7rem;
   font-weight: 700;
   color: var(--muted);
   letter-spacing: 0.02em;
 }
-.plsh-hw-head span { flex: unset; }
-.plsh-hw-head span:last-child { flex: unset; min-width: 28px; }
+.plsh-hw-head span { flex: 1; }
+.plsh-hw-head span:last-child { flex: 0 0 28px; }
 
 /* ─── SETUP GUIDE CARD ─── */
 .sf-guide {
@@ -2539,14 +2538,6 @@ body { overflow-x: hidden !important; max-width: 100% !important; width: 100% !i
 .sidebar-hdr { padding-top: 1rem !important; margin-top: -1rem !important; }
 .sidebar-sub { top: 38px !important; padding-bottom: 0.5rem !important; margin-bottom: 0.5rem !important; background: var(--surface) !important; }
 
-/* ─── RECALC MODAL BUTTON FIX ─── */
-.rcm-close-action {
-  background: var(--surface2) !important;
-  color: var(--text) !important;
-  border: 1px solid var(--border) !important;
-}
-.rcm-close-action:hover { background: var(--surface3) !important; }
-
 /* ─── TASK EDIT SHEET — v6 redesign ─────────────────────────── */
 .tes-panel {
   background: var(--sur) !important;
@@ -2693,95 +2684,3 @@ body { overflow-x: hidden !important; max-width: 100% !important; width: 100% !i
   text-transform: uppercase;
   padding: 0 18px 8px;
 }
-
-/* ── AI ONBOARDING ── */
-.aiob-logo {
-  font-size: 3rem;
-  text-align: center;
-  margin-bottom: 0.5rem;
-}
-.aiob-textarea {
-  width: 100%;
-  min-height: 130px;
-  border: 2px solid var(--border);
-  border-radius: 14px;
-  padding: 1rem;
-  font-family: var(--sans);
-  font-size: 0.95rem;
-  line-height: 1.5;
-  resize: vertical;
-  background: var(--bg-card);
-  color: var(--text);
-  margin: 1rem 0;
-  box-sizing: border-box;
-  transition: border-color 0.2s;
-  direction: auto;
-}
-.aiob-textarea:focus {
-  outline: none;
-  border-color: var(--accent);
-}
-.aiob-loading {
-  text-align: center;
-  padding: 1rem;
-  color: var(--muted);
-}
-.aiob-result {
-  background: var(--bg-card);
-  border: 2px solid var(--accent);
-  border-radius: 14px;
-  padding: 1rem 1.2rem;
-  margin: 0.8rem 0;
-  animation: fadeInUp 0.3s ease;
-}
-.aiob-result.hidden { display: none; }
-.aiob-result-title {
-  font-weight: 700;
-  font-size: 1rem;
-  margin-bottom: 0.6rem;
-  color: var(--accent);
-}
-.aiob-result-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-bottom: 0.6rem;
-}
-.aiob-chip {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 0.25rem 0.7rem;
-  font-size: 0.82rem;
-  font-weight: 600;
-}
-.aiob-chip.accent {
-  background: var(--accent-light);
-  border-color: var(--accent);
-  color: var(--accent);
-}
-.aiob-result-sec {
-  font-weight: 700;
-  font-size: 0.85rem;
-  margin: 0.5rem 0 0.2rem;
-  color: var(--text);
-}
-.aiob-result-list {
-  margin: 0 0 0.5rem 1rem;
-  padding: 0;
-  list-style: disc;
-  font-size: 0.85rem;
-  color: var(--muted);
-}
-.aiob-result-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin-top: 0.8rem;
-}
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-/* bottom-nav extra items */
-.bn-item .bn-label { display: block; font-size: 0.62rem; margin-top: 0.1rem; }

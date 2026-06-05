@@ -1,4 +1,4 @@
-*{margin:0;padding:0;box-sizing:border-box}
+﻿*{margin:0;padding:0;box-sizing:border-box}
 :root{
   --bg:#f5f7ff; --surface:#ffffff; --surface2:#f0f4ff; --surface3:#e8eeff;
   --border:#dde4f8; --border2:#bbc8f0; --text:#1a2540; --muted:#7080a0;
@@ -747,7 +747,7 @@ input[type="date"],input[type="time"]{color:var(--text)}
 }
 .sidebar-overlay.visible { display: block; }
 /* iOS scroll-lock: position:fixed via class, AFTER top is set inline ג€” avoids flicker */
-body.scroll-locked { position: fixed; width: 100%; overflow: hidden; }
+body.scroll-locked { position: fixed; width: 100%; overflow-y: scroll; }
 
 /* ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•
    SETTINGS ACCORDION
