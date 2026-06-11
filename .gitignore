@@ -1,0 +1,7 @@
+test/
+.env
+.env.local
+node_modules/
+
+# local backup of the pre-modular monolith — not part of the app
+app_v58.js.monolith-bak

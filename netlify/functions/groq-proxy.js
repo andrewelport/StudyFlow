@@ -5,15 +5,40 @@
 const GEMINI_MODEL = 'gemini-2.5-flash';
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
+// CORS allowlist — replaces wildcard ACAO to stop arbitrary-origin abuse.
+const ALLOWED_ORIGINS = [
+  'https://studyflow.justbettersite.com',
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://localhost:8080',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:8080',
+];
+
+// Abuse caps: total request size and per-field limits.
+const MAX_BODY_BYTES = 6 * 1024 * 1024; // ~6MB total (covers base64 files)
+const MAX_MESSAGES = 80;
+
+function corsHeaders(event) {
+  const headers = (event && event.headers) || {};
+  const origin = headers.origin || headers.Origin;
+  const h = {
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Vary': 'Origin',
+  };
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    h['Access-Control-Allow-Origin'] = origin;
+  }
+  return h;
+}
+
 exports.handler = async function (event) {
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 204,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      },
+      headers: corsHeaders(event),
       body: '',
     };
   }
@@ -25,18 +50,30 @@ exports.handler = async function (event) {
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
   if (!GEMINI_API_KEY) {
     // 503 maps cleanly to callAI's "service unavailable" branch in app_v58.js
-    return jsonResponse(503, { error: 'GEMINI_API_KEY is not set on server' });
+    return jsonResponse(503, { error: 'GEMINI_API_KEY is not set on server' }, event);
+  }
+
+  // Cap total payload size (guards megabyte base64 files draining quota/cost).
+  const rawBody = event.body || '';
+  const rawLen = event.isBase64Encoded
+    ? Math.floor(rawBody.length * 3 / 4)
+    : Buffer.byteLength(rawBody, 'utf8');
+  if (rawLen > MAX_BODY_BYTES) {
+    return jsonResponse(413, { error: 'request body too large' }, event);
   }
 
   let messages, temperature, json, maxTokens, responseSchema, files, thinkingConfig;
   try {
     ({ messages, temperature, json, maxTokens, responseSchema, files, thinkingConfig } = JSON.parse(event.body));
   } catch {
-    return jsonResponse(400, { error: 'Invalid JSON body' });
+    return jsonResponse(400, { error: 'Invalid JSON body' }, event);
   }
 
   if (!Array.isArray(messages) || messages.length === 0) {
-    return jsonResponse(400, { error: 'messages array required' });
+    return jsonResponse(400, { error: 'messages array required' }, event);
+  }
+  if (messages.length > MAX_MESSAGES) {
+    return jsonResponse(413, { error: 'too many messages' }, event);
   }
 
   const geminiBody = buildGeminiBody({ messages, temperature, json, maxTokens, responseSchema, files, thinkingConfig });
@@ -55,7 +92,7 @@ exports.handler = async function (event) {
 
     if (!geminiRes.ok) {
       const msg = data?.error?.message || `Gemini error (${geminiRes.status})`;
-      return jsonResponse(geminiRes.status, { error: msg });
+      return jsonResponse(geminiRes.status, { error: msg }, event);
     }
 
     const text = (data?.candidates?.[0]?.content?.parts || [])
@@ -63,18 +100,18 @@ exports.handler = async function (event) {
       .join('');
 
     // Shape the response to match what callAI() expects (Groq/OpenAI format)
-    return jsonResponse(200, { choices: [{ message: { content: text } }] });
+    return jsonResponse(200, { choices: [{ message: { content: text } }] }, event);
   } catch (err) {
-    return jsonResponse(500, { error: err.message });
+    return jsonResponse(500, { error: err.message }, event);
   }
 };
 
-function jsonResponse(statusCode, body) {
+function jsonResponse(statusCode, body, event) {
   return {
     statusCode,
     headers: {
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
+      ...corsHeaders(event),
     },
     body: JSON.stringify(body),
   };

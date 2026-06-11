@@ -5,10 +5,33 @@
 const GEMINI_MODEL = 'gemini-2.5-flash';
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
-module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+// CORS allowlist — replaces wildcard ACAO to stop arbitrary-origin abuse.
+const ALLOWED_ORIGINS = [
+  'https://studyflow.justbettersite.com',
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://localhost:8080',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:8080',
+];
+
+// Abuse caps: total request size and per-field limits.
+const MAX_BODY_BYTES = 6 * 1024 * 1024; // ~6MB total (covers base64 files)
+const MAX_MESSAGES = 80;
+
+function applyCors(req, res) {
+  const origin = req.headers && req.headers.origin;
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
+
+module.exports = async function handler(req, res) {
+  applyCors(req, res);
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
@@ -23,6 +46,16 @@ module.exports = async function handler(req, res) {
     if (!Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({ error: 'messages array required' });
     }
+    if (messages.length > MAX_MESSAGES) {
+      return res.status(413).json({ error: 'too many messages' });
+    }
+    // Cap total payload size (guards megabyte base64 files draining quota/cost).
+    try {
+      const rawLen = Buffer.byteLength(JSON.stringify(req.body || {}), 'utf8');
+      if (rawLen > MAX_BODY_BYTES) {
+        return res.status(413).json({ error: 'request body too large' });
+      }
+    } catch { /* non-serializable body — fall through to normal handling */ }
 
     const geminiBody = buildGeminiBody({ messages, temperature, json, maxTokens, responseSchema, files, thinkingConfig });
 

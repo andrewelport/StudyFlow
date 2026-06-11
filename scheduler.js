@@ -2,6 +2,17 @@
 
 const LOAD_PCT = { light: 0.40, balanced: 0.62, heavy: 0.85 };
 
+// Deterministic, collision-free task ids. Prefer the app's global uid() helper
+// (defined in app_v58.js, loaded after this file); fall back to a per-generation
+// incrementing counter so the engine never relies on Math.random() (which the
+// header claims it doesn't and which can collide and corrupt task state).
+let _schedIdSeq = 0;
+function _genTaskId() {
+  if (typeof uid === 'function') return uid();
+  _schedIdSeq += 1;
+  return 'sch-' + _schedIdSeq.toString(36);
+}
+
 function timeToMins(t) {
   if (!t || !t.includes(':')) return 0;
   const [h, m] = t.split(':').map(Number);
@@ -81,7 +92,10 @@ function findBestFreeSlot(dateStr, alreadyPlaced, blockNeeded, preferredRange) {
   const merged = _buildBlocked(dateStr, alreadyPlaced);
   let wake   = timeToMins(S.wakeTime  || '07:00');
   const sleep  = timeToMins(S.sleepTime || '23:00');
-  
+  // Overnight (sleep <= wake, e.g. wake 14:00 / sleep 02:00) → treat the awake
+  // window as running to end-of-day, else night-owls get an empty week.
+  const effSleep = sleep > wake ? sleep : 24 * 60;
+
   // Ignore past hours if today
   const now = new Date();
   const d = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
@@ -100,8 +114,8 @@ function findBestFreeSlot(dateStr, alreadyPlaced, blockNeeded, preferredRange) {
     }
     cursor = Math.max(cursor, block.e);
   }
-  if (sleep - cursor >= blockNeeded) {
-    validSlots.push({ s: cursor, e: sleep });
+  if (effSleep - cursor >= blockNeeded) {
+    validSlots.push({ s: cursor, e: effSleep });
   }
 
   if (validSlots.length === 0) return null;
@@ -123,14 +137,27 @@ function findBestFreeSlot(dateStr, alreadyPlaced, blockNeeded, preferredRange) {
     return strictFallback ? strictFallback.s : null;
   }
 
-  // Fallback to first available
-  return validSlots[0].s;
+  // Fallback: prefer a slot near the middle of the LARGEST free region instead of
+  // always returning the earliest one. This stops sessions from stacking at the
+  // very top of every morning and spreads them through each day's open time.
+  // Deterministic: widest region wins, ties break on the earlier region.
+  let best = null;
+  for (const v of validSlots) {
+    const span = v.e - v.s;
+    if (span < blockNeeded) continue;
+    if (!best || span > (best.e - best.s)) best = v;
+  }
+  if (!best) return validSlots[0].s;
+  // Centre the block within the region, clamped so it still fits.
+  const mid = Math.floor((best.s + best.e) / 2 - blockNeeded / 2);
+  return Math.max(best.s, Math.min(mid, best.e - blockNeeded));
 }
 
 function getDayFreeMinutes(dateStr) {
   let wake   = timeToMins(S.wakeTime  || '07:00');
   const sleep  = timeToMins(S.sleepTime || '23:00');
-  
+  const effSleep = sleep > wake ? sleep : 24 * 60; // overnight → end-of-day
+
   // Ignore past hours if today
   const now = new Date();
   const d = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
@@ -147,7 +174,7 @@ function getDayFreeMinutes(dateStr) {
     if (b.s > cursor) free += b.s - cursor;
     cursor = Math.max(cursor, b.e);
   }
-  if (sleep > cursor) free += sleep - cursor;
+  if (effSleep > cursor) free += effSleep - cursor;
   return Math.max(0, free);
 }
 
@@ -176,6 +203,7 @@ function buildInterleavedQueue(sessionsMap) {
 
 // Main Algorithm
 function generateWeeklySchedule(answers) {
+  _schedIdSeq = 0; // reset per-generation id counter for deterministic fallback ids
   const profile = S.profile || {};
   const loadPct = LOAD_PCT[answers.load] || 0.62;
   const today   = typeof ld === 'function' ? ld(new Date()) : new Date().toISOString().split('T')[0];
@@ -240,8 +268,15 @@ function generateWeeklySchedule(answers) {
   const totalHobbyS = Object.values(hobbySessions).reduce((s, n) => s + n, 0);
 
   // Homework Quota
+  // Data-integrity: drop homework that can never be placed — due before the first
+  // schedulable day, or with a non-positive duration — BEFORE it reserves quota
+  // (otherwise it silently steals course/hobby sessions and is never placed).
+  const firstDay = days[0];
+  const validHomework = (answers.homework || []).filter(hw =>
+    Number(hw.duration) > 0 && (!firstDay || !(hw.date < firstDay))
+  );
   let totalHwS = 0;
-  (answers.homework || []).forEach(hw => {
+  validHomework.forEach(hw => {
     totalHwS += Math.max(1, Math.ceil(hw.duration / sessionMin));
   });
 
@@ -249,16 +284,23 @@ function generateWeeklySchedule(answers) {
   const totalWeight = Object.values(weights).reduce((s, w) => s + w, 0) || 1;
   const sessionsMap = {};
   
+  // Largest-remainder apportionment so rounding leftovers are handed to the
+  // courses with the biggest fractional shares, instead of dumping the whole
+  // remainder on the last course in key order (which could zero a high-weight,
+  // near-exam course). Deterministic: ties break on original key order.
   const courseNames = Object.keys(weights);
-  let rem = courseStudyS;
-  courseNames.forEach((c, i) => {
-    if (i === courseNames.length - 1) sessionsMap[c] = Math.max(0, rem);
-    else {
-      const n = Math.max(0, Math.round((weights[c] / totalWeight) * courseStudyS));
-      sessionsMap[c] = n;
-      rem = Math.max(0, rem - n);
-    }
+  const _shares = courseNames.map((c, i) => {
+    const exact = (weights[c] / totalWeight) * courseStudyS;
+    const base = Math.floor(exact);
+    return { c, i, base, frac: exact - base };
   });
+  let _assigned = _shares.reduce((s, x) => s + x.base, 0);
+  let _leftover = Math.max(0, courseStudyS - _assigned);
+  _shares
+    .slice()
+    .sort((a, b) => (b.frac - a.frac) || (a.i - b.i))
+    .forEach(x => { if (_leftover > 0) { x.base += 1; _leftover -= 1; } });
+  _shares.forEach(x => { sessionsMap[x.c] = Math.max(0, x.base); });
 
   Object.assign(sessionsMap, hobbySessions);
 
@@ -268,10 +310,19 @@ function generateWeeklySchedule(answers) {
   const dailyItemCounts = {};
   days.forEach(d => { dailyCounts[d] = 0; dailyItemCounts[d] = {}; });
 
+  // Track requested-vs-placed so we can surface a shortfall instead of silently
+  // dropping sessions the per-day caps couldn't fit.
+  let reqHomeworkS = 0, placedHomeworkS = 0;
+  const unplacedHomework = []; // names of homework that couldn't be fully placed
+
   // Phase D.1: Homework Placement (highest priority)
-  let hwLastPlacedDay = -99;
-  (answers.homework || []).forEach(hw => {
+  validHomework.forEach(hw => {
+    // Track the last placed day PER-homework, so two assignments don't push each
+    // other off their own preferred days (and risk missing a due date).
+    let hwLastPlacedDay = -99;
     const reqS = Math.max(1, Math.ceil(hw.duration / sessionMin));
+    reqHomeworkS += reqS;
+    let hwPlaced = 0;
     for (let i = 0; i < reqS; i++) {
       for (const date of days) {
         if (date > hw.date) continue;
@@ -283,17 +334,20 @@ function generateWeeklySchedule(answers) {
         const slot = findBestFreeSlot(date, placed, sessionMin + breakMin, prefRange);
         if (slot !== null) {
           placed.push({
-            id: Math.random().toString(36).slice(2, 9),
+            id: _genTaskId(),
             course: hw.course, name: hw.name, date,
             time: minsToTime(slot), duration: `${sessionMin} דק'`,
             priority: 'קריטי', done: false, missed: false, isHobby: false, isHomework: true
           });
           dailyCounts[date]++;
           hwLastPlacedDay = days.indexOf(date);
+          hwPlaced++;
           break;
         }
       }
     }
+    placedHomeworkS += hwPlaced;
+    if (hwPlaced < reqS) unplacedHomework.push(hw.name || hw.course || 'מטלה');
   });
 
   // Phase D.2: Hobby Placement (second priority — hobbies are commitments, not optional)
@@ -321,7 +375,7 @@ function generateWeeklySchedule(answers) {
       if (slot === null) slot = findBestFreeSlot(date, placed, hobbyBlock, null);
       if (slot !== null) {
         placed.push({
-          id: Math.random().toString(36).slice(2, 9),
+          id: _genTaskId(),
           course: hName, name: _hobbyLabel(hName), date,
           time: minsToTime(slot), duration: `${hobbyDur} דק'`,
           priority: 'תחביב', done: false, missed: false, isHobby: true
@@ -341,7 +395,7 @@ function generateWeeklySchedule(answers) {
         let slot = findBestFreeSlot(date, placed, hobbyBlock, null);
         if (slot !== null) {
           placed.push({
-            id: Math.random().toString(36).slice(2, 9),
+            id: _genTaskId(),
             course: hName, name: _hobbyLabel(hName), date,
             time: minsToTime(slot), duration: `${hobbyDur} דק'`,
             priority: 'תחביב', done: false, missed: false, isHobby: true
@@ -373,8 +427,16 @@ function generateWeeklySchedule(answers) {
     const examIsNear = daysToExam <= 3;
     const maxSameDay = answers.load === 'heavy' ? 2 : (examIsNear ? 2 : 1);
 
+    // Place onto the least-loaded eligible day first (anti front-loading), instead
+    // of always walking the week in date order. Ties break chronologically so the
+    // output stays deterministic. The "yesterday" lookup below still indexes the
+    // original `days` array, so spaced-repetition logic is unaffected.
     let placedSession = false;
-    for (const date of days) {
+    const daysByLoad = days
+      .map((d, i) => ({ d, i }))
+      .sort((a, b) => (dailyCounts[a.d] - dailyCounts[b.d]) || (a.i - b.i))
+      .map(x => x.d);
+    for (const date of daysByLoad) {
       const maxPerDay = answers.load === 'heavy' ? 5 : answers.load === 'light' ? 2 : 4;
       if (dailyCounts[date] >= maxPerDay) continue;
       if ((dailyItemCounts[date][item] || 0) >= maxSameDay) continue;
@@ -386,11 +448,13 @@ function generateWeeklySchedule(answers) {
       // Check if there is an exam for this course on this date
       const courseExam = exams.find(e => e.course === item && e.date === date);
       let examMin = null;
-      if (courseExam) {
-        const rawMin = parseInt((courseExam.time||'00:00').split(':')[0])*60 + parseInt((courseExam.time||'00:00').split(':')[1]);
-        // Default to 08:00 when no exam time is set, to avoid skipping the entire exam day
-        examMin = rawMin === 0 ? 8*60 : rawMin;
+      if (courseExam && courseExam.time && courseExam.time !== '00:00') {
+        const parts = String(courseExam.time).split(':');
+        examMin = (parseInt(parts[0]) || 0) * 60 + (parseInt(parts[1]) || 0);
       }
+      // No exam time set → examMin stays null → no "must finish before exam"
+      // restriction, so the exam day still gets study. (Faking 08:00 here used to
+      // wipe the most important study slot.)
 
       // If it's an exam day, only allow slots that finish BEFORE the exam starts
       let localPref = slotPref;
@@ -414,7 +478,7 @@ function generateWeeklySchedule(answers) {
           else if (profile.style.includes('קריאה')) taskName = 'סיכום וקריאה';
         }
         placed.push({
-          id: Math.random().toString(36).slice(2, 9),
+          id: _genTaskId(),
           course: item, name: taskName, date,
           time: minsToTime(slot), duration: `${sessionMin} דק'`,
           priority: isHard ? 'גבוה' : 'בינוני',
@@ -435,7 +499,17 @@ function generateWeeklySchedule(answers) {
         if (dailyCounts[date] >= maxPerDay) continue;
         if ((dailyItemCounts[date][item] || 0) >= maxSameDay) continue;
 
-        let slot2 = findBestFreeSlot(date, placed, blockNeed, null);
+        // Respect the exam-time cutoff in the fallback too — never schedule study
+        // that finishes AFTER the exam it's preparing for.
+        const fbExam = exams.find(e => e.course === item && e.date === date);
+        let fbPref = null;
+        if (fbExam && fbExam.time && fbExam.time !== '00:00') {
+          const pp = String(fbExam.time).split(':');
+          const fbExamMin = (parseInt(pp[0]) || 0) * 60 + (parseInt(pp[1]) || 0);
+          if (fbExamMin <= blockNeed) continue;
+          fbPref = { min: 0, max: fbExamMin - blockNeed, strictMax: fbExamMin - blockNeed };
+        }
+        let slot2 = findBestFreeSlot(date, placed, blockNeed, fbPref);
         if (slot2 !== null) {
           let taskName = item;
           if (profile.style) {
@@ -444,7 +518,7 @@ function generateWeeklySchedule(answers) {
             else if (profile.style.includes('קריאה')) taskName = 'סיכום וקריאה';
           }
           placed.push({
-            id: Math.random().toString(36).slice(2, 9),
+            id: _genTaskId(),
             course: item, name: taskName, date,
             time: minsToTime(slot2), duration: `${sessionMin} דק'`,
             priority: isHard ? 'גבוה' : 'בינוני',
@@ -479,12 +553,33 @@ function generateWeeklySchedule(answers) {
     });
   });
 
+  // Requested-vs-placed accounting. Course requests = one queue entry per session;
+  // placed counts come from finalPlaced (after the anchor safety pass), so the
+  // shortfall reflects what actually survived into the plan.
+  const reqCourseS = courseQueue.length;
+  const placedCourseS = finalPlaced.filter(t => !t.isHobby && !t.isHomework).length;
+  const placedHwFinal = finalPlaced.filter(t => t.isHomework).length;
+  const unplaced = {
+    course: Math.max(0, reqCourseS - placedCourseS),
+    homework: Math.max(0, reqHomeworkS - placedHwFinal),
+    homeworkNames: unplacedHomework.slice()
+  };
+  if (unplaced.homework > 0) {
+    try {
+      console.warn('[scheduler] homework sessions could not be placed:',
+        unplaced.homework, unplaced.homeworkNames);
+    } catch (_) {}
+  }
+
   return {
     tasks: finalPlaced,
     stats: {
       totalFreeMin,
       studyMin: finalPlaced.length * sessionMin,
       sessions: finalPlaced.length,
+      requested: reqCourseS + reqHomeworkS,
+      placed: finalPlaced.length,
+      unplaced,
       reason: finalPlaced.length === 0 ? 'no_time' : 'ok'
     }
   };

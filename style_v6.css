@@ -727,7 +727,7 @@ input:focus, textarea:focus, select:focus {
 .tl-time-label, .tl-hour-label { font-size: 0.5625rem !important; font-weight: 600 !important; color: var(--ink-4) !important; }
 .timeline-labels  { background-color: var(--sur-2) !important; }
 .timeline-events-area { background-color: var(--sur) !important; }
-.tl-grid-line { background-color: var(--bor) !important; opacity: 1 !important; }
+.tl-grid-line { display: block !important; position: absolute !important; left: 0 !important; right: 0 !important; height: 1px !important; background-color: var(--bor) !important; opacity: 1 !important; z-index: 0 !important; pointer-events: none !important; }
 
 /* Schedule page header — minimal (swipe-only navigation) */
 .sch-page-hdr {
@@ -760,6 +760,34 @@ input:focus, textarea:focus, select:focus {
   width: 10px !important; height: 10px !important; border-radius: 50% !important;
   background-color: var(--red) !important; top: -4px !important;
   z-index: 6 !important; pointer-events: none !important;
+}
+
+/* ── Hour axis redesign — seamless with the events, no clunky gray column ── */
+.timeline-outer {
+  border: 1px solid var(--bor) !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  background: var(--sur) !important;
+  box-shadow: 0 2px 14px rgba(22,26,60,0.05) !important;
+}
+.timeline-labels {
+  background: transparent !important;
+  border-left: 1px solid var(--bor) !important;
+  width: 40px !important;
+  flex: 0 0 40px !important;
+}
+.timeline-events-area { background: var(--sur) !important; }
+.tl-hour-label {
+  position: absolute !important;
+  left: 0 !important; right: 0 !important;
+  padding-top: 3px !important;
+  text-align: center !important;
+  font-size: 0.62rem !important;
+  font-weight: 700 !important;
+  color: var(--ink-3) !important;
+  font-family: 'Heebo', 'Inter', sans-serif !important;
+  background: transparent !important;
+  letter-spacing: 0.3px !important;
 }
 
 /* Schedule controls */
@@ -1533,19 +1561,24 @@ body, html { background-image: none !important; }
 /* ─── TOP 5 CALENDAR REDESIGN ───────────────────────────── */
 .top5-ev {
   position: absolute !important;
-  border-radius: 4px !important;
+  border-radius: 12px !important;
   overflow: hidden !important;
   padding: 0 !important;
-  box-shadow: none !important;
+  box-shadow: 0 1px 2px rgba(22,26,60,0.06), 0 6px 16px rgba(22,26,60,0.07) !important;
   border: none !important;
-  /* border-right is set inline */
+  z-index: 2 !important;
+  /* border-right (color accent) is set inline */
   cursor: pointer !important;
-  transition: transform 0.1s ease, filter 0.2s ease !important;
+  transition: transform 0.14s ease, box-shadow 0.2s ease, filter 0.2s ease !important;
   animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) both !important;
 }
 
+.top5-ev:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 10px rgba(22,26,60,0.12), 0 14px 30px rgba(22,26,60,0.12) !important;
+}
 .top5-ev:active {
-  transform: scale(0.97) !important;
+  transform: scale(0.985) !important;
 }
 
 .top5-ev.ev-done {
@@ -1557,32 +1590,39 @@ body, html { background-image: none !important; }
 }
 
 .top5-ev-body {
-  padding: 6px 10px !important;
+  padding: 9px 13px 9px 11px !important;
   display: flex;
   flex-direction: column !important;
-  justify-content: center !important;
+  justify-content: flex-start !important;
+  gap: 2px !important;
   min-width: 0 !important;
   height: 100% !important;
 }
 
 .top5-ev-name {
-  font-family: 'Inter', sans-serif !important;
-  font-size: 0.75rem !important;
-  font-weight: 700 !important;
+  font-family: 'Heebo', 'Inter', sans-serif !important;
+  font-size: 0.8rem !important;
+  font-weight: 800 !important;
   color: var(--ink) !important;
-  line-height: 1.25 !important;
-  white-space: nowrap !important;
+  line-height: 1.28 !important;
+  white-space: normal !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
-  text-shadow: none !important; /* Block old style.css garbage */
+  text-shadow: none !important;
 }
 
 .top5-ev-time {
-  font-family: 'Inter', sans-serif !important;
-  font-size: 0.68rem !important;
-  font-weight: 600 !important;
-  color: var(--ink-2) !important;
-  margin-top: 3px !important;
+  font-family: 'Heebo', 'Inter', sans-serif !important;
+  font-size: 0.7rem !important;
+  font-weight: 800 !important;
+  color: var(--ev, var(--ink-2)) !important;
+  margin-top: 2px !important;
+  direction: ltr !important;
+  text-align: right !important;
+  opacity: 0.92 !important;
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
