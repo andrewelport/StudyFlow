@@ -309,12 +309,29 @@ function selOpt(el){ document.querySelectorAll('.modal-opt').forEach(o => o.clas
 // חולץ JSON חסין קריסות (Fixes JS execution stops)
 function extractJSON(str) {
     try {
-        const match = str.match(/\{[\s\S]*\}/);
-        if (match) return JSON.parse(match[0]);
+        let firstBrace = str.indexOf('{');
+        let lastBrace = str.lastIndexOf('}');
+        let firstBracket = str.indexOf('[');
+        let lastBracket = str.lastIndexOf(']');
+        
+        let isObj = firstBrace !== -1 && lastBrace !== -1;
+        let isArr = firstBracket !== -1 && lastBracket !== -1;
+        
+        if (isObj && isArr) {
+            if (firstBracket < firstBrace && lastBracket > lastBrace) {
+                return JSON.parse(str.substring(firstBracket, lastBracket + 1));
+            } else {
+                return JSON.parse(str.substring(firstBrace, lastBrace + 1));
+            }
+        } else if (isObj) {
+            return JSON.parse(str.substring(firstBrace, lastBrace + 1));
+        } else if (isArr) {
+            return JSON.parse(str.substring(firstBracket, lastBracket + 1));
+        }
         return JSON.parse(str);
     } catch (e) {
         console.error("JSON Parse Error:", str);
-        throw new Error("ה-AI החזיר נתונים לא תקינים.");
+        throw new Error("שגיאה בפענוח הנתונים מה-AI.");
     }
 }
 

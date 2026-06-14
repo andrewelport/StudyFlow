@@ -115,12 +115,12 @@
       ? `<div class="aiwp-badge aiwp-badge-locked">${ICON.lock}<span>פרימיום · נעול</span></div>`
       : `<div class="aiwp-badge">${ICON.spark}<span>תכנון AI · פרימיום</span></div>`;
     const cta = locked
-      ? `<button class="aiwp-cta" onclick="AIWP.startFlow()">${ICON.spark}<span>נסה את התכנון החכם</span></button>
-         <div class="aiwp-entry-foot">תצוגה מקדימה · בנייה בפועל פתוחה למנויי פרימיום</div>`
+      ? `<button class="aiwp-cta" onclick="AIWP.openPaywall()">${ICON.spark}<span>שדרג לפרימיום</span></button>
+         <div class="aiwp-entry-foot">בניית לוז עם AI פתוחה למנויי פרימיום</div>`
       : `<button class="aiwp-cta" onclick="AIWP.startFlow()">${ICON.spark}<span>בנה לי לוז חכם</span></button>
          ${lastPlan ? `<div class="aiwp-entry-foot">תוכנן לאחרונה: ${_esc(lastPlan.date || '')} · ${(lastPlan.added || 0)} משימות</div>` : ''}`;
     const link = locked
-      ? `<button class="aiwp-link" onclick="AIWP.openPaywall()">למה כדאי לשדרג?</button>`
+      ? `<button class="aiwp-link" onclick="AIWP.openPaywall()">מה כולל פרימיום?</button>`
       : `<button class="aiwp-link" onclick="AIWP.openSettings()">הגדרות פרימיום</button>`;
     return `
       <div class="aiwp-entry${locked ? ' aiwp-entry-locked' : ''}">
@@ -368,6 +368,9 @@
   // ========================================================================
   //  GENERATE  (Planner agent) + VALIDATE (Validator) + PREVIEW
   // ========================================================================
+  // Multi-agent pipeline: Analyst (strategy) → Planner (placement) → Critic
+  // (optimization) → deterministic Validator. Each agent is a separate Gemini
+  // call with a focused role; every AI stage degrades gracefully on failure.
   async function generate() {
     if (!window.isPremium || !window.isPremium()) { openPaywall(); return; }
     _saveFreeText();
@@ -375,26 +378,50 @@
     _flow.context = _buildContext();
     _body().innerHTML = `
       <div class="aiwp-illus-wrap">${_illus('thinking')}</div>
-      <div class="aiwp-gen-title"><span class="aiwp-shimmer">סוכן ה-AI בונה את הלוז שלך...</span></div>
+      <div class="aiwp-gen-title"><span class="aiwp-shimmer">סוכני ה-AI בונים את הלוז שלך...</span></div>
       <div class="aiwp-gen-steps" id="aiwp-gen-steps">
-        <div class="aiwp-gen-step on">${ICON.layers}<span>מנתח חלונות פנויים ועוגנים</span></div>
-        <div class="aiwp-gen-step">${ICON.target}<span>משקלל מבחנים וביצועים</span></div>
-        <div class="aiwp-gen-step">${ICON.clock}<span>משבץ סשנים בזמנים האופטימליים</span></div>
-        <div class="aiwp-gen-step">${ICON.check}<span>בודק התנגשויות ומאמת</span></div>
+        <div class="aiwp-gen-step" data-k="analyst">${ICON.gauge}<span>אנליסט — מנתח צרכים, מבחנים וביצועים</span></div>
+        <div class="aiwp-gen-step" data-k="planner">${ICON.layers}<span>מתכנן — משבץ סשנים בחלונות האופטימליים</span></div>
+        <div class="aiwp-gen-step" data-k="critic">${ICON.target}<span>מייעל — חזרה מרווחת, איזון ומיקוד</span></div>
+        <div class="aiwp-gen-step" data-k="validate">${ICON.check}<span>מאמת התנגשויות ומגבלות</span></div>
       </div>`;
-    const steps = Array.from(document.querySelectorAll('#aiwp-gen-steps .aiwp-gen-step'));
-    let si = 0; const tick = setInterval(() => { si++; if (steps[si]) steps[si].classList.add('on'); }, 1400);
+    const _mark = (k, cls) => { const el = document.querySelector('#aiwp-gen-steps [data-k="' + k + '"]'); if (el) el.classList.add(cls); };
 
     try {
-      const raw = await _callPlanner(_flow.context);
-      clearInterval(tick);
-      let tasks = _parsePlan(raw);
-      tasks = _validate(tasks);
-      if (!tasks.length) { _genError('הלוז שחזר היה ריק או לא תקין. נסה שוב או שנה את התשובות.'); return; }
+      // Agent 1 — Analyst / Strategist (graceful: planner can run without it)
+      _mark('analyst', 'on');
+      let strategy = null;
+      try { strategy = await _callAnalyst(_flow.context); } catch (e) { strategy = null; }
+      _mark('analyst', 'done');
+
+      // Agent 2 — Planner / Scheduler (honours the strategy)
+      _mark('planner', 'on');
+      const draftRaw = await _callPlanner(_flow.context, strategy);
+      let plan = _parsePlan(draftRaw);
+      _mark('planner', 'done');
+
+      // Agent 3 — Critic / Optimizer (graceful: keep the draft if it fails)
+      _mark('critic', 'on');
+      try {
+        const critRaw = await _callCritic(_flow.context, strategy, plan);
+        const refined = _parsePlan(critRaw);
+        if (refined && refined.length) plan = refined;
+      } catch (e) { /* keep planner draft */ }
+      _mark('critic', 'done');
+
+      // Deterministic hard-constraint validation (free windows, overlaps, blocked days)
+      _mark('validate', 'on');
+      const tasks = _validate(plan);
+      _mark('validate', 'done');
+      if (!tasks.length) {
+         const reason = (!plan || !plan.length) ? 'ה-AI לא הצליח להרכיב לוז, כנראה עקב מחסור בזמן פנוי או שגיאת הבנה.' : 'הלוז נדחה עקב התנגשויות (וודא ששעות השינה והעוגנים אינם חופפים שעות למידה).';
+         _genError(reason + ' נסה שוב או שנה את התשובות.');
+         return;
+      }
       _flow.plan = tasks;
+      _flow.strategy = strategy;
       _renderPreview(tasks);
     } catch (e) {
-      clearInterval(tick);
       console.error('AIWP generate error:', e);
       _genError('אירעה שגיאה ביצירת הלוז: ' + (e.message || 'לא ידוע') + '. ודא שמפתח Gemini מוגדר בהגדרות.');
     }
@@ -408,7 +435,23 @@
   }
   function toStep(key) { _flow.step = STEPS.indexOf(key); _renderStep(); }
 
-  async function _callPlanner(ctx) {
+  // AGENT 1 — Analyst / Strategist: decides allocation + priorities, no scheduling yet.
+  async function _callAnalyst(ctx) {
+    const sys = `אתה אסטרטג למידה ברמה עולמית. נתח את נתוני הסטודנט והשבוע וקבע אסטרטגיית למידה — בלי לשבץ זמנים עדיין.
+שקלל: קרבת מבחנים (daysUntil) ורמת מוכנות (readyPct), ביצועי עבר (insights), העומס שנבחר (answers.capacity), מטרות ואילוצים אישיים (userNote, chatTranscript), מיקוד ידני (focusCourses), ותחביבים.
+
+עקרון מפתח — לוד בר-קיימא: קבע תקציב עומס ריאלי, לא רשימת משאלות. מדע הלמידה (תרגול מכוון, עומס קוגניטיבי) קובע שתקרת לימוד ממוקד היא ~2–4 שעות ביום בלבד — לא אחוז מכל הזמן הפנוי. תרגם capacity לתקרה: recovery≈2ש'/יום, normal≈3ש'/יום, push≈3.5ש'/יום, exam≈4ש'/יום. אל תעבור את התקרה — עומס-יתר פוגע בלמידה ובהתמדה.
+הקצאה פרופורציונלית: קורס עם מבחן קרוב/מוכנות נמוכה/קושי גבוה מקבל יותר סשנים; קורס קל/בלי מבחן מקבל מעט. אל תחלק שווה בשווה. שמור יום אחד קליל/מנוחה.
+
+החזר אך ורק JSON: {"weeklyBudgetHours":מספר,"dailyCeilingHours":מספר,"perCourse":[{"course":"שם מהרשימה","sessions":מספר_סשנים_לשבוע,"priority":"גבוה|בינוני|נמוך","reason":"קצר"}],"approach":"משפט על הגישה","spacingPlan":"איך לפזר חזרה מרווחת ושילוב נושאים","balance":"הנחיית מנוחה","warnings":"סיכון אם יש"}.
+השתמש רק בקורסים מתוך courses. אל תוסיף טקסט מחוץ ל-JSON.`;
+    const user = `נתוני המשתמש והשבוע (JSON):\n${JSON.stringify(ctx)}`;
+    const raw = await window.callAI({ messages: [{ role: 'system', content: sys }, { role: 'user', content: user }], temperature: 0.5, json: true, maxTokens: 1500 });
+    try { return (window.extractJSON ? window.extractJSON(raw) : JSON.parse(raw)); } catch (e) { return null; }
+  }
+
+  // AGENT 2 — Planner / Scheduler: places concrete sessions, honouring the strategy.
+  async function _callPlanner(ctx, strategy) {
     const sys = `אתה מתכנן לימודים מומחה ברמה עולמית. תפקידך לבנות לוז שבועי אופטימלי לסטודנט, על בסיס נתונים אמיתיים, לפי עקרונות מבוססי-מחקר:
 - חזרה מרווחת (spaced repetition) ושילוב נושאים (interleaving) — אל תרכז קורס אחד ברצף ימים אלא אם יש מבחן קרוב.
 - התאמה לשעון הביולוגי: שבץ נושאים תובעניים בשעות השיא של המשתמש (profile.focus_time + שעות שבהן הוא באמת משלים סשנים לפי insights).
@@ -419,9 +462,25 @@
 - כבד עומס: capacity קובע כמה מסך הזמן הפנוי להקצות ללימוד (recovery≈40%, normal≈62%, push≈80%, exam≈90% עם מיקוד במבחן הקרוב). השאר זמן למנוחה.
 - כבד blockedDays (אל תשבץ בהם), focusCourses (הדגש אותם), ותחביבים (hobbies) לפי timesPerWeek.
 - learnedMemo ו-learnedPrefs מתארים את ההרגלים שלמדת על המשתמש — כבד אותם.
+${strategy ? '- קיבלת אסטרטגיה מהאנליסט: שבץ לכל קורס בערך את strategy.perCourse[].sessions והעדיפות שנקבעו. אל תעבור את תקציב העומס — לכל היותר strategy.dailyCeilingHours ביום ו-strategy.weeklyBudgetHours בשבוע. עומס ריאלי ובר-קיימא חשוב מ"למלא" את כל הזמן הפנוי.' : '- שמור על לוד בר-קיימא: לכל היותר ~2–4 שעות לימוד ממוקד ביום; אל תמלא את כל הזמן הפנוי. שמור יום קליל למנוחה.'}
 החזר אך ורק JSON תקין בפורמט: {"tasks":[{"date":"YYYY-MM-DD","time":"HH:MM","course":"שם הקורס","duration":"60 דק'","priority":"גבוה|בינוני|נמוך"}],"rationale":"משפט קצר על ההיגיון"}. אל תוסיף טקסט מחוץ ל-JSON. השתמש רק בקורסים מתוך הרשימה. תאריכים אך ורק בטווח targetWeek.`;
-    const user = `נתוני המשתמש והשבוע (JSON):\n${JSON.stringify(ctx)}\n\nבנה את הלוז עכשיו.`;
+    const stratLine = strategy ? `\n\nאסטרטגיית האנליסט (JSON):\n${JSON.stringify(strategy)}` : '';
+    const user = `נתוני המשתמש והשבוע (JSON):\n${JSON.stringify(ctx)}${stratLine}\n\nבנה את הלוז עכשיו.`;
     return await window.callAI({ messages: [{ role: 'system', content: sys }, { role: 'user', content: user }], temperature: 0.4, json: true, maxTokens: 4096 });
+  }
+
+  // AGENT 3 — Critic / Optimizer: refines the draft against strategy + best practice.
+  async function _callCritic(ctx, strategy, draft) {
+    const sys = `אתה מבקר-איכות של לוחות זמנים ללמידה. בהינתן ההקשר, האסטרטגיה והטיוטה — דרג את הלוז מול הרובריקה הבאה (0–10 כל קריטריון) ותקן כל כשל לפני ההחזרה:
+1. לוד בר-קיימא — לא עובר ~2–4ש'/יום ולא ממלא את כל הזמן הפנוי; יש מנוחה.
+2. הקצאה פרופורציונלית — קורס עם מבחן קרוב/מוכנות נמוכה מקבל יותר; לא חלוקה שווה.
+3. חזרה מרווחת ושילוב — אותו קורס לא ברצף ימים (אלא לקראת מבחן); נושאים משולבים.
+4. טייפר למבחן — עוצמה עולה ככל שמתקרב המבחן; אין לימוד לקורס אחרי המבחן שלו.
+5. שעות שיא — חומר תובעני ב-profile.focus_time.
+6. מגבלות קשות — שיבוץ רק בחלונות הפנויים (freeSlots), מחוץ ל-blockedDays, בטווח targetWeek, לא חופף עוגנים.
+החזר אך ורק JSON זהה בפורמט לטיוטה: {"tasks":[{"date":"YYYY-MM-DD","time":"HH:MM","course":"שם","duration":"60 דק'","priority":"גבוה|בינוני|נמוך"}],"rationale":"משפט אחד למשתמש שמסביר למה הלוז אופטימלי עבורו"}. אל תוסיף טקסט מחוץ ל-JSON.`;
+    const user = `הקשר (JSON):\n${JSON.stringify(ctx)}\n\nאסטרטגיה (JSON):\n${JSON.stringify(strategy || {})}\n\nטיוטת לוז (JSON):\n${JSON.stringify(draft)}\n\nשפר והחזר את הלוז המשופר.`;
+    return await window.callAI({ messages: [{ role: 'system', content: sys }, { role: 'user', content: user }], temperature: 0.3, json: true, maxTokens: 4096 });
   }
 
   function _parsePlan(raw) {
@@ -479,6 +538,7 @@
       <div class="aiwp-pv-head">
         <div class="aiwp-badge">${ICON.check}<span>הלוז מוכן</span></div>
         <div class="aiwp-pv-title">${tasks.length} סשנים · ${hrs} שעות לימוד</div>
+        ${(_flow.strategy && _flow.strategy.approach) ? `<div class="aiwp-pv-rationale">${ICON.gauge}<span><b>אסטרטגיה:</b> ${_esc(_flow.strategy.approach)}</span></div>` : ''}
         ${_flow.rationale ? `<div class="aiwp-pv-rationale">${ICON.brain}<span>${_esc(_flow.rationale)}</span></div>` : ''}
       </div>
       <div class="aiwp-pv-list">${daysHTML || '<div class="aiwp-q-sub">לא נוצרו סשנים בטווח הפנוי.</div>'}</div>
@@ -643,9 +703,8 @@
           </div>
         </div>
         ${premium
-        ? `<button class="aiwp-set-btn ghost" onclick="AIWP.downgrade()">בטל מנוי (בדיקה)</button>`
+        ? `<button class="aiwp-set-btn ghost" onclick="AIWP.downgrade()">ניהול מנוי · ביטול</button>`
         : `<button class="aiwp-set-btn" onclick="AIWP.openPaywall()">שדרג עכשיו</button>`}
-        <label class="aiwp-dev-toggle"><input type="checkbox" ${premium ? 'checked' : ''} onchange="AIWP.devToggle(this.checked)"/><span>מתג מפתח: פרימיום</span></label>
       </div>`;
   }
   function devToggle(on) { if (on) { _data().tier = 'premium'; } else { _data().tier = 'free'; } _save(); _injectSettings(); if (window.renderWeeklyReview) window.renderWeeklyReview(); }

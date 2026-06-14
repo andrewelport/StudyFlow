@@ -16,8 +16,16 @@ function getAvailableSlots(startDateStr, endDateStr, currentPriority){
     let dayTasks = (S.tasks||[]).filter(t => t.date===dateStr && !t.done && !t.missed);
     let nowMins = 0;
     if(dateStr === ld(new Date())){ const now=new Date(); nowMins = now.getHours()*60+now.getMinutes(); }
-    // Build blocked ranges: sleep, anchors+travel, existing tasks
-    let blocked = [{ s:0, e:Math.max(wake, nowMins) }, { s:sleep, e:24*60 }];
+    let blocked = [];
+    if (sleep > wake) {
+      blocked.push({ s:0, e:Math.max(wake, nowMins) }, { s:sleep, e:24*60 });
+    } else {
+      let eWake = wake;
+      if (nowMins > sleep && nowMins < wake) eWake = Math.max(wake, nowMins);
+      blocked.push({ s: sleep, e: eWake });
+      if (nowMins > wake) blocked.push({ s: wake, e: nowMins });
+      if (nowMins < sleep) blocked.push({ s: 0, e: nowMins });
+    }
     dayAnchors.forEach(a => {
       const travel = a.travelMin||0;
       const as2 = parseInt((a.start||'00:00').split(':')[0])*60+parseInt((a.start||'00:00').split(':')[1]);
@@ -66,8 +74,16 @@ function isTimeInFreeWindow(dateStr, timeStr, durationMins) {
   const tStart = parseInt(timeStr.split(':')[0])*60 + parseInt(timeStr.split(':')[1]);
   const tEnd = tStart + (durationMins||60);
   const wake = parseInt((S.wakeTime||"07:00").split(':')[0])*60 + parseInt((S.wakeTime||"07:00").split(':')[1]);
-  const sleep = parseInt((S.sleepTime||"23:00").split(':')[0])*60 + parseInt((S.sleepTime||"23:00").split(':')[1]);
-  if (tStart < wake || tEnd > sleep) return false;
+  let sleep = parseInt((S.sleepTime||"23:00").split(':')[0])*60 + parseInt((S.sleepTime||"23:00").split(':')[1]);
+  if (sleep <= wake) sleep += 1440;
+  
+  let stCheck = tStart;
+  let endCheck = tEnd;
+  if (sleep > 1440 && tStart < wake) {
+     stCheck += 1440;
+     endCheck += 1440;
+  }
+  if (stCheck < wake || endCheck > sleep) return false;
   for (const a of dayAnchors) {
     const travel = a.travelMin||0;
     const as2 = parseInt((a.start||'00:00').split(':')[0])*60+parseInt((a.start||'00:00').split(':')[1]) - travel;
