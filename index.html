@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css?v=131">
 <link rel="stylesheet" href="style_v6.css?v=133">
-<link rel="stylesheet" href="style_v7.css?v=5">
+<link rel="stylesheet" href="style_v7.css?v=10">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -55,9 +55,9 @@
     <div class="spl-name">StudyFlow</div>
     <div class="spl-tag">ה-Waze של הלימודים</div>
     <div class="spl-feats">
-      <span class="spl-feat">🤖 AI שמתכנן בשבילך</span>
-      <span class="spl-feat">📅 לו"ז שמסתגל אליך</span>
-      <span class="spl-feat">🔥 רצף שמחזיק אותך</span>
+      <span class="spl-feat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/><circle cx="12" cy="12" r="3.1"/></svg>AI שמתכנן בשבילך</span>
+      <span class="spl-feat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 9h18M8 3v4M16 3v4"/></svg>לו"ז שמסתגל אליך</span>
+      <span class="spl-feat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c1 3-1 4-1 6a3 3 0 0 0 6 0c0-1-.3-2-1-3 2 1 4 3.6 4 7a7 7 0 1 1-14 0c0-3 2-5 3-7 .4 2 2 2 3-.5z"/></svg>רצף שמחזיק אותך</span>
     </div>
   </div>
   <div class="spl-cta-area">
@@ -93,12 +93,12 @@
         </svg>
       </div>
       <div class="ob2-title">מאיפה שמעת עלינו?</div>
-      <div class="ob2-sub">עוזר לנו להגיע ליותר סטודנטים כמוך 🙏</div>
+      <div class="ob2-sub">עוזר לנו להגיע ליותר סטודנטים כמוך</div>
       <div class="sf-attr-chips" id="sf-attr-chips">
-        <button class="sf-attr-chip" data-val="tiktok" onclick="sfChipSel(this,'sf-attr-chips')">📱 TikTok / Instagram</button>
-        <button class="sf-attr-chip" data-val="friend" onclick="sfChipSel(this,'sf-attr-chips')">👥 חבר המליץ</button>
-        <button class="sf-attr-chip" data-val="google" onclick="sfChipSel(this,'sf-attr-chips')">🔍 Google</button>
-        <button class="sf-attr-chip" data-val="teacher" onclick="sfChipSel(this,'sf-attr-chips')">👨‍🏫 מורה / מרצה</button>
+        <button class="sf-attr-chip" data-val="tiktok" onclick="sfChipSel(this,'sf-attr-chips')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="2.5" width="19" height="19" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.1" fill="currentColor" stroke="none"/></svg>TikTok / Instagram</button>
+        <button class="sf-attr-chip" data-val="friend" onclick="sfChipSel(this,'sf-attr-chips')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19"/><circle cx="10" cy="8" r="3.2"/><path d="M19.5 19v-1.2a3 3 0 0 0-2.3-2.9M16.5 5.2a3 3 0 0 1 0 5.6"/></svg>חבר המליץ</button>
+        <button class="sf-attr-chip" data-val="google" onclick="sfChipSel(this,'sf-attr-chips')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>Google</button>
+        <button class="sf-attr-chip" data-val="teacher" onclick="sfChipSel(this,'sf-attr-chips')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h18v12H3z"/><path d="M12 16v4M8 20h8"/></svg>מורה / מרצה</button>
         <button class="sf-attr-chip" data-val="other" onclick="sfChipSel(this,'sf-attr-chips')">אחר</button>
       </div>
       <button class="ob2-next-btn" onclick="sfAttrNext()">המשך</button>
@@ -130,8 +130,8 @@
         <input type="text" id="inp-inst" class="ob2-inp" placeholder="מוסד לימודים (אופציונלי)" maxlength="80" autocomplete="organization" aria-label="מוסד לימודים"/>
       </div>
       <div class="ob2-usertype-row">
-        <button type="button" class="ob2-ut-btn ob2-ut-sel" id="ob2-ut-uni" onclick="sfObSetType('university',this)">🎓 סטודנט/ית</button>
-        <button type="button" class="ob2-ut-btn" id="ob2-ut-hs" onclick="sfObSetType('highschool',this)">🏫 תלמיד/ה תיכון</button>
+        <button type="button" class="ob2-ut-btn ob2-ut-sel" id="ob2-ut-uni" onclick="sfObSetType('university',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 2 9l10 5 10-5-10-5z"/><path d="M6 11.5V16c0 1.1 2.7 2.5 6 2.5s6-1.4 6-2.5v-4.5"/></svg>סטודנט/ית</button>
+        <button type="button" class="ob2-ut-btn" id="ob2-ut-hs" onclick="sfObSetType('highschool',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V8l9-5 9 5v13"/><path d="M3 21h18M9 21v-5h6v5M9 11h.01M15 11h.01"/></svg>תלמיד/ה תיכון</button>
       </div>
       <button class="ob2-next-btn" onclick="obStep(2)">המשך — הגדרה מלאה</button>
       <button class="ob2-skip-lnk" onclick="sfQuickJoin()">כניסה מהירה ← שם בלבד</button>
@@ -1985,9 +1985,9 @@
   </div>
 </div>
 
-<script src="scheduler.js?v=35"></script>
+<script src="scheduler.js?v=36"></script>
 <script src="sf-01-core.js?v=8"></script>
-<script src="sf-02-onboarding.js?v=9"></script>
+<script src="sf-02-onboarding.js?v=10"></script>
 <script src="sf-03-import.js?v=13"></script>
 <script src="sf-04-progress.js?v=1"></script>
 <script src="sf-05-planner.js?v=2"></script>
@@ -1996,7 +1996,7 @@
 <script src="sf-08-chat-ai.js?v=2"></script>
 <script src="sf-09-coach.js?v=2"></script>
 <script src="sf-10-focus.js?v=3"></script>
-<script src="premium-planner.js?v=1"></script>
+<script src="premium-planner.js?v=4"></script>
 <script>
 /* ── Timeline: 62px/hour (balanced — fuller blocks, less empty space) ── */
 try { TL_HOUR_PX = 62; TL_PX_MIN = 62/60; } catch(e) {}
@@ -2154,7 +2154,7 @@ window.addEventListener('load', function() {
   var _TOUR_PAGES = [null, 'today', 'planner', 'exams', 'homework', 'planner', null, 'weekly-review'];
   var _pollInterval = null;
   var _GUIDE_KEY = 'sf_guide_v1';
-  var _TOUR_VER = 3;
+  var _TOUR_VER = 4;
 
   /* App data — read-only here, managed by app.js (sf_free_v1) */
   function _gd() { try { return JSON.parse(localStorage.getItem('sf_free_v1') || '{}'); } catch(e) { return {}; } }
@@ -2233,31 +2233,74 @@ window.addEventListener('load', function() {
     if (_pollInterval) { clearInterval(_pollInterval); _pollInterval = null; }
     _gs('guideDismissed', true);
   };
-  /* ── Feature Tour ── */
+  /* ── Feature Tour (spotlight) — highlights each section, no emojis ── */
+  var _SFT = [
+    { sel: null,           title: 'ברוכים הבאים ל-StudyFlow', desc: 'דקה אחת, ונראה לך מה האפליקציה עושה בשבילך.' },
+    { sel: '#bn-today',    title: 'היום',     desc: 'כל המשימות, העוגנים והמבחנים של היום — במבט אחד.' },
+    { sel: '#bn-schedule', title: 'הלו״ז',    desc: 'תצוגה שבועית של כל הזמן שלך, עם גרירה ועריכה.' },
+    { sel: '#bn-planner',  title: 'תכנון',    desc: 'מוסיפים קורסים — והמערכת בונה לו״ז לימודים חכם ומותאם אישית.' },
+    { sel: '#bn-homework', title: 'מטלות',    desc: 'כל שיעורי הבית והדדליינים, במקום אחד מסודר.' },
+    { sel: '#bn-progress', title: 'הישגים',   desc: 'רצף יומי, נקודות והתקדמות — שיהיה כיף להתמיד.' },
+    { sel: null,           title: 'מוכנים לצאת לדרך?', desc: 'תמיד אפשר לפתוח את הסיור שוב מ"הגדרות". בהצלחה!' }
+  ];
+  var _sftIdx = 0;
   window.sfStartTour = function() {
     if (document.getElementById('sf-tour-overlay')) return;
-    _tourIdx = 0; _sfRT();
-  };
-  function _sfRT() {
-    var ex = document.getElementById('sf-tour-overlay'); if (ex) ex.remove();
-    var s = _TOUR[_tourIdx], last = _tourIdx === _TOUR.length - 1;
-    var dots = _TOUR.map(function(_, i) { return '<div class="sf-tour-dot' + (i === _tourIdx ? ' active' : '') + '"></div>'; }).join('');
+    _sftIdx = 0;
     var ov = document.createElement('div');
-    ov.id = 'sf-tour-overlay'; ov.className = 'sf-tour-overlay';
-    ov.innerHTML = '<div class="sf-tour-sheet"><div class="sf-tour-dots">' + dots + '</div>' +
-      '<div class="sf-tour-icon">' + s.icon + '</div>' +
-      '<div class="sf-tour-title">' + s.title + '</div>' +
-      '<div class="sf-tour-desc">' + s.desc + '</div>' +
-      '<button class="sf-tour-btn" onclick="sfTourNext()">' + (last ? 'בואו נתחיל! 🚀' : 'הבא ←') + '</button>' +
-      (!last ? '<button class="sf-tour-skip" onclick="sfTourDone()">דלג על הסיור</button>' : '') + '</div>';
+    ov.id = 'sf-tour-overlay'; ov.className = 'sft-ov';
+    ov.innerHTML = '<div class="sft-spot"></div><div class="sft-pop"></div>';
     document.body.appendChild(ov);
-    var pg = _TOUR_PAGES[_tourIdx];
-    if (pg && typeof showPage === 'function') { try { showPage(pg, null); if (typeof updateBottomNav === 'function') updateBottomNav(pg); } catch (e) {} }
-  }
-  window.sfTourNext = function() { if (_tourIdx < _TOUR.length - 1) { _tourIdx++; _sfRT(); } else sfTourDone(); };
-  window.sfTourDone = function() {
-    var ov = document.getElementById('sf-tour-overlay'); if (ov) ov.remove();
+    window.addEventListener('resize', _sftReposition);
+    /* Always present the tour from the home screen so the dock targets exist. */
     if (typeof showPage === 'function') { try { showPage('today', null); if (typeof updateBottomNav === 'function') updateBottomNav('today'); } catch (e) {} }
+    _sftRender();
+  };
+  function _sftRender() {
+    var ov = document.getElementById('sf-tour-overlay'); if (!ov) return;
+    var step = _SFT[_sftIdx], last = _sftIdx === _SFT.length - 1, first = _sftIdx === 0;
+    var dots = _SFT.map(function(_, i){ return '<span class="sft-dot' + (i === _sftIdx ? ' on' : '') + '"></span>'; }).join('');
+    ov.querySelector('.sft-pop').innerHTML =
+      '<div class="sft-pop-in">' +
+        '<div class="sft-dots">' + dots + '</div>' +
+        '<div class="sft-title">' + step.title + '</div>' +
+        '<div class="sft-desc">' + step.desc + '</div>' +
+        '<div class="sft-actions">' +
+          (last ? '' : '<button class="sft-skip" onclick="sfTourDone()">דלג</button>') +
+          '<button class="sft-next" onclick="sfTourNext()">' + (last ? 'מתחילים' : (first ? 'יאללה' : 'הבא')) + '</button>' +
+        '</div>' +
+      '</div>';
+    _sftPosition(step);
+  }
+  function _sftPosition(step) {
+    var ov = document.getElementById('sf-tour-overlay'); if (!ov) return;
+    var spot = ov.querySelector('.sft-spot'), pop = ov.querySelector('.sft-pop');
+    var el = (step && step.sel) ? document.querySelector(step.sel) : null;
+    if (el) {
+      var r = el.getBoundingClientRect(), pad = 7;
+      ov.classList.remove('sft-centered');
+      spot.style.display = 'block';
+      spot.style.left = (r.left - pad) + 'px';
+      spot.style.top = (r.top - pad) + 'px';
+      spot.style.width = (r.width + pad * 2) + 'px';
+      spot.style.height = (r.height + pad * 2) + 'px';
+      spot.style.borderRadius = (Math.min(r.width, r.height) / 2 + pad) + 'px';
+      pop.classList.add('sft-above');
+      pop.style.top = 'auto';
+      pop.style.bottom = (window.innerHeight - r.top + 18) + 'px';
+    } else {
+      ov.classList.add('sft-centered');
+      spot.style.display = 'none';
+      pop.classList.remove('sft-above');
+      pop.style.bottom = 'auto'; pop.style.top = '';
+    }
+  }
+  function _sftReposition() { if (document.getElementById('sf-tour-overlay')) _sftPosition(_SFT[_sftIdx]); }
+  window.sfTourNext = function() { if (_sftIdx < _SFT.length - 1) { _sftIdx++; _sftRender(); } else sfTourDone(); };
+  window.sfTourDone = function() {
+    var ov = document.getElementById('sf-tour-overlay');
+    if (ov) { ov.classList.add('sft-out'); setTimeout(function(){ if (ov.parentNode) ov.remove(); }, 260); }
+    window.removeEventListener('resize', _sftReposition);
     _gs('tourDone', true); _gs('tourVersion', _TOUR_VER); sfRenderGuide();
   };
   window.addEventListener('load', function() {
