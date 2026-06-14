@@ -1,0 +1,1141 @@
+/* ═══════════════════════════════════════════════════════════════════
+   STUDYFLOW AURORA — v7 Design Language (2026-06)
+   Loads LAST. Equal-specificity !important rules override style.css + v6.
+   Pillars: depth & dimension (layered shadows, 3D press physics),
+   living aurora gradients, glass surfaces, spring motion, calm hierarchy.
+   Hebrew RTL · light + dark · respects prefers-reduced-motion.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─── 1. TOKENS ──────────────────────────────────────────────────── */
+:root {
+  /* Canvas + surfaces */
+  --a-bg:     #F3F5FE;
+  --a-sur:    #FFFFFF;
+  --a-sur-2:  #F5F6FC;
+  --a-sur-3:  #ECEEF8;
+  /* Ink */
+  --a-ink:    #16183A;
+  --a-ink-2:  #494C70;
+  --a-ink-3:  #8A8DAE;
+  --a-ink-4:  #B9BCD6;
+  /* Hairlines */
+  --a-bor:    rgba(22,24,58,0.08);
+  --a-bor-2:  rgba(22,24,58,0.14);
+  /* Brand spectrum — Aurora */
+  --a-brand:   #5B66F2;
+  --a-brand-2: #7C5CF5;
+  --a-brand-3: #38BDF8;
+  --a-deep:    #4047D8;
+  --a-grad:        linear-gradient(135deg, #5B66F2 0%, #7C5CF5 52%, #9D7BFA 100%);
+  --a-grad-vivid:  linear-gradient(135deg, #4F5BF0 0%, #7C5CF5 45%, #38BDF8 110%);
+  --a-grad-soft:   linear-gradient(135deg, rgba(91,102,242,0.10), rgba(124,92,245,0.10));
+  --a-soft:    rgba(91,102,242,0.10);
+  --a-lite:    #EDEFFF;
+  --a-glow:    rgba(98,98,245,0.36);
+  /* Semantic */
+  --a-grn:    #2FBF63;  --a-grn-dk: #1E9A4C;
+  --a-red:    #F4504B;  --a-orng:   #F59E0B;
+  --a-xp:     #58CC02;
+  /* Depth system — ambient / raised / floating */
+  --a-sh-1: 0 1px 2px rgba(22,24,58,0.04), 0 4px 14px rgba(22,24,58,0.06);
+  --a-sh-2: 0 2px 4px rgba(22,24,58,0.05), 0 10px 26px rgba(22,24,58,0.09), 0 22px 44px -18px rgba(91,102,242,0.14);
+  --a-sh-3: 0 4px 10px rgba(22,24,58,0.07), 0 18px 44px rgba(22,24,58,0.14), 0 36px 80px -24px rgba(91,102,242,0.22);
+  --a-sh-glow: 0 10px 26px -6px var(--a-glow), 0 3px 9px rgba(22,24,58,0.10);
+  /* Geometry */
+  --a-r-xs: 10px;  --a-r-sm: 14px;  --a-r: 18px;  --a-r-lg: 22px;  --a-r-xl: 28px;
+  /* Motion */
+  --a-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --a-swift:  cubic-bezier(0.22, 1, 0.36, 1);
+  --a-sheet:  cubic-bezier(0.32, 0.72, 0, 1);
+  --a-t:  0.22s var(--a-swift);
+  --a-tf: 0.13s var(--a-swift);
+}
+
+[data-theme="dark"] {
+  --a-bg:     #0A0C1D;
+  --a-sur:    #14172E;
+  --a-sur-2:  #1A1E3A;
+  --a-sur-3:  #242949;
+  --a-ink:    #EDEFFF;
+  --a-ink-2:  #C3C6E4;
+  --a-ink-3:  #8E92B8;
+  --a-ink-4:  #5E6288;
+  --a-bor:    rgba(237,239,255,0.08);
+  --a-bor-2:  rgba(237,239,255,0.16);
+  --a-brand:   #8B93FF;
+  --a-brand-2: #A88BFF;
+  --a-deep:    #6E79FF;
+  --a-grad:       linear-gradient(135deg, #6E79FF 0%, #9D7BFF 52%, #C09AFF 100%);
+  --a-grad-vivid: linear-gradient(135deg, #6E79FF 0%, #9D7BFF 45%, #4CC7FF 110%);
+  --a-grad-soft:  linear-gradient(135deg, rgba(139,147,255,0.13), rgba(168,139,255,0.13));
+  --a-soft:    rgba(139,147,255,0.14);
+  --a-lite:    #232859;
+  --a-glow:    rgba(110,121,255,0.40);
+  --a-sh-1: 0 1px 3px rgba(0,0,0,0.4), 0 6px 18px rgba(0,0,0,0.35);
+  --a-sh-2: 0 2px 6px rgba(0,0,0,0.45), 0 14px 34px rgba(0,0,0,0.5);
+  --a-sh-3: 0 4px 12px rgba(0,0,0,0.5), 0 24px 60px rgba(0,0,0,0.6);
+  --a-sh-glow: 0 10px 30px -6px var(--a-glow), 0 3px 10px rgba(0,0,0,0.4);
+  --a-grn: #3DDC74;
+}
+
+/* Re-point v6 + legacy variables so every existing rule and every
+   JS-generated inline style adopts the Aurora palette automatically. */
+:root, [data-theme="light"] {
+  --bg: var(--a-bg); --sur: var(--a-sur); --sur-2: var(--a-sur-2); --sur-3: var(--a-sur-3);
+  --ink: var(--a-ink); --ink-2: var(--a-ink-2); --ink-3: var(--a-ink-3); --ink-4: var(--a-ink-4);
+  --bor: var(--a-bor); --bor-2: var(--a-bor-2);
+  --brand: var(--a-brand); --dk: var(--a-deep); --soft: var(--a-soft); --lite: var(--a-lite);
+  --grn: var(--a-grn); --grn-dk: var(--a-grn-dk); --red: var(--a-red); --orng: var(--a-orng);
+  --sh: var(--a-sh-1); --sh-md: var(--a-sh-2);
+  --surface: var(--a-sur); --surface2: var(--a-sur-2); --surface3: var(--a-sur-3);
+  --text: var(--a-ink); --muted: var(--a-ink-3);
+  --accent: var(--a-brand); --accent-light: var(--a-lite); --accent-dark: var(--a-deep);
+  --border: var(--a-bor); --border2: var(--a-bor-2);
+  --green: var(--a-grn); --green-light: rgba(47,191,99,0.12);
+  --red-light: rgba(244,80,75,0.10);
+  --yellow: var(--a-orng); --yellow-light: rgba(245,158,11,0.12);
+  --shadow-sm: var(--a-sh-1); --shadow-md: var(--a-sh-2); --shadow-lg: var(--a-sh-3);
+}
+[data-theme="dark"] {
+  --bg: var(--a-bg); --sur: var(--a-sur); --sur-2: var(--a-sur-2); --sur-3: var(--a-sur-3);
+  --ink: var(--a-ink); --ink-2: var(--a-ink-2); --ink-3: var(--a-ink-3); --ink-4: var(--a-ink-4);
+  --bor: var(--a-bor); --bor-2: var(--a-bor-2);
+  --brand: var(--a-brand); --dk: var(--a-deep); --soft: var(--a-soft); --lite: var(--a-lite);
+  --grn: var(--a-grn); --red: var(--a-red);
+  --sh: var(--a-sh-1); --sh-md: var(--a-sh-2);
+  --surface: var(--a-sur); --surface2: var(--a-sur-2); --surface3: var(--a-sur-3);
+  --text: var(--a-ink); --muted: var(--a-ink-3);
+  --accent: var(--a-brand); --accent-light: var(--a-soft); --accent-dark: var(--a-deep);
+  --border: var(--a-bor); --border2: var(--a-bor-2);
+  --green: var(--a-grn); --green-light: rgba(61,220,116,0.14);
+  --red-light: rgba(244,80,75,0.14);
+  --yellow: var(--a-orng); --yellow-light: rgba(245,158,11,0.14);
+  --shadow-sm: var(--a-sh-1); --shadow-md: var(--a-sh-2); --shadow-lg: var(--a-sh-3);
+}
+
+/* ─── 2. CANVAS — aurora mesh behind everything ─────────────────── */
+body { background-color: var(--a-bg) !important; }
+body::before {
+  content: '' !important;
+  position: fixed !important; inset: -10% !important;
+  z-index: -1 !important; pointer-events: none !important;
+  background:
+    radial-gradient(42% 36% at 12% 4%,  rgba(91,102,242,0.07), transparent 70%),
+    radial-gradient(38% 32% at 92% 12%, rgba(56,189,248,0.06), transparent 70%),
+    radial-gradient(46% 40% at 78% 96%, rgba(157,123,250,0.07), transparent 70%) !important;
+}
+[data-theme="dark"] body::before {
+  background:
+    radial-gradient(44% 38% at 10% 0%,  rgba(110,121,255,0.13), transparent 70%),
+    radial-gradient(40% 34% at 94% 10%, rgba(76,199,255,0.07),  transparent 70%),
+    radial-gradient(48% 42% at 80% 98%, rgba(157,123,255,0.10), transparent 70%) !important;
+}
+::selection { background: var(--a-soft); color: var(--a-brand); }
+
+/* Visible, branded keyboard focus */
+:focus-visible {
+  outline: 2.5px solid var(--a-brand) !important;
+  outline-offset: 2px !important;
+  border-radius: 8px;
+}
+
+/* ─── 3. TYPE RHYTHM ─────────────────────────────────────────────── */
+.page-title {
+  font-size: 1.75rem !important; font-weight: 900 !important;
+  letter-spacing: -0.035em !important; color: var(--a-ink) !important;
+}
+.page-sub { font-size: 0.8125rem !important; color: var(--a-ink-3) !important; font-weight: 500 !important; }
+.section-title-sm, .pl-sec-title {
+  font-size: 1.0625rem !important; font-weight: 800 !important;
+  letter-spacing: -0.015em !important; color: var(--a-ink) !important;
+}
+#today-greeting {
+  font-size: 1.875rem !important; font-weight: 900 !important;
+  letter-spacing: -0.04em !important; line-height: 1.08 !important;
+  background: linear-gradient(120deg, var(--a-ink) 30%, var(--a-brand) 130%) !important;
+  -webkit-background-clip: text !important; background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+/* ─── 4. BUTTONS — reinvented, every one ─────────────────────────── */
+button {
+  font-family: Heebo, -apple-system, sans-serif;
+  -webkit-tap-highlight-color: transparent !important;
+  touch-action: manipulation;
+}
+
+/* 4a. Primary — Aurora gradient, real 3D press physics */
+.btn-primary, button.btn-primary,
+.btn-add, button.btn-add,
+.btn-focus-start, button.btn-focus-start,
+.pomo-start-btn, button.pomo-start-btn,
+form button[type="submit"],
+.add-exam-btn, button.add-exam-btn,
+.add-task-btn, button.add-task-btn,
+.sch-add-btn, button.sch-add-btn,
+button.exam-submit, button.task-submit,
+.ob2-next-btn, button.ob2-next-btn,
+.btn-confirm, button.btn-confirm,
+.anc-save-btn, .tes-save-btn, .sf-tour-btn {
+  position: relative !important;
+  display: block !important; width: 100% !important;
+  background: var(--a-grad) !important;
+  background-size: 170% 170% !important;
+  background-position: 0% 50% !important;
+  color: #fff !important;
+  border: none !important; border-radius: var(--a-r-sm) !important;
+  padding: 15px 20px !important;
+  font-family: Heebo, sans-serif !important;
+  font-size: 1rem !important; font-weight: 800 !important;
+  letter-spacing: -0.01em !important; cursor: pointer !important;
+  text-align: center !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.28),
+    inset 0 -2px 0 rgba(22,16,80,0.22),
+    0 10px 22px -6px var(--a-glow),
+    0 3px 8px rgba(22,24,58,0.10) !important;
+  transform: translateY(0) !important;
+  transition: transform 0.16s var(--a-spring), box-shadow 0.18s var(--a-swift),
+              background-position 0.5s var(--a-swift), filter 0.18s !important;
+  margin-top: 12px !important;
+}
+@media (hover: hover) {
+  .btn-primary:hover, .btn-add:hover, .btn-focus-start:hover,
+  .pomo-start-btn:hover, form button[type="submit"]:hover,
+  .ob2-next-btn:hover, .btn-confirm:hover, .anc-save-btn:hover, .tes-save-btn:hover {
+    background-position: 95% 50% !important;
+    transform: translateY(-2px) !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.30),
+      inset 0 -2px 0 rgba(22,16,80,0.20),
+      0 16px 32px -8px var(--a-glow),
+      0 5px 12px rgba(22,24,58,0.12) !important;
+  }
+}
+.btn-primary:active, button.btn-primary:active,
+.btn-add:active, button.btn-add:active,
+.btn-focus-start:active, button.btn-focus-start:active,
+.pomo-start-btn:active, button.pomo-start-btn:active,
+form button[type="submit"]:active,
+.add-exam-btn:active, .add-task-btn:active, .sch-add-btn:active,
+button.exam-submit:active, button.task-submit:active,
+.ob2-next-btn:active, button.ob2-next-btn:active,
+.btn-confirm:active, .anc-save-btn:active, .tes-save-btn:active, .sf-tour-btn:active {
+  transform: translateY(2px) scale(0.985) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.18),
+    inset 0 -1px 0 rgba(22,16,80,0.20),
+    0 4px 10px -4px var(--a-glow),
+    0 1px 3px rgba(22,24,58,0.10) !important;
+  filter: saturate(1.1) !important;
+}
+.ob2-next-green, button.ob2-next-green {
+  background: linear-gradient(135deg, #2FBF63, #1E9A4C) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.30),
+    inset 0 -2px 0 rgba(10,60,30,0.25),
+    0 10px 22px -6px rgba(47,191,99,0.45),
+    0 3px 8px rgba(22,24,58,0.10) !important;
+}
+
+/* 4b. Secondary / small */
+.btn-sm {
+  display: inline-flex !important; align-items: center !important; gap: 6px !important;
+  padding: 8px 14px !important; border-radius: 999px !important;
+  font-size: 0.8125rem !important; font-weight: 700 !important;
+  border: 1px solid var(--a-bor) !important;
+  background: var(--a-sur) !important; color: var(--a-ink-2) !important;
+  cursor: pointer !important; white-space: nowrap !important;
+  box-shadow: var(--a-sh-1) !important;
+  transition: transform var(--a-tf), box-shadow var(--a-tf), background var(--a-tf) !important;
+}
+.btn-sm:active { transform: scale(0.95) !important; box-shadow: none !important; }
+.btn-sm.green { background: linear-gradient(135deg,#2FBF63,#1E9A4C) !important; color:#fff !important; border-color: transparent !important; }
+.btn-sm.red   { background: linear-gradient(135deg,#F4504B,#D9342F) !important; color:#fff !important; border-color: transparent !important; }
+
+.btn-add-anchor, .pl-sec-add, .list-add-btn {
+  background: var(--a-grad-soft) !important; color: var(--a-brand) !important;
+  border: 1px dashed rgba(91,102,242,0.35) !important;
+  border-radius: var(--a-r-sm) !important;
+  padding: 11px 16px !important; font-size: 0.9rem !important; font-weight: 800 !important;
+  cursor: pointer !important; box-shadow: none !important;
+  transition: transform var(--a-tf), background var(--a-tf) !important;
+}
+.btn-add-anchor:active, .pl-sec-add:active, .list-add-btn:active { transform: scale(0.97) !important; }
+.list-add-btn-icon { background: var(--a-grad) !important; box-shadow: 0 3px 8px var(--a-glow) !important; }
+
+.btn-cancel, button.btn-cancel, .anc-cancel-btn {
+  background: var(--a-sur-2) !important; color: var(--a-ink-2) !important;
+  border: 1px solid var(--a-bor) !important; border-radius: var(--a-r-sm) !important;
+  font-weight: 700 !important; cursor: pointer !important;
+  transition: transform var(--a-tf) !important;
+}
+.btn-cancel:active, .anc-cancel-btn:active { transform: scale(0.97) !important; }
+
+/* ─── 5. CARDS — floating, layered, alive ────────────────────────── */
+.section-box, .glass-box, .focus-entry-card, .card-inner, .card-block,
+.form-group, .field-group, .settings-group, .pl-course-card, .sq-hero-card {
+  background: var(--a-sur) !important;
+  border-radius: var(--a-r-lg) !important;
+  border: 0.5px solid var(--a-bor) !important;
+  box-shadow: var(--a-sh-1) !important;
+  transition: transform 0.25s var(--a-swift), box-shadow 0.25s var(--a-swift) !important;
+}
+@media (hover: hover) {
+  .section-box:hover, .glass-box:hover, .focus-entry-card:hover, .pl-course-card:hover {
+    transform: translateY(-3px) !important;
+    box-shadow: var(--a-sh-2) !important;
+  }
+}
+[data-theme="dark"] .section-box, [data-theme="dark"] .glass-box,
+[data-theme="dark"] .focus-entry-card, [data-theme="dark"] .settings-group,
+[data-theme="dark"] .form-group, [data-theme="dark"] .pl-course-card,
+[data-theme="dark"] .sq-hero-card {
+  background: var(--a-sur) !important;
+  border: 0.5px solid var(--a-bor) !important;
+  box-shadow: var(--a-sh-1) !important;
+}
+
+/* ─── 6. STAT CARDS — gradient numerals, quiet labels ────────────── */
+.stat-card,
+.stat-card.blue, .stat-card.green, .stat-card.red, .stat-card.yellow {
+  background: var(--a-sur) !important;
+  border: 0.5px solid var(--a-bor) !important;
+  border-radius: var(--a-r) !important;
+  box-shadow: var(--a-sh-1) !important;
+  padding: 13px 14px !important; min-height: 68px !important;
+  position: relative !important; overflow: hidden !important;
+  animation: aRise 0.5s var(--a-spring) both !important;
+}
+.stat-card::after {
+  content: '' !important; position: absolute !important;
+  inset: auto -20% -55% auto !important; width: 90px !important; height: 90px !important;
+  border-radius: 50% !important; opacity: 0.10 !important; pointer-events: none !important;
+}
+.stat-card.blue::after   { background: var(--a-brand) !important; }
+.stat-card.green::after  { background: var(--a-grn) !important; }
+.stat-card.red::after    { background: var(--a-red) !important; }
+.stat-card.yellow::after { background: var(--a-orng) !important; }
+.stat-card .stat-num {
+  font-size: 1.75rem !important; font-weight: 900 !important;
+  letter-spacing: -0.05em !important; line-height: 1 !important;
+}
+.stat-card.blue .stat-num   { color: var(--a-brand) !important; }
+.stat-card.green .stat-num  { color: var(--a-grn-dk) !important; }
+.stat-card.red .stat-num    { color: var(--a-red) !important; }
+.stat-card.yellow .stat-num { color: var(--a-orng) !important; }
+[data-theme="dark"] .stat-card.green .stat-num { color: var(--a-grn) !important; }
+.stat-card .stat-label,
+.stat-card.blue .stat-label, .stat-card.green .stat-label,
+.stat-card.red .stat-label, .stat-card.yellow .stat-label {
+  color: var(--a-ink-3) !important; font-weight: 700 !important;
+  font-size: 0.6875rem !important; opacity: 1 !important; margin-top: 5px !important;
+}
+.stat-card:nth-child(1) { animation-delay: 0.02s !important; }
+.stat-card:nth-child(2) { animation-delay: 0.06s !important; }
+.stat-card:nth-child(3) { animation-delay: 0.10s !important; }
+.stat-card:nth-child(4) { animation-delay: 0.14s !important; }
+
+/* ─── 7. NEXT-TASK HERO — living aurora, 3D presence ─────────────── */
+.next-task-widget {
+  background: var(--a-grad-vivid) !important;
+  background-size: 220% 220% !important;
+  border-radius: var(--a-r-lg) !important;
+  padding: 20px 22px !important;
+  border: none !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.22),
+    0 14px 34px -8px var(--a-glow),
+    0 4px 12px rgba(22,24,58,0.12) !important;
+  position: relative !important; overflow: hidden !important;
+  animation: aGradPan 9s ease-in-out infinite alternate, aRise 0.55s var(--a-spring) both !important;
+  transform-style: preserve-3d !important;
+  transition: transform 0.3s var(--a-swift), box-shadow 0.3s var(--a-swift) !important;
+}
+@media (hover: hover) {
+  .next-task-widget:hover {
+    transform: perspective(900px) rotateX(2.5deg) translateY(-3px) !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.25),
+      0 22px 48px -10px var(--a-glow),
+      0 6px 16px rgba(22,24,58,0.14) !important;
+  }
+}
+.next-task-widget::before {
+  content: '' !important; position: absolute !important;
+  width: 220px !important; height: 220px !important; border-radius: 50% !important;
+  background: radial-gradient(circle, rgba(255,255,255,0.20), transparent 65%) !important;
+  top: -110px !important; left: -60px !important; pointer-events: none !important;
+}
+.next-task-widget::after {
+  content: '' !important; position: absolute !important;
+  top: 0 !important; bottom: 0 !important; width: 56px !important;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,0.30), transparent) !important;
+  transform: skewX(-18deg) !important; pointer-events: none !important;
+  animation: aShine 4.5s var(--a-swift) 1s infinite !important;
+}
+
+/* ─── 8. BANNERS — one calm glass voice ──────────────────────────── */
+.wr-banner, .exam-urgency-banner {
+  background: var(--a-sur) !important;
+  border: 0.5px solid var(--a-bor) !important;
+  border-radius: var(--a-r) !important;
+  box-shadow: var(--a-sh-1) !important;
+  animation: aRise 0.45s var(--a-swift) both !important;
+}
+.exam-urgency-banner {
+  border-right: 4px solid var(--a-red) !important;
+  background: linear-gradient(270deg, rgba(244,80,75,0.05), var(--a-sur) 45%) !important;
+}
+
+/* ─── 9. FOCUS CARD + POMODORO ───────────────────────────────────── */
+.focus-entry-icon {
+  width: 46px !important; height: 46px !important;
+  background: var(--a-grad) !important; border-radius: 15px !important;
+  box-shadow: 0 6px 14px -4px var(--a-glow), inset 0 1px 0 rgba(255,255,255,0.3) !important;
+}
+.focus-entry-icon svg { stroke: #fff !important; }
+.pomo-dur-btn {
+  background: var(--a-sur-2) !important; border: 1px solid var(--a-bor) !important;
+  border-radius: var(--a-r-xs) !important; padding: 12px 4px !important;
+  font-size: 0.95rem !important; font-weight: 800 !important; color: var(--a-ink-3) !important;
+  transition: transform var(--a-tf), background var(--a-tf), color var(--a-tf), box-shadow var(--a-tf) !important;
+}
+.pomo-dur-btn:active { transform: scale(0.93) !important; }
+.pomo-dur-btn.active {
+  background: var(--a-grad) !important; color: #fff !important;
+  border-color: transparent !important;
+  box-shadow: 0 6px 14px -4px var(--a-glow), inset 0 1px 0 rgba(255,255,255,0.25) !important;
+  animation: aPopIn 0.3s var(--a-spring) !important;
+}
+.pomo-cs-trigger {
+  background: var(--a-sur-2) !important; border: 1px solid var(--a-bor) !important;
+  border-radius: var(--a-r-xs) !important;
+}
+
+/* Focus overlay — deep-space immersion */
+#focus-mode-overlay {
+  background:
+    radial-gradient(60% 50% at 18% 8%,  rgba(110,121,255,0.16), transparent 65%),
+    radial-gradient(55% 45% at 85% 90%, rgba(157,123,255,0.13), transparent 65%),
+    #07081A !important;
+}
+#focus-timer-display {
+  font-size: 5.5rem !important; font-weight: 900 !important;
+  letter-spacing: -0.05em !important;
+  text-shadow: 0 0 60px rgba(139,147,255,0.45), 0 0 24px rgba(139,147,255,0.25) !important;
+}
+.focus-ring-svg { opacity: 0.4 !important; }
+.focus-stop-btn, #pomo-stop-btn {
+  background: rgba(255,255,255,0.10) !important;
+  border: 1px solid rgba(255,255,255,0.22) !important;
+  border-radius: 999px !important;
+  backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important;
+}
+
+/* ─── 10. TODAY TIMELINE — tactile task cards ────────────────────── */
+.tl-slot {
+  background: var(--a-sur) !important;
+  border-radius: var(--a-r) !important;
+  border: 0.5px solid var(--a-bor) !important;
+  box-shadow: var(--a-sh-1) !important;
+  min-height: 74px !important;
+  transition: transform 0.18s var(--a-spring), box-shadow 0.2s var(--a-swift), opacity 0.3s !important;
+  animation: aRise 0.45s var(--a-swift) both !important;
+}
+@media (hover: hover) {
+  .tl-slot:hover { transform: translateY(-2px) !important; box-shadow: var(--a-sh-2) !important; }
+}
+.tl-slot:active { transform: scale(0.985) !important; box-shadow: var(--a-sh-1) !important; }
+.tl-bar { width: 6px !important; border-radius: 0 99px 99px 0 !important; margin: 10px 0 !important; }
+.tl-time-h { font-weight: 900 !important; font-size: 0.875rem !important; }
+.tl-title { font-weight: 700 !important; }
+.tl-btn-done {
+  width: 38px !important; height: 38px !important;
+  border: 2px solid var(--a-bor-2) !important;
+  background: var(--a-sur) !important;
+  transition: transform 0.2s var(--a-spring), background var(--a-tf), border-color var(--a-tf) !important;
+}
+.tl-btn-done:active { transform: scale(0.82) !important; }
+.tl-slot.done .tl-btn-done {
+  background: linear-gradient(135deg, #2FBF63, #1E9A4C) !important;
+  border-color: transparent !important; color: #fff !important;
+  box-shadow: 0 4px 12px -2px rgba(47,191,99,0.5) !important;
+  animation: aPopIn 0.35s var(--a-spring) !important;
+}
+.tl-slot.done { opacity: 0.5 !important; }
+.anchor-slot {
+  border: 1.5px dashed var(--a-bor-2) !important;
+  border-radius: var(--a-r) !important; background: transparent !important;
+}
+
+/* ─── 11. CHROME — header, sidebar, floating dock ────────────────── */
+.mobile-header {
+  background: rgba(255,255,255,0.72) !important;
+  backdrop-filter: blur(24px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(190%) !important;
+  border-bottom: 0.5px solid var(--a-bor) !important;
+}
+[data-theme="dark"] .mobile-header { background: rgba(10,12,29,0.72) !important; }
+.hdr-page-name { font-weight: 800 !important; letter-spacing: -0.02em !important; }
+.mobile-settings-btn { color: var(--a-brand) !important; }
+.mobile-settings-btn svg { stroke: var(--a-brand) !important; }
+
+/* Sidebar — glass rail with grouped sections */
+.sidebar {
+  background: rgba(255,255,255,0.82) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  border-left: 0.5px solid var(--a-bor) !important;
+}
+[data-theme="dark"] .sidebar { background: rgba(13,15,35,0.86) !important; }
+.sidebar-logo { font-weight: 900 !important; letter-spacing: -0.03em !important; }
+.sidebar-logo span {
+  background: var(--a-grad) !important;
+  -webkit-background-clip: text !important; background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+.sb-label {
+  font-size: 0.625rem !important; font-weight: 800 !important;
+  color: var(--a-ink-4) !important; letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  padding: 14px 14px 5px !important; user-select: none !important;
+}
+.nav-item {
+  position: relative !important;
+  border-radius: var(--a-r-xs) !important; padding: 10px 14px !important;
+  color: var(--a-ink-2) !important; font-weight: 600 !important;
+  transition: background var(--a-tf), color var(--a-tf), transform var(--a-tf) !important;
+}
+.nav-item:active { transform: scale(0.97) !important; }
+.nav-item:hover { background: var(--a-sur-2) !important; color: var(--a-ink) !important; }
+.nav-item.active { background: var(--a-grad-soft) !important; color: var(--a-brand) !important; font-weight: 800 !important; }
+.nav-item.active::before {
+  content: '' !important; position: absolute !important;
+  right: 0 !important; top: 22% !important; bottom: 22% !important;
+  width: 3.5px !important; border-radius: 99px !important;
+  background: var(--a-grad) !important;
+  box-shadow: 0 0 10px var(--a-glow) !important;
+}
+.user-chip { border-radius: var(--a-r-sm) !important; }
+.user-avatar {
+  background: var(--a-grad) !important; color: #fff !important;
+  box-shadow: 0 4px 10px -2px var(--a-glow) !important;
+  border-radius: 12px !important; font-weight: 900 !important;
+}
+
+/* Floating dock — glass capsule + raised center action.
+   Full geometry declared here so the dock can't be left hidden/collapsed
+   by the conflicting .bottom-nav blocks in style.css / style_v6.css. */
+#bottom-nav.bottom-nav {
+  display: block !important;
+  position: fixed !important;
+  left: 50% !important; right: auto !important;
+  transform: translateX(-50%) !important;
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px)) !important;
+  width: min(calc(100% - 28px), 460px) !important;
+  max-width: 460px !important;
+  z-index: 9999 !important;
+  background: rgba(255,255,255,0.78) !important;
+  backdrop-filter: blur(28px) saturate(200%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(200%) !important;
+  border: 1px solid rgba(255,255,255,0.65) !important;
+  border-radius: 32px !important;
+  box-shadow: var(--a-sh-3) !important;
+  overflow: visible !important;
+}
+/* Only hide on short landscape phones (keeps the original intent) */
+@media (max-height: 520px) and (orientation: landscape) {
+  #bottom-nav.bottom-nav { display: none !important; }
+}
+[data-theme="dark"] .bottom-nav {
+  background: rgba(20,23,46,0.80) !important;
+  border: 1px solid rgba(237,239,255,0.10) !important;
+}
+.bottom-nav .bn-items { padding: 7px 10px !important; overflow: visible !important; }
+.bn-item, .bn-item.active {
+  flex: 1 !important; flex-direction: column !important;
+  gap: 3px !important; padding: 7px 2px !important;
+  background: none !important; min-height: 52px !important;
+  border-radius: 16px !important;
+  transition: transform 0.18s var(--a-spring) !important;
+}
+.bn-item:active { transform: scale(0.90) !important; }
+.bn-icon, .bn-item.active .bn-icon {
+  width: 34px !important; height: 26px !important;
+  border-radius: 12px !important;
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  transition: background 0.2s var(--a-swift) !important;
+}
+.bn-icon svg, .bn-item.active .bn-icon svg {
+  width: 22px !important; height: 22px !important;
+  stroke: var(--a-ink-3) !important; stroke-width: 1.9 !important; fill: none !important;
+  transition: stroke var(--a-tf), transform 0.25s var(--a-spring) !important;
+}
+.bn-label, .bn-item.active .bn-label {
+  font-size: 0.59rem !important; font-weight: 700 !important;
+  color: var(--a-ink-3) !important;
+  transition: color var(--a-tf) !important;
+}
+.bn-item.active .bn-icon { background: var(--a-soft) !important; }
+.bn-item.active .bn-icon svg {
+  stroke: var(--a-brand) !important; stroke-width: 2.2 !important;
+  transform: translateY(-1px) scale(1.06) !important;
+}
+.bn-item.active .bn-label { color: var(--a-brand) !important; font-weight: 800 !important; }
+
+/* Center action — raised aurora orb (תכנון) */
+#bn-planner { overflow: visible !important; position: relative !important; }
+#bn-planner .bn-icon {
+  width: 52px !important; height: 52px !important;
+  margin-top: -26px !important;
+  border-radius: 50% !important;
+  background: var(--a-grad) !important;
+  box-shadow:
+    inset 0 1.5px 0 rgba(255,255,255,0.35),
+    0 8px 20px -4px var(--a-glow),
+    0 3px 8px rgba(22,24,58,0.18) !important;
+  border: 3px solid var(--a-sur) !important;
+  transition: transform 0.2s var(--a-spring), box-shadow 0.2s !important;
+}
+[data-theme="dark"] #bn-planner .bn-icon { border-color: #1A1E3A !important; }
+#bn-planner .bn-icon svg, #bn-planner.active .bn-icon svg {
+  stroke: #fff !important; stroke-width: 2 !important;
+  width: 24px !important; height: 24px !important;
+  transform: none !important;
+}
+#bn-planner:active .bn-icon { transform: scale(0.88) !important; }
+#bn-planner.active .bn-icon {
+  background: var(--a-grad) !important;
+  box-shadow:
+    inset 0 1.5px 0 rgba(255,255,255,0.35),
+    0 10px 26px -4px var(--a-glow),
+    0 0 0 5px var(--a-soft) !important;
+}
+#bn-planner .bn-label { margin-top: 1px !important; }
+
+/* ─── 12. INPUTS & FORMS ─────────────────────────────────────────── */
+input[type="text"], input[type="email"], input[type="number"],
+input[type="date"], input[type="time"], input[type="password"],
+textarea, select {
+  background: var(--a-sur-2) !important;
+  border: 1.5px solid var(--a-bor) !important;
+  border-radius: var(--a-r-xs) !important;
+  padding: 12px 14px !important;
+  font-size: 0.9375rem !important; color: var(--a-ink) !important;
+  transition: border-color var(--a-t), box-shadow var(--a-t), background var(--a-t) !important;
+}
+input:focus, textarea:focus, select:focus {
+  background: var(--a-sur) !important;
+  border-color: var(--a-brand) !important;
+  box-shadow: 0 0 0 4px var(--a-soft), 0 2px 8px rgba(22,24,58,0.05) !important;
+  outline: none !important;
+}
+[data-theme="dark"] input, [data-theme="dark"] textarea, [data-theme="dark"] select {
+  background: var(--a-sur-2) !important; border-color: var(--a-bor) !important;
+}
+[data-theme="dark"] input:focus, [data-theme="dark"] textarea:focus, [data-theme="dark"] select:focus {
+  background: var(--a-sur-3) !important;
+}
+input[type="date"], input[type="time"] {
+  border: 1.5px solid var(--a-bor) !important;
+  border-radius: var(--a-r-xs) !important;
+  background: var(--a-sur-2) !important; color: var(--a-ink) !important;
+}
+
+/* iOS toggle — gradient when on */
+.sf-toggle-track { background-color: var(--a-sur-3) !important; border: 1px solid var(--a-bor) !important; }
+.sf-toggle input:checked + .sf-toggle-track {
+  background: var(--a-grad) !important; border-color: transparent !important;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.08), 0 2px 8px -2px var(--a-glow) !important;
+}
+
+/* Filter chips */
+.sf-chip {
+  border-radius: 999px !important; padding: 6px 14px !important;
+  border: 1px solid var(--a-bor) !important; background: var(--a-sur) !important;
+  font-weight: 700 !important; box-shadow: var(--a-sh-1) !important;
+  transition: all var(--a-tf) !important;
+}
+.sf-chip:active { transform: scale(0.94) !important; }
+.sf-chip.active {
+  background: var(--a-grad) !important; color: #fff !important;
+  border-color: transparent !important;
+  box-shadow: 0 5px 14px -4px var(--a-glow) !important;
+}
+.sf-search-bar { border-radius: var(--a-r-sm) !important; border: 1px solid var(--a-bor) !important; box-shadow: var(--a-sh-1) !important; }
+
+/* ─── 13. MODALS & SHEETS — glass + spring ───────────────────────── */
+.modal-overlay, .popup-overlay, .sheet-overlay, .sf-tour-overlay {
+  background: rgba(10,12,29,0.45) !important;
+  backdrop-filter: blur(10px) saturate(120%) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(120%) !important;
+}
+.modal-card, .popup-card, .modal-inner, .modal-box, .anc-sheet, .tes-panel, .sf-tour-sheet {
+  background: var(--a-sur) !important;
+  box-shadow: 0 -8px 40px rgba(10,12,29,0.25), inset 0 1px 0 rgba(255,255,255,0.06) !important;
+}
+/* Entrance animation ONLY for sheets that close via display:none / DOM removal.
+   .tes-panel and .anc-sheet close by toggling their translateY transform, so a
+   `both`-filled animation would PIN them open (transform:translateY(0)) and they'd
+   never slide away. They keep their native transform transitions instead. */
+.modal-card, .popup-card, .modal-inner, .modal-box, .sf-tour-sheet {
+  animation: aSheetUp 0.42s var(--a-sheet) both !important;
+}
+.modal-box { border-radius: var(--a-r-lg) !important; }
+.anc-sheet, .tes-panel, .sf-tour-sheet, .tem-card, .asm-card {
+  border-radius: 26px 26px 0 0 !important;
+}
+[data-theme="dark"] .anc-sheet, [data-theme="dark"] .tes-panel,
+[data-theme="dark"] .modal-box, [data-theme="dark"] .sf-tour-sheet { background: var(--a-sur) !important; }
+.anc-sheet-handle, .tes-drag, .action-sheet-drag {
+  width: 40px !important; height: 5px !important;
+  background: var(--a-bor-2) !important; border-radius: 99px !important;
+}
+/* Explicit close affordance on the task-edit sheet — works with mouse + touch,
+   no dependency on backdrop taps or drag-to-dismiss (which fail on desktop). */
+.tes-close-btn {
+  position: absolute !important;
+  top: 12px !important; left: 14px !important;
+  width: 32px !important; height: 32px !important;
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  background: var(--a-sur-2) !important; color: var(--a-ink-2) !important;
+  border: 1px solid var(--a-bor) !important; border-radius: 50% !important;
+  cursor: pointer !important; padding: 0 !important; z-index: 5 !important;
+  transition: transform var(--a-tf), background var(--a-tf) !important;
+}
+.tes-close-btn:active { transform: scale(0.88) !important; }
+.tes-close-btn:hover { background: var(--a-sur-3) !important; }
+.modal-title { font-weight: 900 !important; letter-spacing: -0.02em !important; }
+.modal-opt {
+  border-radius: var(--a-r-sm) !important; border: 1.5px solid var(--a-bor) !important;
+  background: var(--a-sur-2) !important;
+  transition: all var(--a-tf) !important;
+}
+.modal-opt:active { transform: scale(0.98) !important; }
+.modal-opt.selected, .modal-opt.sel {
+  border-color: var(--a-brand) !important; background: var(--a-grad-soft) !important;
+  box-shadow: 0 0 0 3px var(--a-soft) !important;
+}
+
+/* Anchor sheet bits */
+.anc-color-dot { transition: transform 0.2s var(--a-spring), outline var(--a-tf) !important; }
+.anc-color-dot.anc-color-selected { transform: scale(1.18) !important; outline: 2.5px solid var(--a-ink) !important; }
+.anc-type-btn.active, .anc-day-pill.anc-day-active {
+  background: var(--a-grad) !important; border-color: transparent !important; color: #fff !important;
+  box-shadow: 0 4px 12px -3px var(--a-glow) !important;
+}
+.anc-travel-chip.anc-travel-sel {
+  background: var(--a-grad-soft) !important; border-color: var(--a-brand) !important; color: var(--a-brand) !important;
+}
+
+/* ─── 14. SETTINGS — colorful squircle icons ─────────────────────── */
+.settings-row { transition: background var(--a-tf) !important; }
+.settings-row:active { background: var(--a-sur-2) !important; }
+.settings-row-icon {
+  width: 32px !important; height: 32px !important; border-radius: 10px !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 2px 6px rgba(22,24,58,0.10) !important;
+}
+.settings-user-hero { border-radius: var(--a-r-lg) !important; }
+
+/* ─── 15. ONBOARDING — top-5 polish ──────────────────────────────── */
+#setup-screen { background: var(--a-bg) !important; }
+.ob2-topbar { padding: 18px 20px 10px !important; }
+.ob2-progress-track {
+  height: 6px !important; border-radius: 99px !important;
+  background: var(--a-sur-3) !important;
+  box-shadow: inset 0 1px 2px rgba(22,24,58,0.06) !important;
+}
+.ob2-progress-fill {
+  background: var(--a-grad-vivid) !important;
+  background-size: 200% 100% !important;
+  border-radius: 99px !important;
+  box-shadow: 0 0 12px var(--a-glow) !important;
+  transition: width 0.55s var(--a-spring) !important;
+  animation: aGradPan 3.5s linear infinite !important;
+}
+.ob2-counter { font-weight: 800 !important; color: var(--a-ink-4) !important; }
+.ob2-back-btn {
+  width: 38px !important; height: 38px !important; border-radius: 12px !important;
+  background: var(--a-sur) !important; border: 1px solid var(--a-bor) !important;
+  box-shadow: var(--a-sh-1) !important; color: var(--a-ink-2) !important;
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  cursor: pointer !important; transition: transform var(--a-tf) !important;
+}
+.ob2-back-btn:active { transform: scale(0.9) !important; }
+.ob2-slide.ob2-active { animation: aSlideIn 0.45s var(--a-spring) both !important; }
+.ob2-title {
+  font-size: 1.7rem !important; font-weight: 900 !important;
+  letter-spacing: -0.035em !important; line-height: 1.15 !important;
+}
+.ob2-sub { font-size: 0.95rem !important; line-height: 1.5 !important; }
+.ob2-illus {
+  background:
+    radial-gradient(70% 90% at 25% 10%, rgba(91,102,242,0.10), transparent 60%),
+    radial-gradient(60% 80% at 80% 90%, rgba(56,189,248,0.08), transparent 60%),
+    var(--a-sur) !important;
+  border: 0.5px solid var(--a-bor) !important;
+  border-radius: var(--a-r-lg) !important;
+  box-shadow: var(--a-sh-1) !important;
+  animation: aFloat 5s ease-in-out infinite !important;
+}
+.ob2-choice {
+  background: var(--a-sur) !important;
+  border: 1.5px solid var(--a-bor) !important;
+  border-radius: var(--a-r) !important;
+  padding: 15px 16px !important;
+  box-shadow: var(--a-sh-1) !important;
+  transition: transform 0.18s var(--a-spring), border-color var(--a-tf), background var(--a-tf), box-shadow var(--a-tf) !important;
+}
+.ob2-choice:active { transform: scale(0.975) !important; }
+.ob2-choice.ob2-sel {
+  border-color: var(--a-brand) !important;
+  background: var(--a-grad-soft) !important;
+  box-shadow: 0 0 0 3.5px var(--a-soft), var(--a-sh-2) !important;
+  transform: translateY(-1px) !important;
+}
+.ob2-choice.ob2-sel .ob2-choice-check { animation: aPopIn 0.32s var(--a-spring) !important; }
+input.ob2-inp, input.ob2-inp-lg {
+  border-radius: var(--a-r-sm) !important;
+  border: 1.5px solid var(--a-bor) !important;
+  background: var(--a-sur) !important;
+  box-shadow: var(--a-sh-1) !important;
+}
+input.ob2-inp-lg { font-size: 1.15rem !important; font-weight: 700 !important; padding: 16px !important; }
+.ob2-time-card {
+  background: var(--a-sur) !important;
+  border: 1px solid var(--a-bor) !important;
+  border-radius: var(--a-r) !important;
+  box-shadow: var(--a-sh-1) !important;
+}
+.ob2-ut-btn {
+  border-radius: 999px !important; border: 1.5px solid var(--a-bor) !important;
+  background: var(--a-sur) !important; font-weight: 700 !important;
+  box-shadow: var(--a-sh-1) !important;
+  transition: all var(--a-tf) !important;
+}
+.ob2-ut-btn:active { transform: scale(0.96) !important; }
+.ob2-ut-btn.ob2-ut-sel {
+  background: var(--a-grad) !important; color: #fff !important; border-color: transparent !important;
+  box-shadow: 0 6px 16px -4px var(--a-glow) !important;
+}
+.sf-attr-chip {
+  border-radius: 999px !important; border: 1.5px solid var(--a-bor) !important;
+  box-shadow: var(--a-sh-1) !important; font-weight: 700 !important;
+  transition: all 0.18s var(--a-spring) !important;
+}
+.sf-attr-chip:active { transform: scale(0.94) !important; }
+.sf-attr-chip.sf-sel {
+  background: var(--a-grad) !important; border-color: transparent !important;
+  box-shadow: 0 6px 16px -4px var(--a-glow) !important;
+  transform: translateY(-1px) !important;
+}
+.ob2-avail-preview {
+  background: var(--a-grad-soft) !important; color: var(--a-brand) !important;
+  border-radius: 999px !important; font-weight: 800 !important;
+  border: 1px solid rgba(91,102,242,0.18) !important;
+}
+
+/* ─── 16. SPLASH — aurora night, 3D logo, premium entry ──────────── */
+#sf-splash {
+  background:
+    radial-gradient(75% 55% at 20% 0%,   rgba(110,121,255,0.32), transparent 60%),
+    radial-gradient(65% 50% at 100% 28%, rgba(76,199,255,0.16),  transparent 60%),
+    radial-gradient(80% 60% at 70% 105%, rgba(157,123,255,0.28), transparent 62%),
+    linear-gradient(170deg, #131448 0%, #0B0C28 55%, #07081C 100%) !important;
+}
+[data-theme="dark"] #sf-splash { background:
+    radial-gradient(75% 55% at 20% 0%,   rgba(110,121,255,0.30), transparent 60%),
+    radial-gradient(65% 50% at 100% 28%, rgba(76,199,255,0.14),  transparent 60%),
+    radial-gradient(80% 60% at 70% 105%, rgba(157,123,255,0.26), transparent 62%),
+    linear-gradient(170deg, #10113E 0%, #090A22 55%, #060716 100%) !important;
+}
+.spl-blob {
+  filter: blur(46px) !important; opacity: 0.85 !important;
+  animation: aOrb 11s ease-in-out infinite alternate !important;
+}
+.spl-blob-1 {
+  width: 320px !important; height: 320px !important;
+  background: radial-gradient(circle, rgba(110,121,255,0.55), rgba(110,121,255,0) 70%) !important;
+  top: -90px !important; right: -70px !important;
+}
+.spl-blob-2 {
+  width: 260px !important; height: 260px !important;
+  background: radial-gradient(circle, rgba(56,189,248,0.38), rgba(56,189,248,0) 70%) !important;
+  bottom: 140px !important; left: -80px !important;
+  animation-delay: -4s !important;
+}
+.spl-blob-3 {
+  width: 150px !important; height: 150px !important;
+  background: radial-gradient(circle, rgba(157,123,250,0.5), rgba(157,123,250,0) 70%) !important;
+  bottom: 290px !important; right: 12px !important;
+  border-radius: 50% !important;
+  animation-delay: -7s !important;
+}
+.spl-icon-wrap {
+  width: 104px !important; height: 104px !important;
+  background: linear-gradient(145deg, rgba(255,255,255,0.22), rgba(255,255,255,0.08)) !important;
+  border: 1px solid rgba(255,255,255,0.30) !important;
+  border-radius: 30px !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.35),
+    0 18px 44px rgba(0,0,0,0.35),
+    0 0 60px rgba(110,121,255,0.35) !important;
+  backdrop-filter: blur(14px) !important; -webkit-backdrop-filter: blur(14px) !important;
+  animation: aFloat 5.5s ease-in-out infinite !important;
+  position: relative !important; overflow: hidden !important;
+}
+.spl-icon-wrap::after {
+  content: '' !important; position: absolute !important;
+  top: -60% !important; bottom: -60% !important; width: 40px !important;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,0.35), transparent) !important;
+  transform: skewX(-20deg) !important;
+  animation: aShine 4s var(--a-swift) 1.2s infinite !important;
+}
+.spl-name {
+  font-size: 2.6rem !important; font-weight: 900 !important;
+  letter-spacing: -0.05em !important; color: #fff !important;
+  text-shadow: 0 4px 30px rgba(110,121,255,0.45) !important;
+}
+.spl-tag { color: rgba(255,255,255,0.78) !important; font-weight: 600 !important; }
+.spl-feats {
+  display: flex !important; gap: 8px !important; flex-wrap: wrap !important;
+  justify-content: center !important; margin-top: 22px !important;
+  padding: 0 18px !important;
+  animation: splContentIn 0.6s var(--a-swift) 0.35s both !important;
+}
+.spl-feat {
+  background: rgba(255,255,255,0.10) !important;
+  border: 1px solid rgba(255,255,255,0.18) !important;
+  color: rgba(255,255,255,0.92) !important;
+  border-radius: 999px !important; padding: 7px 14px !important;
+  font-size: 0.78rem !important; font-weight: 700 !important;
+  backdrop-filter: blur(10px) !important; -webkit-backdrop-filter: blur(10px) !important;
+}
+.spl-btn-start {
+  height: 58px !important; border-radius: 999px !important;
+  background: #fff !important; color: #1A1B4B !important;
+  font-size: 1.1rem !important; font-weight: 900 !important;
+  box-shadow:
+    inset 0 -2px 0 rgba(22,24,58,0.10),
+    0 14px 36px rgba(0,0,0,0.35),
+    0 0 50px rgba(110,121,255,0.30) !important;
+  transition: transform 0.18s var(--a-spring), box-shadow 0.2s !important;
+  animation: aGlowPulse 3s ease-in-out infinite !important;
+}
+.spl-btn-start:active { transform: scale(0.96) translateY(2px) !important; }
+.spl-btn-signin { color: rgba(255,255,255,0.88) !important; font-weight: 600 !important; }
+
+/* ─── 17. PAGE ACCENTS — schedule, calendar, progress, planner ───── */
+.date-slide-item.is-today .date-slide-date,
+.date-slide-item.active .date-slide-date,
+.hor-date-cell.active {
+  background: var(--a-grad) !important;
+  box-shadow: 0 4px 12px -3px var(--a-glow) !important;
+}
+.sch-act-btn { border-radius: 999px !important; box-shadow: var(--a-sh-1) !important; border: 1px solid var(--a-bor) !important; }
+.sch-act-btn:active { transform: scale(0.95) !important; }
+.sch-week-label { border-radius: 999px !important; box-shadow: var(--a-sh-1) !important; }
+.timeline-outer {
+  border: 0.5px solid var(--a-bor) !important;
+  border-radius: var(--a-r-lg) !important;
+  box-shadow: var(--a-sh-1) !important;
+}
+.tl-now-line, .now-line { box-shadow: 0 0 10px rgba(244,80,75,0.55) !important; }
+.top5-ev { border-radius: var(--a-r-sm) !important; box-shadow: var(--a-sh-1) !important; }
+.top5-ev:hover { box-shadow: var(--a-sh-2) !important; }
+
+.sq-xp-bar, .sq-mission-bar { background: var(--a-grad-vivid) !important; background-size: 200% 100% !important; animation: aGradPan 4s linear infinite !important; }
+.sq-mission-bar { background: var(--a-grad) !important; }
+.sq-cd-pip.active {
+  background: var(--a-grad) !important; border-color: transparent !important;
+  box-shadow: 0 3px 10px -2px var(--a-glow) !important;
+}
+.sq-cd-pip.today { border-color: var(--a-brand) !important; }
+.sq-stat-pill {
+  border-radius: var(--a-r) !important; border: 0.5px solid var(--a-bor) !important;
+  box-shadow: var(--a-sh-1) !important;
+}
+.sq-badge.earned .sq-badge-icon {
+  background: var(--a-grad-soft) !important;
+  border-color: var(--a-brand) !important;
+  box-shadow: 0 5px 14px -4px var(--a-glow) !important;
+}
+.sq-streak-chip {
+  background: linear-gradient(135deg, #FFF3E0, #FFE0B2) !important;
+  border-radius: var(--a-r-sm) !important;
+  box-shadow: 0 4px 12px -3px rgba(255,143,0,0.4) !important;
+}
+[data-theme="dark"] .sq-streak-chip { background: rgba(255,159,10,0.16) !important; box-shadow: none !important; }
+
+/* Setup guide card (home checklist) */
+.sf-guide {
+  background: var(--a-grad-vivid) !important;
+  background-size: 200% 200% !important;
+  border-radius: var(--a-r-lg) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 12px 30px -8px var(--a-glow) !important;
+  animation: aGradPan 10s ease-in-out infinite alternate !important;
+}
+
+/* Feature tour sheet */
+.sf-tour-icon { animation: aFloat 3.5s ease-in-out infinite !important; }
+.sf-tour-title { font-weight: 900 !important; letter-spacing: -0.02em !important; }
+.sf-tour-dot.active { background: var(--a-grad) !important; box-shadow: 0 0 8px var(--a-glow) !important; }
+
+/* ─── 18. TOAST + LOAD BAR + FAB ─────────────────────────────────── */
+#toast {
+  background: rgba(18,20,48,0.88) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  border-radius: 999px !important;
+  padding: 12px 22px !important;
+  font-weight: 700 !important; font-size: 0.875rem !important;
+  backdrop-filter: blur(16px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
+  box-shadow: 0 12px 36px rgba(10,12,29,0.40), inset 0 1px 0 rgba(255,255,255,0.10) !important;
+}
+[data-theme="dark"] #toast { background: rgba(36,41,73,0.92) !important; }
+.xp-toast {
+  border-radius: 999px !important;
+  background: var(--a-sur) !important;
+  border: 1px solid var(--a-bor) !important;
+  box-shadow: var(--a-sh-2) !important;
+}
+#sf-load-bar { background: var(--a-grad-vivid) !important; box-shadow: 0 0 14px var(--a-glow) !important; }
+.fab-circle {
+  background: var(--a-grad) !important;
+  box-shadow: inset 0 1.5px 0 rgba(255,255,255,0.3), 0 8px 22px -4px var(--a-glow) !important;
+}
+
+/* ─── 19. EMPTY STATES ───────────────────────────────────────────── */
+.empty-state-icon { animation: aFloat 3.5s ease-in-out infinite !important; opacity: 0.5 !important; }
+.empty-state-btn {
+  border-radius: var(--a-r-sm) !important;
+  border: 1px solid var(--a-bor) !important;
+  box-shadow: var(--a-sh-1) !important;
+  transition: transform 0.16s var(--a-spring), box-shadow var(--a-tf) !important;
+}
+.empty-state-btn:active { transform: scale(0.96) !important; }
+
+/* ─── 20. HOME QUICK LINK (section head) ─────────────────────────── */
+.sec-link {
+  display: inline-flex !important; align-items: center !important; gap: 4px !important;
+  background: none !important; border: none !important;
+  color: var(--a-brand) !important; font-size: 0.8125rem !important; font-weight: 800 !important;
+  cursor: pointer !important; padding: 6px 8px !important; border-radius: 10px !important;
+  font-family: Heebo, sans-serif !important;
+  transition: background var(--a-tf), transform var(--a-tf) !important;
+}
+.sec-link:active { background: var(--a-soft) !important; transform: scale(0.96) !important; }
+
+/* ─── 21. KEYFRAMES ──────────────────────────────────────────────── */
+@keyframes aRise {
+  from { opacity: 0; transform: translateY(14px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes aSlideIn {
+  from { opacity: 0; transform: translateX(26px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes aPopIn {
+  0%   { transform: scale(0.55); opacity: 0; }
+  65%  { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); }
+}
+@keyframes aSheetUp {
+  from { transform: translateY(60px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+@keyframes aFloat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-7px); }
+}
+@keyframes aGradPan {
+  from { background-position: 0% 50%; }
+  to   { background-position: 100% 50%; }
+}
+@keyframes aShine {
+  0%       { left: -25%; }
+  45%, 100%{ left: 115%; }
+}
+@keyframes aOrb {
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(-24px, 18px) scale(1.12); }
+  100% { transform: translate(14px, -16px) scale(0.95); }
+}
+@keyframes aGlowPulse {
+  0%, 100% { box-shadow: inset 0 -2px 0 rgba(22,24,58,0.10), 0 14px 36px rgba(0,0,0,0.35), 0 0 40px rgba(110,121,255,0.25); }
+  50%      { box-shadow: inset 0 -2px 0 rgba(22,24,58,0.10), 0 14px 36px rgba(0,0,0,0.35), 0 0 70px rgba(110,121,255,0.50); }
+}
+
+/* ─── 22. PAGE TRANSITION ────────────────────────────────────────── */
+.page-fade { animation: aRise 0.3s var(--a-swift) both !important; }
+
+/* ─── 21b. UNDO TOAST — recoverable deletes (friends' feedback #1) ─── */
+.sf-undo-toast {
+  position: fixed !important;
+  bottom: calc(92px + env(safe-area-inset-bottom, 0px)) !important;
+  left: 50% !important;
+  transform: translateX(-50%) translateY(14px) !important;
+  display: flex !important; align-items: center !important; gap: 14px !important;
+  background: rgba(18,20,48,0.92) !important; color: #fff !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  border-radius: 999px !important;
+  padding: 11px 12px 11px 20px !important;
+  box-shadow: 0 12px 36px rgba(10,12,29,0.42), inset 0 1px 0 rgba(255,255,255,0.10) !important;
+  backdrop-filter: blur(16px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
+  z-index: 10050 !important;
+  font-weight: 700 !important; font-size: 0.875rem !important;
+  opacity: 0 !important; pointer-events: none !important;
+  transition: opacity 0.28s var(--a-swift), transform 0.28s var(--a-spring) !important;
+  max-width: calc(100% - 32px) !important;
+}
+.sf-undo-toast.show { opacity: 1 !important; transform: translateX(-50%) translateY(0) !important; pointer-events: auto !important; }
+.sf-undo-msg { white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+.sf-undo-btn {
+  flex-shrink: 0 !important;
+  background: var(--a-grad) !important; color: #fff !important;
+  border: none !important; border-radius: 999px !important;
+  padding: 7px 16px !important; font-weight: 800 !important; font-size: 0.875rem !important;
+  cursor: pointer !important; font-family: Heebo, sans-serif !important;
+  box-shadow: 0 4px 12px -3px var(--a-glow) !important;
+  transition: transform var(--a-tf) !important;
+}
+.sf-undo-btn:active { transform: scale(0.92) !important; }
+
+/* ─── 21c. ANCHOR SHEET — let finger-scroll work inside (friends' #3) ── */
+/* The overlay sets touch-action:none to stop background scroll, which also
+   killed scrolling INSIDE the sheet — so dragging a finger moved the blurred
+   backdrop instead of the content. Re-enable vertical pan on the sheet itself. */
+.anc-sheet, #anchor-modal .anc-sheet {
+  touch-action: pan-y !important;
+  overscroll-behavior: contain !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+/* ─── 22b. BODY CANVAS — explicit, literal, theme-toggle safe ────── */
+/* Live theme toggling left body stuck on the load-time color when the
+   value came through var() chains. Literal colors at (0,1,1) specificity,
+   declared last, repaint deterministically in both directions. */
+html body, html[data-theme="light"] body, body[data-theme="light"] {
+  background-color: #F3F5FE !important;
+}
+html[data-theme="dark"] body, body[data-theme="dark"],
+html[data-theme="dark"] body[data-theme="dark"] {
+  background-color: #0A0C1D !important;
+}
+
+/* ─── 23. ACCESSIBILITY & RESPONSIVE ─────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001s !important;
+  }
+}
+@media (max-width: 380px) {
+  .page-title { font-size: 1.5rem !important; }
+  #today-greeting { font-size: 1.6rem !important; }
+  .bn-label { font-size: 0.55rem !important; }
+}

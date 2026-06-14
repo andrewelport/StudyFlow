@@ -727,7 +727,7 @@ input:focus, textarea:focus, select:focus {
 .tl-time-label, .tl-hour-label { font-size: 0.5625rem !important; font-weight: 600 !important; color: var(--ink-4) !important; }
 .timeline-labels  { background-color: var(--sur-2) !important; }
 .timeline-events-area { background-color: var(--sur) !important; }
-.tl-grid-line { background-color: var(--bor) !important; opacity: 1 !important; }
+.tl-grid-line { display: block !important; position: absolute !important; left: 0 !important; right: 0 !important; height: 1px !important; background-color: var(--bor) !important; opacity: 1 !important; z-index: 0 !important; pointer-events: none !important; }
 
 /* Schedule page header — minimal (swipe-only navigation) */
 .sch-page-hdr {
@@ -760,6 +760,34 @@ input:focus, textarea:focus, select:focus {
   width: 10px !important; height: 10px !important; border-radius: 50% !important;
   background-color: var(--red) !important; top: -4px !important;
   z-index: 6 !important; pointer-events: none !important;
+}
+
+/* ── Hour axis redesign — seamless with the events, no clunky gray column ── */
+.timeline-outer {
+  border: 1px solid var(--bor) !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  background: var(--sur) !important;
+  box-shadow: 0 2px 14px rgba(22,26,60,0.05) !important;
+}
+.timeline-labels {
+  background: transparent !important;
+  border-left: 1px solid var(--bor) !important;
+  width: 40px !important;
+  flex: 0 0 40px !important;
+}
+.timeline-events-area { background: var(--sur) !important; }
+.tl-hour-label {
+  position: absolute !important;
+  left: 0 !important; right: 0 !important;
+  padding-top: 3px !important;
+  text-align: center !important;
+  font-size: 0.62rem !important;
+  font-weight: 700 !important;
+  color: var(--ink-3) !important;
+  font-family: 'Heebo', 'Inter', sans-serif !important;
+  background: transparent !important;
+  letter-spacing: 0.3px !important;
 }
 
 /* Schedule controls */
@@ -1533,19 +1561,24 @@ body, html { background-image: none !important; }
 /* ─── TOP 5 CALENDAR REDESIGN ───────────────────────────── */
 .top5-ev {
   position: absolute !important;
-  border-radius: 4px !important;
+  border-radius: 12px !important;
   overflow: hidden !important;
   padding: 0 !important;
-  box-shadow: none !important;
+  box-shadow: 0 1px 2px rgba(22,26,60,0.06), 0 6px 16px rgba(22,26,60,0.07) !important;
   border: none !important;
-  /* border-right is set inline */
+  z-index: 2 !important;
+  /* border-right (color accent) is set inline */
   cursor: pointer !important;
-  transition: transform 0.1s ease, filter 0.2s ease !important;
+  transition: transform 0.14s ease, box-shadow 0.2s ease, filter 0.2s ease !important;
   animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) both !important;
 }
 
+.top5-ev:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 10px rgba(22,26,60,0.12), 0 14px 30px rgba(22,26,60,0.12) !important;
+}
 .top5-ev:active {
-  transform: scale(0.97) !important;
+  transform: scale(0.985) !important;
 }
 
 .top5-ev.ev-done {
@@ -1557,32 +1590,39 @@ body, html { background-image: none !important; }
 }
 
 .top5-ev-body {
-  padding: 6px 10px !important;
+  padding: 9px 13px 9px 11px !important;
   display: flex;
   flex-direction: column !important;
-  justify-content: center !important;
+  justify-content: flex-start !important;
+  gap: 2px !important;
   min-width: 0 !important;
   height: 100% !important;
 }
 
 .top5-ev-name {
-  font-family: 'Inter', sans-serif !important;
-  font-size: 0.75rem !important;
-  font-weight: 700 !important;
+  font-family: 'Heebo', 'Inter', sans-serif !important;
+  font-size: 0.8rem !important;
+  font-weight: 800 !important;
   color: var(--ink) !important;
-  line-height: 1.25 !important;
-  white-space: nowrap !important;
+  line-height: 1.28 !important;
+  white-space: normal !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
-  text-shadow: none !important; /* Block old style.css garbage */
+  text-shadow: none !important;
 }
 
 .top5-ev-time {
-  font-family: 'Inter', sans-serif !important;
-  font-size: 0.68rem !important;
-  font-weight: 600 !important;
-  color: var(--ink-2) !important;
-  margin-top: 3px !important;
+  font-family: 'Heebo', 'Inter', sans-serif !important;
+  font-size: 0.7rem !important;
+  font-weight: 800 !important;
+  color: var(--ev, var(--ink-2)) !important;
+  margin-top: 2px !important;
+  direction: ltr !important;
+  text-align: right !important;
+  opacity: 0.92 !important;
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
@@ -2683,4 +2723,137 @@ body { overflow-x: hidden !important; max-width: 100% !important; width: 100% !i
   letter-spacing: 0.04em;
   text-transform: uppercase;
   padding: 0 18px 8px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CALM v7 — De-clutter & breathe (2026-06)
+   Loaded last: equal-specificity !important rules below win.
+   Goals: fewer competing colors, real whitespace, one visual
+   hierarchy, calmer motion. RTL + dark-mode aware.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── 1. Soft canvas — cards float instead of bordering everything ── */
+:root {
+  --bg: #F6F7FB;
+  --sh:    0 1px 2px rgba(16,24,40,0.04), 0 4px 14px rgba(16,24,40,0.05);
+  --sh-md: 0 2px 6px rgba(16,24,40,0.05), 0 12px 28px rgba(16,24,40,0.08);
+}
+[data-theme="dark"] { --bg: #161618; }
+body { background-color: var(--bg) !important; }
+
+/* ── 2. Page rhythm — generous, consistent spacing ── */
+.page { padding: 20px 18px 96px !important; }
+.page-header { margin-bottom: 18px !important; }
+.page-title { letter-spacing: -0.03em !important; }
+.page-sub { margin-top: 4px !important; }
+
+/* ── 3. Stat cards — calm: white surface, color only on the number ── */
+.cards-grid { gap: 10px !important; margin-bottom: 14px !important; }
+.stat-card,
+.stat-card.blue, .stat-card.green, .stat-card.red, .stat-card.yellow {
+  background: var(--sur) !important;
+  border: 0.5px solid var(--bor) !important;
+  box-shadow: var(--sh) !important;
+  border-radius: 14px !important;
+  padding: 12px 14px !important;
+  min-height: 64px !important;
+}
+.stat-card .stat-num { font-size: 1.625rem !important; }
+.stat-card.blue   .stat-num { color: var(--brand) !important; }
+.stat-card.green  .stat-num { color: var(--grn-dk) !important; }
+.stat-card.red    .stat-num { color: var(--red) !important; }
+.stat-card.yellow .stat-num { color: var(--orng) !important; }
+.stat-card .stat-label,
+.stat-card.blue .stat-label, .stat-card.green .stat-label,
+.stat-card.red .stat-label, .stat-card.yellow .stat-label {
+  color: var(--ink-3) !important; opacity: 1 !important;
+  font-weight: 600 !important;
+}
+[data-theme="dark"] .stat-card,
+[data-theme="dark"] .stat-card.blue, [data-theme="dark"] .stat-card.green,
+[data-theme="dark"] .stat-card.red, [data-theme="dark"] .stat-card.yellow {
+  background: var(--sur) !important; border-color: var(--bor) !important;
+}
+[data-theme="dark"] .stat-card.green .stat-num { color: var(--grn) !important; }
+
+/* ── 4. Banners — one quiet voice, no infinite pulsing ── */
+.wr-banner {
+  animation: none !important;
+  background: var(--sur) !important;
+  border: 0.5px solid var(--bor) !important;
+  box-shadow: var(--sh) !important;
+  color: var(--ink) !important;
+  padding: 14px 16px !important; gap: 12px !important;
+}
+.wr-banner .wr-banner-icon {
+  width: 38px !important; height: 38px !important; flex: 0 0 38px !important;
+  border-radius: 11px !important;
+  background: linear-gradient(135deg, var(--brand), #818CF8) !important;
+  display: flex !important; align-items: center !important; justify-content: center !important;
+}
+.exam-urgency-banner {
+  background: var(--sur) !important;
+  border: 0.5px solid var(--bor) !important;
+  border-right: 3px solid var(--orng) !important;
+  box-shadow: var(--sh) !important;
+  border-radius: 14px !important;
+  padding: 12px 14px !important;
+}
+.exam-urgency-banner > span:first-child { font-size: 1.15rem !important; }
+.next-task-widget { box-shadow: 0 4px 14px rgba(92,110,245,0.22) !important; }
+
+/* ── 5. Section boxes & cards — one consistent surface language ── */
+.section-box, .glass-box, .focus-entry-card {
+  background: var(--sur) !important;
+  border: 0.5px solid var(--bor) !important;
+  box-shadow: var(--sh) !important;
+  border-radius: 16px !important;
+  backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+}
+.section-box { padding: 16px !important; margin-bottom: 14px !important; }
+.focus-entry-card { padding: 16px !important; margin-bottom: 14px !important; }
+.section-title-sm, .section-head .section-title-sm {
+  font-size: 0.8125rem !important; font-weight: 700 !important;
+  color: var(--ink-3) !important; letter-spacing: 0.02em !important;
+}
+.section-head { margin-bottom: 12px !important; }
+
+/* ── 6. Buttons — friendlier radius, keep the tactile press ── */
+.btn-primary, button.btn-primary,
+.btn-add, button.btn-add,
+.btn-focus-start, button.btn-focus-start,
+.pomo-start-btn, button.pomo-start-btn,
+form button[type="submit"],
+.add-exam-btn, button.add-exam-btn,
+.add-task-btn, button.add-task-btn,
+.sch-add-btn, button.sch-add-btn,
+button.exam-submit, button.task-submit,
+.ob2-next-btn, button.ob2-next-btn {
+  border-radius: 12px !important;
+}
+.pomo-dur-btn {
+  border-radius: 10px !important;
+  min-height: 40px !important;
+}
+.btn-sm { border-radius: 9px !important; min-height: 34px !important; }
+
+/* ── 7. Sidebar — quieter chrome, clear active state ── */
+.nav-item { border-radius: 10px !important; padding: 10px 12px !important; }
+.nav-item.active { font-weight: 700 !important; }
+.user-plan { font-size: 0.6875rem !important; color: var(--ink-4) !important; }
+
+/* ── 8. Calmer motion ── */
+.streak-icon { animation-duration: 4.5s !important; }
+@media (prefers-reduced-motion: reduce) {
+  .streak-icon, .sq-fire, .wr-banner, .stat-card { animation: none !important; }
+  * { transition-duration: 0.01ms !important; }
+}
+
+/* ── 9. Mobile comfort — gutters, touch targets, safe areas ── */
+@media (max-width: 768px) {
+  .page { padding: 16px 14px calc(96px + env(safe-area-inset-bottom)) !important; }
+  .cards-grid { gap: 8px !important; }
+  .stat-card { min-height: 60px !important; padding: 11px 12px !important; }
+  .stat-card .stat-num { font-size: 1.5rem !important; }
+  .pomo-dur-btn, .btn-sm { min-height: 44px !important; }
 }

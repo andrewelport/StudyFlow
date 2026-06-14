@@ -1,12 +1,22 @@
-const CACHE = 'studyflow-v149';
+const CACHE = 'studyflow-v176';
 const PRECACHE = [
   '/',
   '/index.html',
-  '/style.css?v=129',
-  '/style_v6.css?v=131',
-  '/scheduler.js?v=33',
-  '/app_v58.js?v=9',
-  '/onboarding-ai.js?v=1',
+  '/style.css?v=131',
+  '/style_v6.css?v=133',
+  '/style_v7.css?v=5',
+  '/scheduler.js?v=35',
+  '/sf-01-core.js?v=8',
+  '/sf-02-onboarding.js?v=9',
+  '/sf-03-import.js?v=13',
+  '/sf-04-progress.js?v=1',
+  '/sf-05-planner.js?v=2',
+  '/sf-06-schedule.js?v=4',
+  '/sf-07-calendar.js?v=2',
+  '/sf-08-chat-ai.js?v=2',
+  '/sf-09-coach.js?v=2',
+  '/sf-10-focus.js?v=3',
+  '/premium-planner.js?v=1',
   '/logo_192.png',
   '/logo_512.png',
   '/manifest.json',
@@ -32,7 +42,7 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = e.request.url;
   // Never cache API calls
-  if (url.includes('supabase') || url.includes('groq.com') || url.includes('netlify/functions') || url.includes('generativelanguage.googleapis.com')) return;
+  if (url.includes('supabase') || url.includes('groq.com') || url.includes('netlify/functions')) return;
   // Let browser handle cross-origin (fonts, CDN)
   if (!url.startsWith(self.location.origin) && !url.includes('fonts.googleapis') && !url.includes('fonts.gstatic')) return;
 
