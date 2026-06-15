@@ -238,8 +238,16 @@ function generateWeeklySchedule(answers) {
     return { tasks: [], stats: { totalFreeMin: 0, studyMin: 0, sessions: 0, reason: 'no_time' } };
   }
 
-  // Phase B: Quota
-  const studyMin = Math.round(totalFreeMin * loadPct);
+  // Phase B: Quota — capped by a realistic, sustainable daily focus ceiling.
+  // Learning science (deliberate practice / cognitive-load theory): ~2–4h of
+  // FOCUSED study per day is the sustainable ceiling. "62% of all free time"
+  // (~50h/week) over-commits, so the per-day caps then silently drop most of it.
+  // Cap the weekly target to min(quota, realistic ceiling) so what we request is
+  // what we can actually place — a real, healthy load instead of a wish-list.
+  const DAILY_FOCUS_CEIL = { light: 120, balanced: 180, heavy: 240 }; // focused min/day
+  const ceilPerDay = DAILY_FOCUS_CEIL[answers.load] || 180;
+  const realisticWeekMax = ceilPerDay * Math.max(1, days.length);
+  const studyMin = Math.min(Math.round(totalFreeMin * loadPct), realisticWeekMax);
   const totalSessions = Math.max(1, Math.floor(studyMin / blockMin));
 
   // Phase C: Weights
@@ -420,12 +428,21 @@ function generateWeeklySchedule(answers) {
     const slotPref = isHard ? hardPref : null; // hard = peak time, easy = any time
     const blockNeed = sessionMin + breakMin;
 
-    // Near-exam (≤3 days) courses get maxSameDay=2 even under non-heavy load.
-    // Hoisted here so the fallback loop below can apply the same cap.
+    // Exam-aware, priority-proportional per-day cap. A flat cap of 1/day flattened
+    // every course to ~6 sessions regardless of weight — so a near-exam, high-weight
+    // course never received its larger allocation. Let priority + exam proximity earn
+    // a higher same-day cap (intensive prep near an exam is correct), while easy/no-exam
+    // courses stay at 1/day to preserve spacing across the week.
     const nextExam = exams.filter(e => e.course === item).sort((a, b) => a.date.localeCompare(b.date))[0];
     const daysToExam = nextExam ? Math.ceil((new Date(nextExam.date) - new Date()) / 86400000) : Infinity;
-    const examIsNear = daysToExam <= 3;
-    const maxSameDay = answers.load === 'heavy' ? 2 : (examIsNear ? 2 : 1);
+    const examIsNear = daysToExam <= 3;          // crunch window
+    const examSoon   = daysToExam <= 7;          // taper window
+    const _w = weights[item] || 3;
+    let maxSameDay;
+    if (answers.load === 'heavy') maxSameDay = examIsNear ? 3 : 2;
+    else if (examIsNear)          maxSameDay = 3;
+    else if (examSoon || _w >= 5) maxSameDay = 2;
+    else                          maxSameDay = 1;
 
     // Place onto the least-loaded eligible day first (anti front-loading), instead
     // of always walking the week in date order. Ties break chronologically so the

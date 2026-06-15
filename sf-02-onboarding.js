@@ -567,6 +567,7 @@ function finishOnboarding(){
 
 function initApp(){
   document.getElementById('setup-screen').style.display='none';
+  document.body.classList.add('sf-app-active');   // reveals the floating dock (hidden on splash/onboarding)
   const bn = document.getElementById('bottom-nav'); if (bn) bn.style.display = '';
   document.getElementById('app-screen').style.display='block';
   const displayName = S.userName || 'סטודנט';
@@ -640,8 +641,18 @@ function showPage(name,btn){
   closeSidebar();
 }
 
+// Center dock "תכנון" routing: first-time users (no courses) go to course setup;
+// afterwards planning happens in the weekly review, so route there directly.
+function sfGoPlan() {
+  const hasCourses = Array.isArray(S.courses) && S.courses.length > 0;
+  if (hasCourses) { showPage('weekly-review', null); }
+  else { showPage('planner', null); }
+  updateBottomNav('planner');
+}
+window.sfGoPlan = sfGoPlan;
+
 function updateBottomNav(name) {
-  const map = {today:'bn-today',planner:'bn-planner',schedule:'bn-schedule',exams:'bn-exams',progress:'bn-progress',hobby:'bn-hobby','weekly-review':'bn-weekly-review',homework:'bn-homework'};
+  const map = {today:'bn-today',planner:'bn-planner',schedule:'bn-schedule',exams:'bn-exams',progress:'bn-progress',hobby:'bn-hobby','weekly-review':'bn-planner',homework:'bn-homework'};
   document.querySelectorAll('.bn-item').forEach(b=>b.classList.remove('active'));
   if(map[name]) document.getElementById(map[name])?.classList.add('active');
 }

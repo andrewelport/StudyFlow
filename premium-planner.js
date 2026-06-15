@@ -411,20 +411,62 @@
 
       // Deterministic hard-constraint validation (free windows, overlaps, blocked days)
       _mark('validate', 'on');
-      const tasks = _validate(plan);
+      let tasks = _validate(plan);
       _mark('validate', 'done');
       if (!tasks.length) {
-         const reason = (!plan || !plan.length) ? 'ה-AI לא הצליח להרכיב לוז, כנראה עקב מחסור בזמן פנוי או שגיאת הבנה.' : 'הלוז נדחה עקב התנגשויות (וודא ששעות השינה והעוגנים אינם חופפים שעות למידה).';
-         _genError(reason + ' נסה שוב או שנה את התשובות.');
-         return;
+        // AI returned nothing usable → fall back to the (science-based) deterministic
+        // engine so premium ALWAYS produces a schedule instead of an error screen.
+        tasks = _fallbackPlan();
+        if (!tasks.length) {
+          _genError('לא נמצא זמן פנוי לשיבוץ. ודא ששעות הערות, העוגנים וימי החסימה לא תופסים את כל השבוע, ונסה שוב.');
+          return;
+        }
+        _flow.rationale = _flow.rationale || 'לוז מותאם אישית מבוסס-מדע: חזרה מרווחת, איזון ועומס בר-קיימא.';
       }
       _flow.plan = tasks;
       _flow.strategy = strategy;
       _renderPreview(tasks);
     } catch (e) {
       console.error('AIWP generate error:', e);
-      _genError('אירעה שגיאה ביצירת הלוז: ' + (e.message || 'לא ידוע') + '. ודא שמפתח Gemini מוגדר בהגדרות.');
+      // Any failure in the AI pipeline (offline, API error, bad JSON) → graceful
+      // fallback to the deterministic engine. The user gets a real plan regardless.
+      const tasks = _fallbackPlan();
+      if (tasks.length) {
+        _flow.plan = tasks;
+        _flow.rationale = 'לוז מותאם אישית מבוסס-מדע: חזרה מרווחת, איזון ועומס בר-קיימא.';
+        _renderPreview(tasks);
+      } else {
+        _genError('לא הצלחנו לבנות לוז כרגע. ודא שיש קורסים וזמן פנוי בשבוע, ונסה שוב.');
+      }
     }
+  }
+
+  // Deterministic fallback — reuses the proven scheduler engine (generateWeeklySchedule)
+  // so the premium planner never dead-ends when the AI is unavailable.
+  function _fallbackPlan() {
+    try {
+      if (typeof generateWeeklySchedule !== 'function') return [];
+      const range = window._wrGetTargetRange();
+      const capMap = { recovery: 'light', normal: 'balanced', push: 'heavy', exam: 'heavy' };
+      const courses = (_data().courses || []).map(c => c.name).filter(Boolean);
+      if (!courses.length) return [];
+      const diff = {};
+      const focus = _flow.answers.focusCourses || [];
+      courses.forEach(c => { diff[c] = focus.includes(c) ? 5 : 3; });
+      const answers = {
+        load: capMap[_flow.answers.capacity] || 'balanced',
+        startDate: range.start, endDate: range.end,
+        courseDifficulty: diff, selectedHobbies: [], homework: []
+      };
+      const res = generateWeeklySchedule(answers);
+      const raw = (res && Array.isArray(res.tasks)) ? res.tasks : [];
+      const mapped = raw.map(t => ({
+        date: t.date, time: (t.time || '').slice(0, 5),
+        course: t.course || t.name || 'לימוד', name: t.name || t.course || 'לימוד',
+        duration: t.duration || `${60} דק'`, priority: t.priority || 'בינוני'
+      }));
+      return _validate(mapped);   // honour blockedDays + free windows in fallback too
+    } catch (e) { return []; }
   }
 
   function _genError(msg) {
