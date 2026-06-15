@@ -1459,6 +1459,58 @@ input.ob2-inp-lg { font-size: 1.15rem !important; font-weight: 700 !important; p
   50%     { box-shadow: 0 0 0 9999px rgba(8,10,30,0.74), inset 0 0 0 2px rgba(255,255,255,1),    0 0 38px 8px var(--a-glow); }
 }
 
+/* ─── 21f. SYLLABUS MILESTONES — "where you should be" ───────────── */
+.syl-wrap {
+  background: var(--a-sur); border: 0.5px solid var(--a-bor); border-radius: var(--a-r-lg);
+  box-shadow: var(--a-sh-1); padding: 16px 16px 14px; margin-bottom: 16px;
+  animation: aRise 0.45s var(--a-swift) both;
+}
+.syl-locked {
+  text-align: center;
+  background: radial-gradient(120% 80% at 50% -10%, rgba(232,165,61,0.10), transparent 60%), var(--a-sur);
+  border: 1px solid rgba(232,165,61,0.28);
+}
+.syl-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.syl-title { font-size: 1.05rem; font-weight: 900; letter-spacing: -0.02em; color: var(--a-ink); }
+.syl-locked .syl-title { margin: 12px 0 6px; }
+.syl-sub { font-size: 0.85rem; color: var(--a-ink-3); line-height: 1.5; margin-bottom: 14px; }
+.syl-row { display: flex; align-items: center; gap: 11px; padding: 11px 0; border-top: 0.5px solid var(--a-bor); }
+.syl-row:first-of-type { border-top: none; }
+.syl-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.syl-row-main { flex: 1; min-width: 0; }
+.syl-course { font-size: 0.95rem; font-weight: 800; color: var(--a-ink); }
+.syl-where { font-size: 0.82rem; color: var(--a-ink-2); margin-top: 2px; }
+.syl-where b { color: var(--a-brand); font-weight: 800; }
+.syl-muted { color: var(--a-ink-4) !important; }
+.syl-prog { font-size: 0.74rem; font-weight: 800; color: var(--a-ink-3); background: var(--a-sur-2); border-radius: 8px; padding: 3px 8px; flex-shrink: 0; }
+.syl-edit { flex-shrink: 0; background: var(--a-sur-2); color: var(--a-brand); border: 1px solid var(--a-bor); border-radius: 999px; padding: 6px 13px; font-size: 0.8rem; font-weight: 800; cursor: pointer; font-family: Heebo, sans-serif; }
+.syl-edit:active { transform: scale(0.95); }
+
+/* editor sheet */
+#syl-editor.modal-overlay { align-items: flex-end !important; padding: 0 !important; }
+.syl-sheet {
+  background: var(--a-sur); width: 100%; max-width: 480px; margin: 0 auto;
+  border-radius: 26px 26px 0 0; padding: 0 18px calc(20px + env(safe-area-inset-bottom,0px));
+  max-height: 92vh; overflow-y: auto;
+  box-shadow: 0 -8px 40px rgba(8,10,30,0.28); animation: aSheetUp 0.4s var(--a-sheet) both;
+}
+.syl-sheet-handle { width: 40px; height: 5px; background: var(--a-bor-2); border-radius: 99px; margin: 10px auto 4px; }
+.syl-sheet-hd { display: flex; align-items: center; justify-content: space-between; padding: 8px 0 12px; }
+.syl-sheet-title { font-size: 1.05rem; font-weight: 900; color: var(--a-ink); }
+.syl-mode { display: flex; gap: 8px; margin-bottom: 10px; }
+.syl-mode-btn { flex: 1; padding: 11px; border-radius: var(--a-r-sm); border: 1.5px solid var(--a-bor); background: var(--a-sur-2); color: var(--a-ink-3); font-size: 0.9rem; font-weight: 800; cursor: pointer; font-family: Heebo, sans-serif; transition: all var(--a-tf); }
+.syl-mode-btn.on { background: var(--a-grad); color: #fff; border-color: transparent; box-shadow: 0 6px 14px -4px var(--a-glow); }
+.syl-hint { font-size: 0.8rem; color: var(--a-ink-3); line-height: 1.5; margin-bottom: 12px; }
+.syl-mrow { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.syl-mrow-exam { background: rgba(244,80,75,0.06); border-radius: 12px; padding: 6px; margin: 0 -6px 8px; }
+.syl-i-date { width: 138px !important; flex-shrink: 0; }
+.syl-i-topic { flex: 1; min-width: 0; }
+.syl-i-exam, .syl-i-del { flex-shrink: 0; width: 38px; height: 38px; border-radius: 11px; border: 1px solid var(--a-bor); background: var(--a-sur-2); cursor: pointer; font-size: 0.95rem; display: flex; align-items: center; justify-content: center; }
+.syl-i-exam.on { background: rgba(244,80,75,0.14); border-color: rgba(244,80,75,0.4); }
+.syl-i-del { color: var(--a-ink-4); }
+.syl-add { width: 100%; background: var(--a-grad-soft); color: var(--a-brand); border: 1px dashed rgba(91,102,242,0.35); border-radius: var(--a-r-sm); padding: 11px; font-size: 0.9rem; font-weight: 800; cursor: pointer; font-family: Heebo, sans-serif; margin: 4px 0 14px; }
+.syl-save { margin: 0 !important; }
+
 /* ─── 22b. BODY CANVAS — explicit, literal, theme-toggle safe ────── */
 /* Live theme toggling left body stuck on the load-time color when the
    value came through var() chains. Literal colors at (0,1,1) specificity,
