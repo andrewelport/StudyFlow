@@ -17,6 +17,7 @@
   function _save() { try { save(); } catch (e) { if (window.save) window.save(); } }
   const _t2m = (t) => { const p = String(t || '0:0').split(':'); return (+p[0]) * 60 + (+p[1] || 0); };
   const _m2t = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+  const _roundT = (t) => (t ? _m2t(Math.round(_t2m(String(t).slice(0, 5)) / 5) * 5) : ''); // snap to :05 for a clean schedule
   const DOW = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
 
   // ---- line-art SVG icon set (consistent, no emoji) ------------------------
@@ -461,7 +462,7 @@
       const res = generateWeeklySchedule(answers);
       const raw = (res && Array.isArray(res.tasks)) ? res.tasks : [];
       const mapped = raw.map(t => ({
-        date: t.date, time: (t.time || '').slice(0, 5),
+        date: t.date, time: _roundT(t.time || ''),
         course: t.course || t.name || 'לימוד', name: t.name || t.course || 'לימוד',
         duration: t.duration || `${60} דק'`, priority: t.priority || 'בינוני'
       }));
@@ -533,7 +534,7 @@ ${strategy ? '- קיבלת אסטרטגיה מהאנליסט: שבץ לכל קו
     _flow.rationale = (obj && obj.rationale) || '';
     return arr.map(t => ({
       date: t.date,
-      time: (t.time || '').slice(0, 5),
+      time: _roundT(t.time || ''),
       course: t.course || t.name || 'לימוד',
       name: t.course || t.name || 'לימוד',
       duration: /דק/.test(String(t.duration)) ? t.duration : `${parseInt(String(t.duration).match(/\d+/)?.[0] || 60)} דק'`,
@@ -562,31 +563,40 @@ ${strategy ? '- קיבלת אסטרטגיה מהאנליסט: שבץ לכל קו
   }
 
   function _renderPreview(tasks) {
-    const range = window._wrGetTargetRange();
     const byDay = {};
     tasks.forEach(t => { (byDay[t.date] = byDay[t.date] || []).push(t); });
     const dayKeys = Object.keys(byDay).sort();
     const totalMin = tasks.reduce((s, t) => s + parseInt(String(t.duration).match(/\d+/)?.[0] || 60), 0);
-    const hrs = (totalMin / 60).toFixed(1);
+    const hrs = (totalMin / 60).toFixed(1).replace(/\.0$/, '');
+    const col = (n) => { try { return window.getCourseColor ? window.getCourseColor(n) : 'var(--a-brand)'; } catch (e) { return 'var(--a-brand)'; } };
 
     const daysHTML = dayKeys.map(dk => {
       const dow = new Date(dk + 'T12:00').getDay();
       const rows = byDay[dk].sort((a, b) => a.time.localeCompare(b.time)).map(t =>
-        `<div class="aiwp-pv-task"><span class="aiwp-pv-time">${_esc(t.time)}</span><span class="aiwp-pv-course">${_esc(t.course)}</span><span class="aiwp-pv-dur">${_esc(t.duration)}</span></div>`).join('');
+        `<div class="aiwp-pv-task">
+          <span class="aiwp-pv-time">${_esc(t.time)}</span>
+          <span class="aiwp-pv-dot" style="background:${col(t.course)}"></span>
+          <span class="aiwp-pv-course">${_esc(t.course)}</span>
+          <span class="aiwp-pv-dur">${_esc(t.duration)}</span>
+        </div>`).join('');
       return `<div class="aiwp-pv-day"><div class="aiwp-pv-day-h">${DOW[dow]} · ${_esc(dk.slice(5))}</div>${rows}</div>`;
     }).join('');
 
     _body().innerHTML = `
-      <div class="aiwp-pv-head">
-        <div class="aiwp-badge">${ICON.check}<span>הלוז מוכן</span></div>
-        <div class="aiwp-pv-title">${tasks.length} סשנים · ${hrs} שעות לימוד</div>
-        ${(_flow.strategy && _flow.strategy.approach) ? `<div class="aiwp-pv-rationale">${ICON.gauge}<span><b>אסטרטגיה:</b> ${_esc(_flow.strategy.approach)}</span></div>` : ''}
+      <div class="aiwp-pv-top">
+        <div class="aiwp-badge"><span>${ICON.spark}</span><span>הלוז שלך מוכן</span></div>
+        <div class="aiwp-pv-stats">
+          <div class="aiwp-pv-stat"><div class="aiwp-pv-stat-n">${hrs}</div><div class="aiwp-pv-stat-l">שעות</div></div>
+          <div class="aiwp-pv-stat"><div class="aiwp-pv-stat-n">${tasks.length}</div><div class="aiwp-pv-stat-l">סשנים</div></div>
+          <div class="aiwp-pv-stat"><div class="aiwp-pv-stat-n">${dayKeys.length}</div><div class="aiwp-pv-stat-l">ימי לימוד</div></div>
+        </div>
+        ${(_flow.strategy && _flow.strategy.approach) ? `<div class="aiwp-pv-rationale">${ICON.gauge}<span>${_esc(_flow.strategy.approach)}</span></div>` : ''}
         ${_flow.rationale ? `<div class="aiwp-pv-rationale">${ICON.brain}<span>${_esc(_flow.rationale)}</span></div>` : ''}
       </div>
       <div class="aiwp-pv-list">${daysHTML || '<div class="aiwp-q-sub">לא נוצרו סשנים בטווח הפנוי.</div>'}</div>
-      <div class="aiwp-nav">
-        <button class="aiwp-nav-back" onclick="AIWP.generate()">${ICON.arrow}<span>בנה מחדש</span></button>
-        <button class="aiwp-nav-next" onclick="AIWP.confirm()">${ICON.check} אשר והוסף ללו"ז</button>
+      <div class="aiwp-pv-actions">
+        <button class="aiwp-cta" onclick="AIWP.confirm()">${ICON.check}<span>אשר והוסף ללו"ז</span></button>
+        <button class="aiwp-pv-rebuild" onclick="AIWP.generate()">בנה מחדש</button>
       </div>`;
   }
 
