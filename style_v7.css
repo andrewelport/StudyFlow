@@ -1511,6 +1511,46 @@ input.ob2-inp-lg { font-size: 1.15rem !important; font-weight: 700 !important; p
 .syl-add { width: 100%; background: var(--a-grad-soft); color: var(--a-brand); border: 1px dashed rgba(91,102,242,0.35); border-radius: var(--a-r-sm); padding: 11px; font-size: 0.9rem; font-weight: 800; cursor: pointer; font-family: Heebo, sans-serif; margin: 4px 0 14px; }
 .syl-save { margin: 0 !important; }
 
+/* AI milestone generator (inside the editor) */
+.syl-ai { background: var(--a-grad-soft); border: 1px solid rgba(91,102,242,0.18); border-radius: var(--a-r-sm); padding: 10px; margin-bottom: 12px; }
+.syl-ai-input { width: 100%; box-sizing: border-box; background: var(--a-sur) !important; border: 1px solid var(--a-bor) !important; border-radius: 12px !important; padding: 10px 12px !important; font-family: Heebo, sans-serif !important; font-size: 0.88rem !important; color: var(--a-ink) !important; resize: vertical; min-height: 52px; margin-bottom: 8px; }
+.syl-ai-input:focus { outline: none; border-color: var(--a-brand) !important; box-shadow: 0 0 0 3px var(--a-soft) !important; }
+.syl-ai-btn { width: 100%; background: var(--a-grad) !important; color: #fff !important; border: none; border-radius: 12px; padding: 11px; font-size: 0.92rem; font-weight: 800; cursor: pointer; font-family: Heebo, sans-serif; box-shadow: 0 6px 14px -4px var(--a-glow); }
+.syl-ai-btn:active { transform: scale(0.98); }
+.syl-ai-btn:disabled { opacity: 0.6; pointer-events: none; }
+
+/* ─── 21g. MILESTONE PATH (Progress page · the centrepiece) ───────── */
+.mst-wrap { background: var(--a-sur); border: 0.5px solid var(--a-bor); border-radius: var(--a-r-lg); box-shadow: var(--a-sh-2); padding: 16px 14px 18px; margin-bottom: 16px; animation: aRise 0.5s var(--a-swift) both; }
+.mst-wrap.syl-locked { text-align: center; background: radial-gradient(120% 80% at 50% -10%, rgba(232,165,61,0.10), transparent 60%), var(--a-sur); border: 1px solid rgba(232,165,61,0.28); }
+.mst-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; padding: 0 4px; }
+.mst-xp { display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; font-weight: 900; color: var(--a-brand); background: var(--a-grad-soft); border-radius: 999px; padding: 4px 11px; }
+.mst-xp svg { width: 14px; height: 14px; }
+.mst-sub { font-size: 0.78rem; color: var(--a-ink-3); margin: 2px 4px 14px; }
+.mst-course { margin-top: 14px; }
+.mst-hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; padding: 0 4px; }
+.mst-name { font-size: 0.98rem; font-weight: 800; color: var(--a-ink); }
+.mst-status { font-size: 0.72rem; font-weight: 800; border-radius: 999px; padding: 3px 10px; }
+.mst-status.on { background: rgba(47,191,99,0.14); color: var(--a-grn-dk); }
+.mst-status.behind { background: rgba(244,80,75,0.12); color: var(--a-red); }
+[data-theme="dark"] .mst-status.on { color: var(--a-grn); }
+/* the track — a horizontal scroll of connected nodes */
+.mst-track { display: flex; align-items: flex-start; gap: 0; overflow-x: auto; padding: 4px 6px 6px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.mst-track::-webkit-scrollbar { display: none; }
+.mst-node { position: relative; flex: 0 0 auto; width: 78px; display: flex; flex-direction: column; align-items: center; gap: 6px; background: none; border: none; cursor: pointer; font-family: Heebo, sans-serif; padding: 0; }
+/* connector line between nodes */
+.mst-node::before { content: ''; position: absolute; top: 22px; right: 50%; width: 100%; height: 3px; background: var(--a-sur-3); z-index: 0; }
+.mst-node:first-child::before { display: none; }
+.mst-node.done::before { background: var(--a-grad); }
+.mst-ic { position: relative; z-index: 1; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; font-weight: 900; background: var(--a-sur-3); color: var(--a-ink-3); border: 2.5px solid var(--a-sur); box-shadow: var(--a-sh-1); transition: transform 0.2s var(--a-spring); }
+.mst-node:active .mst-ic { transform: scale(0.88); }
+.mst-node.done .mst-ic { background: var(--a-grad); color: #fff; box-shadow: 0 5px 14px -3px var(--a-glow), inset 0 1px 0 rgba(255,255,255,0.3); }
+.mst-node.done .mst-ic svg { stroke: #fff; }
+.mst-node.should .mst-ic { background: var(--a-sur); color: var(--a-brand); border-color: var(--a-brand); box-shadow: 0 0 0 4px var(--a-soft); animation: aGlowPulse 2.4s ease-in-out infinite; }
+.mst-node.exam .mst-ic { border-radius: 14px; background: linear-gradient(135deg, #F6C863, #E8A53D); color: #3a2a06; }
+.mst-node.exam.done .mst-ic { background: var(--a-grad); color: #fff; }
+.mst-lbl { font-size: 0.66rem; font-weight: 700; color: var(--a-ink-2); text-align: center; line-height: 1.25; max-width: 76px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.mst-node.should .mst-lbl { color: var(--a-brand); font-weight: 800; }
+
 /* ─── 22b. BODY CANVAS — explicit, literal, theme-toggle safe ────── */
 /* Live theme toggling left body stuck on the load-time color when the
    value came through var() chains. Literal colors at (0,1,1) specificity,

@@ -123,6 +123,10 @@
            <button class="syl-mode-btn ${course.track === 'manual' ? 'on' : ''}" onclick="sfSetTrack('manual')">אני מגדיר</button>
          </div>
          <div class="syl-hint" id="syl-hint">${course.track === 'manual' ? 'הוסף אבני דרך משלך: תאריך + מה לומדים. האחרונה = המבחן.' : 'הזן את אבני הדרך מהסילבוס (תאריך + נושא). האחרונה = המבחן.'}</div>
+         <div class="syl-ai">
+           <textarea id="syl-ai-input" class="syl-ai-input" rows="2" placeholder="הדבק את הסילבוס (טקסט/קישור), או כתוב מה לכלול ועד מתי — וה-AI יכין את אבני הדרך"></textarea>
+           <button id="syl-ai-btn" class="syl-ai-btn" onclick="sfAIMakeMilestones()">✨ תן ל-AI להכין</button>
+         </div>
          <div id="syl-rows"></div>
          <button class="syl-add" onclick="sfAddMilestoneRow()">+ הוסף אבן דרך</button>
          <button class="aiwp-cta syl-save" onclick="sfSaveMilestones()">${_check()}<span>שמור מסלול</span></button>
@@ -190,17 +194,131 @@
     sfRenderSyllabusCard();
   };
 
+  // ── AI milestone generation (from pasted syllabus / link / free text) ───────
+  window.sfAIMakeMilestones = async function () {
+    const inp = document.getElementById('syl-ai-input'); if (!inp) return;
+    const text = inp.value.trim();
+    if (!text) { _toast('הדבק סילבוס/קישור או כתוב מה לכלול'); return; }
+    if (!window.callAI) { _toast('ה-AI לא זמין כאן — הזן אבני דרך ידנית'); return; }
+    const btn = document.getElementById('syl-ai-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'מכין...'; }
+    try {
+      const sheet = document.querySelector('#syl-editor .syl-sheet');
+      const c = _courses().find(x => String(x.id) === String(sheet && sheet.dataset.cid));
+      const today = _today();
+      const sys = `אתה עוזר שמכין אבני-דרך ללימוד קורס. בהינתן סילבוס (טקסט/קישור) או בקשה חופשית של הסטודנט — החזר אבני דרך מתוארכות.
+- כל אבן דרך: {"date":"YYYY-MM-DD","topic":"נושא קצר וברור","type":"topic"}. האחרונה היא המבחן: type:"exam".
+- אם אין תאריכים מפורשים — פזר באופן סביר (בערך שבועי) החל מ-${today}.
+- אם המידע לא מספיק כדי לבנות מסלול טוב, החזר במקום זאת: {"need":"שאלה קצרה אחת בעברית למשתמש"}.
+החזר אך ורק JSON: {"milestones":[...]} או {"need":"..."}. בלי טקסט נוסף.`;
+      const user = `קורס: ${c ? c.name : ''}\nהיום: ${today}\nקלט מהמשתמש:\n${text}`;
+      const raw = await window.callAI({ messages: [{ role: 'system', content: sys }, { role: 'user', content: user }], temperature: 0.3, json: true, maxTokens: 1500 });
+      const obj = window.extractJSON ? window.extractJSON(raw) : JSON.parse(raw);
+      if (obj && obj.need) { _toast(obj.need); return; }   // AI needs more — ask the user
+      const ms = (obj && Array.isArray(obj.milestones)) ? obj.milestones : (Array.isArray(obj) ? obj : []);
+      if (!ms.length) throw new Error('empty');
+      const wrap = document.getElementById('syl-rows'); if (wrap) wrap.innerHTML = '';
+      ms.forEach(m => _addRow(wrap, { date: m.date, topic: m.topic, type: m.type === 'exam' ? 'exam' : 'topic' }));
+      _toast(`הוכנו ${ms.length} אבני דרך ✓ — בדוק, ערוך ושמור`);
+    } catch (e) {
+      _toast('ה-AI לא הצליח כרגע — נסה שוב או הזן ידנית');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '✨ תן ל-AI להכין'; }
+    }
+  };
+
+  // ── MILESTONE PATH in the Progress page — planned vs actual + XP (the MAIN) ──
+  const XP_PER = 30;
+  function _awardXP(n) { const s = _S(); s.points = Math.max(0, (s.points || 0) + n); _save(); if (window.toast) toast((n > 0 ? '+' : '') + n + ' XP'); }
+
+  window.sfReachMilestone = function (cid, mid) {
+    if (!isP()) { if (window.AIWP && AIWP.openPaywall) AIWP.openPaywall(); return; }
+    const c = _courses().find(x => String(x.id) === String(cid)); if (!c) return;
+    const m = (c.milestones || []).find(x => String(x.id) === String(mid)); if (!m) return;
+    m.done = !m.done;
+    _awardXP(m.done ? XP_PER : -XP_PER);
+    if (window.renderProgress) { try { window.renderProgress(); } catch (e) { sfRenderMilestonePath(); } }
+    else sfRenderMilestonePath();
+  };
+
+  function sfRenderMilestonePath() {
+    const page = document.getElementById('page-progress'); if (!page) return;
+    let card = document.getElementById('mst-card'); if (card) card.remove();
+    card = document.createElement('div'); card.id = 'mst-card';
+
+    if (!isP()) {
+      card.innerHTML =
+        `<div class="mst-wrap syl-locked">
+           <div class="aiwp-badge aiwp-badge-locked">${_lock()}<span>פרימיום · נעול</span></div>
+           <div class="syl-title">מסלול הסילבוס</div>
+           <div class="syl-sub">עקוב אחרי המסלול שלך מול הסילבוס, צבור XP על כל אבן דרך, וראה אם אתה במסלול.</div>
+           <button class="aiwp-cta" onclick="AIWP&&AIWP.openPaywall&&AIWP.openPaywall()">${_spark()}<span>שדרג לפרימיום</span></button>
+         </div>`;
+      _mountTop(page, card); return;
+    }
+
+    const courses = _courses().filter(c => _ordered(c).length);
+    if (!courses.length) {
+      card.innerHTML = `<div class="mst-wrap"><div class="mst-top"><div class="syl-title">מסלול הסילבוס</div><span class="aiwp-badge"><span>${_spark()}</span><span>פרימיום</span></span></div><div class="syl-sub">הגדר אבני דרך לקורסים (במסך "סיכום שבועי" → ערוך) כדי לראות את המסלול שלך כאן.</div></div>`;
+      _mountTop(page, card); return;
+    }
+
+    const blocks = courses.map(c => {
+      const ms = _ordered(c);
+      const st = sfMilestoneStatus(c);
+      const shouldIdx = st ? st.idx : 0;                 // 1-based: where you should be by date
+      const doneCount = ms.filter(m => m.done).length;
+      const status = doneCount >= shouldIdx ? { t: doneCount > shouldIdx ? 'מקדים 🎉' : 'במסלול', cls: 'on' }
+                                            : { t: `מאחור ב-${shouldIdx - doneCount}`, cls: 'behind' };
+      const nodes = ms.map((m, i) => {
+        const isExam = m.type === 'exam';
+        const cls = m.done ? 'done' : (i === shouldIdx - 1 ? 'should' : 'future');
+        const ic = m.done ? _check() : (isExam ? _target() : (i + 1));
+        return `<button class="mst-node ${cls}${isExam ? ' exam' : ''}" onclick="sfReachMilestone('${c.id}','${m.id}')" title="${_esc(m.topic)}${m.date ? ' · ' + _fmt(m.date) : ''}">
+                  <span class="mst-ic">${ic}</span>
+                  <span class="mst-lbl">${_esc(isExam ? 'מבחן' : m.topic)}</span>
+                </button>`;
+      }).join('');
+      return `<div class="mst-course">
+          <div class="mst-hd"><div class="mst-name">${_esc(c.name)}</div><div class="mst-status ${status.cls}">${status.t}</div></div>
+          <div class="mst-track">${nodes}</div>
+        </div>`;
+    }).join('');
+
+    const totalXP = courses.reduce((s, c) => s + _ordered(c).filter(m => m.done).length, 0) * XP_PER;
+    card.innerHTML =
+      `<div class="mst-wrap">
+         <div class="mst-top"><div class="syl-title">מסלול הסילבוס</div><div class="mst-xp">${_spark()}<span>${totalXP} XP</span></div></div>
+         <div class="mst-sub">לחץ על אבן דרך כשסיימת אותה — תזכה ב-${XP_PER} XP ותראה אם אתה במסלול.</div>
+         ${blocks}
+       </div>`;
+    _mountTop(page, card);
+  }
+  window.sfRenderMilestonePath = sfRenderMilestonePath;
+
+  function _mountTop(page, card) {
+    const header = page.querySelector('.page-header');
+    if (header && header.parentNode) header.parentNode.insertBefore(card, header.nextSibling);
+    else page.insertBefore(card, page.firstChild);
+  }
+
   // ── tiny inline icons ───────────────────────────────────────────────────────
+  function _target() { return '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.4"/></svg>'; }
   function _spark() { return '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/></svg>'; }
   function _lock() { return '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>'; }
   function _check() { return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'; }
 
-  // ── Non-invasively render the card whenever the weekly review repaints ──────
+  // ── Non-invasively inject our cards whenever those pages repaint ────────────
   function _hook() {
     if (typeof window.renderWeeklyReview === 'function' && !window.renderWeeklyReview._sylWrapped) {
       const orig = window.renderWeeklyReview;
       window.renderWeeklyReview = function () { const r = orig.apply(this, arguments); try { sfRenderSyllabusCard(); } catch (e) {} return r; };
       window.renderWeeklyReview._sylWrapped = true;
+    }
+    if (typeof window.renderProgress === 'function' && !window.renderProgress._sylWrapped) {
+      const origP = window.renderProgress;
+      window.renderProgress = function () { const r = origP.apply(this, arguments); try { sfRenderMilestonePath(); } catch (e) {} return r; };
+      window.renderProgress._sylWrapped = true;
     }
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(_hook, 0));
