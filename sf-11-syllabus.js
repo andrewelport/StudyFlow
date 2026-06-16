@@ -121,8 +121,12 @@
          </div>
          <div class="syl-intro">הדבק את הסילבוס (טקסט/קישור) או ספר לי מה אתה לומד — אבנה לך את אבני הדרך, ואשאל אם חסר לי תאריך (כמו מתי המבחן).</div>
          <div class="syl-ai">
-           <textarea id="syl-ai-input" class="syl-ai-input" rows="2" placeholder="הדבק סילבוס / קישור, או כתוב מה אתה לומד..."></textarea>
-           <button id="syl-ai-btn" class="syl-ai-btn" onclick="sfAIMakeMilestones()">✨ תן ל-AI להכין</button>
+           <textarea id="syl-ai-input" class="syl-ai-input" rows="3" placeholder="הדבק את הסילבוס / קישור, או כתוב את הנושאים (שורה לכל נושא)..."></textarea>
+           <div class="syl-ai-actions">
+             <input type="file" id="syl-file" accept=".pdf,image/*,.txt" style="display:none" onchange="sfMilestoneFile(this)">
+             <button class="syl-file-btn" onclick="document.getElementById('syl-file').click()">${_clip()}<span>קובץ</span></button>
+             <button id="syl-ai-btn" class="syl-ai-btn" onclick="sfAIMakeMilestones()">${_spark()}<span class="syl-ai-lbl">צור אבני דרך</span></button>
+           </div>
          </div>
          <div id="syl-q" class="syl-q" style="display:none"></div>
          <div id="syl-list"></div>
@@ -180,13 +184,34 @@
   };
 
   // ── AI milestone generation (from pasted syllabus / link / free text) ───────
+  function _btnLoad(on) { const b = document.getElementById('syl-ai-btn'); if (!b) return; b.disabled = on; const l = b.querySelector('.syl-ai-lbl'); if (l) l.textContent = on ? 'מכין...' : 'צור אבני דרך'; }
+  function _applyMilestones(ms, fromAI) {
+    if (!_mEdit || !ms || !ms.length) return false;
+    const q = document.getElementById('syl-q'); if (q) q.style.display = 'none';
+    _mEdit.milestones = ms.map(m => ({ id: _uid(), date: m.date, topic: m.topic || 'מבחן', type: m.type === 'exam' ? 'exam' : 'topic' })).filter(m => m.date);
+    _renderMilestoneList();
+    _toast(fromAI ? `הוכנו ${_mEdit.milestones.length} אבני דרך ✓ — בדוק ושמור` : `נבנו ${_mEdit.milestones.length} אבני דרך — ערוך ושמור (ה-AI החכם רץ בגרסה החיה)`);
+    return true;
+  }
+  // Offline / no-AI fallback: split the text into topics, spread ~weekly, last = exam.
+  function _fallbackMilestones(text) {
+    const fdate = (dd) => (window.ld ? window.ld(dd) : dd.toISOString().slice(0, 10));
+    const examRe = /מבחן|בחינה|exam|מועד\s*א/i;
+    let topics = String(text || '').split(/[\n,;•·]+|\s—\s/).map(s => s.replace(/^\s*(?:[-–*]|\d+[.)]|שבוע\s*\d+|פרק\s*\d+)\s*[:.\-–]?\s*/i, '').trim()).filter(t => t.length > 1).slice(0, 14);
+    const hasExam = topics.some(t => examRe.test(t));
+    if (!topics.length) topics = ['נושא ראשון', 'נושא שני', 'נושא שלישי'];
+    const out = []; let d = new Date();
+    topics.forEach(t => { out.push({ date: fdate(d), topic: t, type: examRe.test(t) ? 'exam' : 'topic' }); d = new Date(d.getTime() + 7 * 86400000); });
+    if (!hasExam) out.push({ date: fdate(d), topic: 'מבחן', type: 'exam' });
+    return out;
+  }
+
   window.sfAIMakeMilestones = async function () {
     const inp = document.getElementById('syl-ai-input'); if (!inp) return;
     const text = inp.value.trim();
-    if (!text) { _toast('הדבק סילבוס/קישור או כתוב מה לכלול'); return; }
-    if (!window.callAI) { _toast('ה-AI לא זמין כאן — הזן אבני דרך ידנית'); return; }
-    const btn = document.getElementById('syl-ai-btn');
-    if (btn) { btn.disabled = true; btn.textContent = 'מכין...'; }
+    if (!text) { _toast('הדבק סילבוס/קישור או כתוב את הנושאים'); return; }
+    _btnLoad(true);
+    if (!window.callAI) { _applyMilestones(_fallbackMilestones(text), false); _btnLoad(false); return; }
     try {
       const sheet = document.querySelector('#syl-editor .syl-sheet');
       const c = _courses().find(x => String(x.id) === String(sheet && sheet.dataset.cid));
@@ -199,22 +224,52 @@
       const user = `קורס: ${c ? c.name : ''}\nהיום: ${today}\nקלט מהמשתמש:\n${text}`;
       const raw = await window.callAI({ messages: [{ role: 'system', content: sys }, { role: 'user', content: user }], temperature: 0.3, json: true, maxTokens: 1500 });
       const obj = window.extractJSON ? window.extractJSON(raw) : JSON.parse(raw);
-      const q = document.getElementById('syl-q');
-      if (obj && obj.need) {   // AI needs more (e.g. dates) — ask inline, keep the input open
-        if (q) { q.style.display = ''; q.textContent = obj.need; }
-        return;
-      }
+      if (obj && obj.need) { const q = document.getElementById('syl-q'); if (q) { q.style.display = ''; q.textContent = obj.need; } return; }
       const ms = (obj && Array.isArray(obj.milestones)) ? obj.milestones : (Array.isArray(obj) ? obj : []);
       if (!ms.length) throw new Error('empty');
-      if (q) q.style.display = 'none';
-      _mEdit.milestones = ms.map(m => ({ id: _uid(), date: m.date, topic: m.topic || 'מבחן', type: m.type === 'exam' ? 'exam' : 'topic' }));
-      _renderMilestoneList();
-      _toast(`הוכנו ${ms.length} אבני דרך ✓ — בדוק ושמור`);
+      _applyMilestones(ms, true);
     } catch (e) {
-      _toast('ה-AI לא הצליח כרגע — נסה שוב או הזן ידנית');
+      _applyMilestones(_fallbackMilestones(text), false);   // offline / error → local build so the track is still usable
     } finally {
-      if (btn) { btn.disabled = false; btn.textContent = '✨ תן ל-AI להכין'; }
+      _btnLoad(false);
     }
+  };
+
+  // Upload a syllabus FILE (PDF / image) → multimodal proxy → milestones.
+  window.sfMilestoneFile = function (input) {
+    const file = input && input.files && input.files[0]; if (!file) return;
+    input.value = '';
+    if (file.size > 8 * 1024 * 1024) { _toast('הקובץ גדול מדי (עד 8MB)'); return; }
+    _toast('קורא את הקובץ...'); _btnLoad(true);
+    const reader = new FileReader();
+    reader.onerror = () => { _toast('לא הצלחנו לקרוא את הקובץ'); _btnLoad(false); };
+    reader.onload = async () => {
+      try {
+        const data = String(reader.result).split(',')[1];
+        const today = _today();
+        const sheet = document.querySelector('#syl-editor .syl-sheet');
+        const c = _courses().find(x => String(x.id) === String(sheet && sheet.dataset.cid));
+        const body = {
+          messages: [
+            { role: 'system', content: 'אתה מחלץ אבני-דרך ללימוד מתוך קובץ סילבוס (PDF/תמונה). החזר JSON בלבד: {"milestones":[{"date":"YYYY-MM-DD","topic":"","type":"topic|exam"}]}.' },
+            { role: 'user', content: `קורס: ${c ? c.name : ''}. היום: ${today}. חלץ את אבני הדרך (נושא + תאריך). אם אין תאריך מפורש — פזר שבועי החל מהיום. האחרונה היא המבחן (type:"exam").` }
+          ],
+          json: true, maxTokens: 1800, temperature: 0.2,
+          files: [{ mime_type: file.type || 'application/pdf', data }]
+        };
+        const res = await fetch('/api/groq-proxy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        if (!res.ok) throw new Error('proxy ' + res.status);
+        const d = await res.json();
+        const content = d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
+        const obj = window.extractJSON ? window.extractJSON(content) : JSON.parse(content);
+        const ms = (obj && Array.isArray(obj.milestones)) ? obj.milestones : (Array.isArray(obj) ? obj : []);
+        if (!ms.length) throw new Error('empty');
+        _applyMilestones(ms, true);
+      } catch (e) {
+        _toast('חילוץ מקובץ זמין בגרסה החיה. בינתיים הדבק את הסילבוס כטקסט.');
+      } finally { _btnLoad(false); }
+    };
+    reader.readAsDataURL(file);
   };
 
   // ── MILESTONE PATH in the Progress page — planned vs actual + XP (the MAIN) ──
@@ -294,6 +349,7 @@
 
   // ── tiny inline icons ───────────────────────────────────────────────────────
   function _target() { return '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.4"/></svg>'; }
+  function _clip() { return '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.4 11.05 12.2 20.2a5 5 0 0 1-7.1-7.05l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.6 1.6 0 0 1-2.3-2.3l7.8-7.8"/></svg>'; }
   function _spark() { return '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/></svg>'; }
   function _lock() { return '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>'; }
   function _check() { return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'; }

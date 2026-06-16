@@ -1515,9 +1515,14 @@ input.ob2-inp-lg { font-size: 1.15rem !important; font-weight: 700 !important; p
 .syl-ai { background: var(--a-grad-soft); border: 1px solid rgba(91,102,242,0.18); border-radius: var(--a-r-sm); padding: 10px; margin-bottom: 12px; }
 .syl-ai-input { width: 100%; box-sizing: border-box; background: var(--a-sur) !important; border: 1px solid var(--a-bor) !important; border-radius: 12px !important; padding: 10px 12px !important; font-family: Heebo, sans-serif !important; font-size: 0.88rem !important; color: var(--a-ink) !important; resize: vertical; min-height: 52px; margin-bottom: 8px; }
 .syl-ai-input:focus { outline: none; border-color: var(--a-brand) !important; box-shadow: 0 0 0 3px var(--a-soft) !important; }
-.syl-ai-btn { width: 100%; background: var(--a-grad) !important; color: #fff !important; border: none; border-radius: 12px; padding: 11px; font-size: 0.92rem; font-weight: 800; cursor: pointer; font-family: Heebo, sans-serif; box-shadow: 0 6px 14px -4px var(--a-glow); }
+.syl-ai-actions { display: flex; gap: 8px; }
+.syl-ai-btn { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px; background: var(--a-grad) !important; color: #fff !important; border: none; border-radius: 12px; padding: 12px; font-size: 0.92rem; font-weight: 800; cursor: pointer; font-family: Heebo, sans-serif; box-shadow: 0 6px 14px -4px var(--a-glow); }
+.syl-ai-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
 .syl-ai-btn:active { transform: scale(0.98); }
 .syl-ai-btn:disabled { opacity: 0.6; pointer-events: none; }
+.syl-file-btn { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; background: var(--a-sur); color: var(--a-ink-2); border: 1px solid var(--a-bor); border-radius: 12px; padding: 12px 14px; font-size: 0.9rem; font-weight: 700; cursor: pointer; font-family: Heebo, sans-serif; }
+.syl-file-btn svg { width: 16px; height: 16px; color: var(--a-brand); }
+.syl-file-btn:active { transform: scale(0.96); background: var(--a-sur-2); }
 .syl-intro { font-size: 0.85rem; color: var(--a-ink-3); line-height: 1.55; margin-bottom: 12px; }
 .syl-q { background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3); border-radius: 12px; padding: 10px 13px; margin-bottom: 12px; font-size: 0.88rem; font-weight: 700; color: #8a5a06; line-height: 1.5; }
 [data-theme="dark"] .syl-q { color: var(--a-prem-2); }
