@@ -100,7 +100,8 @@
     else page.insertBefore(card, page.firstChild);
   }
 
-  // ── Milestone editor (manual + "from syllabus") ─────────────────────────────
+  // ── Milestone editor — chat / AI based (no manual date fields) ──────────────
+  let _mEdit = null;   // { courseId, milestones: [] }
   function sfOpenMilestoneEditor(courseId) {
     if (!isP()) { if (window.AIWP && AIWP.openPaywall) AIWP.openPaywall(); return; }
     const course = _courses().find(c => String(c.id) === String(courseId));
@@ -118,64 +119,47 @@
            <div class="syl-sheet-title">אבני דרך · ${_esc(course.name)}</div>
            <button class="anc-sheet-close" onclick="sfCloseMilestoneEditor()" aria-label="סגור">✕</button>
          </div>
-         <div class="syl-mode">
-           <button class="syl-mode-btn ${course.track !== 'manual' ? 'on' : ''}" onclick="sfSetTrack('syllabus')">לפי הסילבוס</button>
-           <button class="syl-mode-btn ${course.track === 'manual' ? 'on' : ''}" onclick="sfSetTrack('manual')">אני מגדיר</button>
-         </div>
-         <div class="syl-hint" id="syl-hint">${course.track === 'manual' ? 'הוסף אבני דרך משלך: תאריך + מה לומדים. האחרונה = המבחן.' : 'הזן את אבני הדרך מהסילבוס (תאריך + נושא). האחרונה = המבחן.'}</div>
+         <div class="syl-intro">הדבק את הסילבוס (טקסט/קישור) או ספר לי מה אתה לומד — אבנה לך את אבני הדרך, ואשאל אם חסר לי תאריך (כמו מתי המבחן).</div>
          <div class="syl-ai">
-           <textarea id="syl-ai-input" class="syl-ai-input" rows="2" placeholder="הדבק את הסילבוס (טקסט/קישור), או כתוב מה לכלול ועד מתי — וה-AI יכין את אבני הדרך"></textarea>
+           <textarea id="syl-ai-input" class="syl-ai-input" rows="2" placeholder="הדבק סילבוס / קישור, או כתוב מה אתה לומד..."></textarea>
            <button id="syl-ai-btn" class="syl-ai-btn" onclick="sfAIMakeMilestones()">✨ תן ל-AI להכין</button>
          </div>
-         <div id="syl-rows"></div>
-         <button class="syl-add" onclick="sfAddMilestoneRow()">+ הוסף אבן דרך</button>
-         <button class="aiwp-cta syl-save" onclick="sfSaveMilestones()">${_check()}<span>שמור מסלול</span></button>
+         <div id="syl-q" class="syl-q" style="display:none"></div>
+         <div id="syl-list"></div>
+         <button class="aiwp-cta syl-save" id="syl-save" style="display:none" onclick="sfSaveAIMilestones()">${_check()}<span>שמור מסלול</span></button>
        </div>`;
     document.body.appendChild(ov);
-    const rowsWrap = ov.querySelector('#syl-rows');
-    const ms = _ordered(course);
-    if (ms.length) ms.forEach(m => _addRow(rowsWrap, m));
-    else { _addRow(rowsWrap, { date: '', topic: '', type: 'topic' }); _addRow(rowsWrap, { date: '', topic: '', type: 'exam' }); }
+    _mEdit = { courseId: course.id, milestones: _ordered(course).slice() };
+    _renderMilestoneList();
     if (window._setBodyLock) window._setBodyLock(true);
   }
   window.sfOpenMilestoneEditor = sfOpenMilestoneEditor;
 
-  function _addRow(wrap, m) {
-    const row = document.createElement('div');
-    row.className = 'syl-mrow' + (m.type === 'exam' ? ' syl-mrow-exam' : '');
-    row.innerHTML =
-      `<input type="date" class="syl-i-date" value="${m.date || ''}" />
-       <input type="text" class="syl-i-topic" placeholder="${m.type === 'exam' ? 'מבחן' : 'נושא (פרק, יחידה...)'}" value="${_esc(m.topic || (m.type === 'exam' ? 'מבחן' : ''))}" />
-       <button class="syl-i-exam ${m.type === 'exam' ? 'on' : ''}" title="סמן כמבחן" onclick="sfToggleExamRow(this)">🎯</button>
-       <button class="syl-i-del" title="מחק" onclick="this.closest('.syl-mrow').remove()">✕</button>`;
-    wrap.appendChild(row);
+  // Read-only review list of the AI-built milestones (topic + date, removable).
+  function _renderMilestoneList() {
+    const wrap = document.getElementById('syl-list'); const saveBtn = document.getElementById('syl-save');
+    if (!wrap || !_mEdit) return;
+    const ms = _mEdit.milestones || [];
+    if (!ms.length) { wrap.innerHTML = ''; if (saveBtn) saveBtn.style.display = 'none'; return; }
+    wrap.innerHTML = '<div class="syl-list-lbl">אבני הדרך שהוכנו · בדוק ושמור</div>' + ms.map((m, i) =>
+      `<div class="syl-li${m.type === 'exam' ? ' syl-li-exam' : ''}">
+         <span class="syl-li-ic">${m.type === 'exam' ? _target() : (i + 1)}</span>
+         <div class="syl-li-main"><div class="syl-li-topic">${_esc(m.type === 'exam' ? 'מבחן' : m.topic)}</div><div class="syl-li-date">${_fmt(m.date)}</div></div>
+         <button class="syl-li-del" title="הסר" onclick="sfRemoveMilestone(${i})">✕</button>
+       </div>`).join('');
+    if (saveBtn) saveBtn.style.display = '';
   }
-  window.sfAddMilestoneRow = function () { const w = document.getElementById('syl-rows'); if (w) _addRow(w, { date: '', topic: '', type: 'topic' }); };
-  window.sfToggleExamRow = function (btn) {
-    document.querySelectorAll('#syl-rows .syl-i-exam.on').forEach(b => { if (b !== btn) { b.classList.remove('on'); b.closest('.syl-mrow').classList.remove('syl-mrow-exam'); } });
-    btn.classList.toggle('on');
-    btn.closest('.syl-mrow').classList.toggle('syl-mrow-exam', btn.classList.contains('on'));
-  };
-  window.sfSetTrack = function (mode) {
-    const sheet = document.querySelector('#syl-editor .syl-sheet'); if (!sheet) return;
-    const c = _courses().find(x => String(x.id) === String(sheet.dataset.cid)); if (c) c.track = mode;
-    sheet.querySelectorAll('.syl-mode-btn').forEach((b, i) => b.classList.toggle('on', (mode === 'manual') === (i === 1)));
-    const hint = document.getElementById('syl-hint');
-    if (hint) hint.textContent = mode === 'manual' ? 'הוסף אבני דרך משלך: תאריך + מה לומדים. האחרונה = המבחן.' : 'הזן את אבני הדרך מהסילבוס (תאריך + נושא). האחרונה = המבחן.';
-  };
+  window.sfRemoveMilestone = function (i) { if (_mEdit && _mEdit.milestones) { _mEdit.milestones.splice(i, 1); _renderMilestoneList(); } };
   window.sfCloseMilestoneEditor = function () { const ov = document.getElementById('syl-editor'); if (ov) ov.remove(); if (window._setBodyLock) window._setBodyLock(false); };
 
-  window.sfSaveMilestones = function () {
-    const sheet = document.querySelector('#syl-editor .syl-sheet'); if (!sheet) return;
-    const course = _courses().find(c => String(c.id) === String(sheet.dataset.cid)); if (!course) return;
-    const out = [];
-    document.querySelectorAll('#syl-rows .syl-mrow').forEach(r => {
-      const date = r.querySelector('.syl-i-date').value;
-      const topic = r.querySelector('.syl-i-topic').value.trim();
-      const isExam = r.querySelector('.syl-i-exam').classList.contains('on');
-      if (date && (topic || isExam)) out.push({ id: _uid(), date, topic: topic || 'מבחן', type: isExam ? 'exam' : 'topic' });
-    });
-    out.sort((a, b) => a.date.localeCompare(b.date));
+  window.sfSaveAIMilestones = function () {
+    if (!_mEdit) return;
+    const course = _courses().find(c => String(c.id) === String(_mEdit.courseId)); if (!course) return;
+    const out = (_mEdit.milestones || [])
+      .filter(m => m && m.date)
+      .map(m => ({ id: m.id || _uid(), date: m.date, topic: m.topic || 'מבחן', type: m.type === 'exam' ? 'exam' : 'topic' }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+    if (!out.length) { _toast('אין אבני דרך לשמירה'); return; }
     course.milestones = out;
     if (!course.track) course.track = 'syllabus';
     // If the user marked an exam milestone, mirror it into the exams list so the
@@ -191,7 +175,8 @@
     sfCloseMilestoneEditor();
     _toast('המסלול נשמר ✓');
     if (window.renderWeeklyReview) try { window.renderWeeklyReview(); } catch (e) {}
-    sfRenderSyllabusCard();
+    try { sfRenderSyllabusCard(); } catch (e) {}
+    try { sfRenderMilestonePath(); } catch (e) {}
   };
 
   // ── AI milestone generation (from pasted syllabus / link / free text) ───────
@@ -214,12 +199,17 @@
       const user = `קורס: ${c ? c.name : ''}\nהיום: ${today}\nקלט מהמשתמש:\n${text}`;
       const raw = await window.callAI({ messages: [{ role: 'system', content: sys }, { role: 'user', content: user }], temperature: 0.3, json: true, maxTokens: 1500 });
       const obj = window.extractJSON ? window.extractJSON(raw) : JSON.parse(raw);
-      if (obj && obj.need) { _toast(obj.need); return; }   // AI needs more — ask the user
+      const q = document.getElementById('syl-q');
+      if (obj && obj.need) {   // AI needs more (e.g. dates) — ask inline, keep the input open
+        if (q) { q.style.display = ''; q.textContent = obj.need; }
+        return;
+      }
       const ms = (obj && Array.isArray(obj.milestones)) ? obj.milestones : (Array.isArray(obj) ? obj : []);
       if (!ms.length) throw new Error('empty');
-      const wrap = document.getElementById('syl-rows'); if (wrap) wrap.innerHTML = '';
-      ms.forEach(m => _addRow(wrap, { date: m.date, topic: m.topic, type: m.type === 'exam' ? 'exam' : 'topic' }));
-      _toast(`הוכנו ${ms.length} אבני דרך ✓ — בדוק, ערוך ושמור`);
+      if (q) q.style.display = 'none';
+      _mEdit.milestones = ms.map(m => ({ id: _uid(), date: m.date, topic: m.topic || 'מבחן', type: m.type === 'exam' ? 'exam' : 'topic' }));
+      _renderMilestoneList();
+      _toast(`הוכנו ${ms.length} אבני דרך ✓ — בדוק ושמור`);
     } catch (e) {
       _toast('ה-AI לא הצליח כרגע — נסה שוב או הזן ידנית');
     } finally {

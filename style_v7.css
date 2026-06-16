@@ -1518,6 +1518,18 @@ input.ob2-inp-lg { font-size: 1.15rem !important; font-weight: 700 !important; p
 .syl-ai-btn { width: 100%; background: var(--a-grad) !important; color: #fff !important; border: none; border-radius: 12px; padding: 11px; font-size: 0.92rem; font-weight: 800; cursor: pointer; font-family: Heebo, sans-serif; box-shadow: 0 6px 14px -4px var(--a-glow); }
 .syl-ai-btn:active { transform: scale(0.98); }
 .syl-ai-btn:disabled { opacity: 0.6; pointer-events: none; }
+.syl-intro { font-size: 0.85rem; color: var(--a-ink-3); line-height: 1.55; margin-bottom: 12px; }
+.syl-q { background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3); border-radius: 12px; padding: 10px 13px; margin-bottom: 12px; font-size: 0.88rem; font-weight: 700; color: #8a5a06; line-height: 1.5; }
+[data-theme="dark"] .syl-q { color: var(--a-prem-2); }
+.syl-list-lbl { font-size: 0.72rem; font-weight: 800; color: var(--a-ink-3); letter-spacing: 0.02em; margin: 4px 2px 8px; text-transform: uppercase; }
+.syl-li { display: flex; align-items: center; gap: 11px; background: var(--a-sur-2); border: 0.5px solid var(--a-bor); border-radius: 12px; padding: 9px 11px; margin-bottom: 7px; }
+.syl-li-exam { background: rgba(232,165,61,0.10); border-color: rgba(232,165,61,0.3); }
+.syl-li-ic { flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; background: var(--a-grad-soft); color: var(--a-brand); display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 900; }
+.syl-li-exam .syl-li-ic { background: linear-gradient(135deg, #F6C863, #E8A53D); color: #3a2a06; }
+.syl-li-main { flex: 1; min-width: 0; }
+.syl-li-topic { font-size: 0.9rem; font-weight: 700; color: var(--a-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.syl-li-date { font-size: 0.74rem; color: var(--a-ink-3); margin-top: 1px; }
+.syl-li-del { flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; border: none; background: var(--a-sur-3); color: var(--a-ink-4); cursor: pointer; font-size: 0.8rem; }
 
 /* ─── 21g. MILESTONE PATH (Progress page · the centrepiece) ───────── */
 .mst-wrap { background: var(--a-sur); border: 0.5px solid var(--a-bor); border-radius: var(--a-r-lg); box-shadow: var(--a-sh-2); padding: 16px 14px 18px; margin-bottom: 16px; animation: aRise 0.5s var(--a-swift) both; }
