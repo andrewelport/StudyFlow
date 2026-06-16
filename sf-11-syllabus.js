@@ -77,11 +77,14 @@
           <span class="syl-dot" style="background:${dot}"></span>
           <div class="syl-row-main">
             <div class="syl-course">${_esc(c.name)}</div>
-            <div class="syl-where">${st.examMode ? '🎯 ' : ''}אמור להיות ב: <b>${_esc(st.expected || '—')}</b></div>
+            <div class="syl-where">אמור להיות ב: <b>${_esc(st.expected || '—')}</b></div>
             ${st.sub ? `<div class="syl-where syl-muted">${_esc(st.sub)}</div>` : ''}
+            <div style="margin-top:8px"><button class="syl-edit" style="background:var(--a-grad); color:white; border:none; padding:5px 12px; font-weight:800; border-radius:8px; display:inline-flex; align-items:center; gap:4px" onclick="if(window.sfOpenTutor) sfOpenTutor('${c.id}')">${_spark()} מורה פרטי</button></div>
           </div>
-          <div class="syl-prog">${st.idx}/${st.total}</div>
-          <button class="syl-edit" onclick="sfOpenMilestoneEditor('${c.id}')">ערוך</button>
+          <div class="syl-prog-col" style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+            <div class="syl-prog">${st.idx}/${st.total}</div>
+            <button class="syl-edit" onclick="sfOpenMilestoneEditor('${c.id}')">ערוך</button>
+          </div>
         </div>`;
     }).join('');
 
@@ -119,13 +122,21 @@
            <div class="syl-sheet-title">אבני דרך · ${_esc(course.name)}</div>
            <button class="anc-sheet-close" onclick="sfCloseMilestoneEditor()" aria-label="סגור">✕</button>
          </div>
-         <div class="syl-intro">הדבק את הסילבוס (טקסט/קישור) או ספר לי מה אתה לומד — אבנה לך את אבני הדרך, ואשאל אם חסר לי תאריך (כמו מתי המבחן).</div>
-         <div class="syl-ai">
-           <textarea id="syl-ai-input" class="syl-ai-input" rows="3" placeholder="הדבק את הסילבוס / קישור, או כתוב את הנושאים (שורה לכל נושא)..."></textarea>
-           <div class="syl-ai-actions">
-             <input type="file" id="syl-file" accept=".pdf,image/*,.txt" style="display:none" onchange="sfMilestoneFile(this)">
-             <button class="syl-file-btn" onclick="document.getElementById('syl-file').click()">${_clip()}<span>קובץ</span></button>
-             <button id="syl-ai-btn" class="syl-ai-btn" onclick="sfAIMakeMilestones()">${_spark()}<span class="syl-ai-lbl">צור אבני דרך</span></button>
+         <div class="syl-intro">בנה את מסלול אבני הדרך — מקובץ הסילבוס, או בשיחה מודרכת קצרה.</div>
+         <input type="file" id="syl-file" accept=".pdf,image/*,.txt" style="display:none" onchange="sfMilestoneFile(this)">
+         <div class="syl-entry">
+           <button class="syl-entry-btn" onclick="document.getElementById('syl-file').click()">${_clip()}<span>קובץ סילבוס</span></button>
+           <button class="syl-entry-btn primary" onclick="sfStartWizard()">${_chat()}<span>בנה בשיחה</span></button>
+         </div>
+         <div id="syl-wiz"></div>
+         <button class="syl-paste-toggle" onclick="this.nextElementSibling.style.display='block';this.style.display='none'">או הזנה ידנית / הדבקת טקסט ←</button>
+         <div class="syl-adv" style="display:none">
+           <textarea id="syl-ai-input" class="syl-ai-input" rows="3" placeholder="הדבק סילבוס / קישור / נושאים (שורה לכל נושא)..."></textarea>
+           <button id="syl-ai-btn" class="syl-ai-btn" onclick="sfAIMakeMilestones()">${_spark()}<span class="syl-ai-lbl">צור אבני דרך</span></button>
+           <div class="syl-manual-add">
+             <input type="text" id="syl-man-topic" class="syl-man-i" placeholder="נושא / פרק..." />
+             <input type="date" id="syl-man-date" class="syl-man-i syl-man-d" />
+             <button class="syl-man-add" onclick="sfAddManualMilestone()">+</button>
            </div>
          </div>
          <div id="syl-q" class="syl-q" style="display:none"></div>
@@ -154,6 +165,16 @@
     if (saveBtn) saveBtn.style.display = '';
   }
   window.sfRemoveMilestone = function (i) { if (_mEdit && _mEdit.milestones) { _mEdit.milestones.splice(i, 1); _renderMilestoneList(); } };
+  window.sfAddManualMilestone = function() {
+    const t = document.getElementById('syl-man-topic'); const d = document.getElementById('syl-man-date');
+    if (!t || !d || !t.value.trim() || !d.value) { _toast('הכנס נושא ותאריך'); return; }
+    if (!_mEdit) return;
+    _mEdit.milestones.push({ id: _uid(), date: d.value, topic: t.value.trim(), type: /מבחן|בחינה/i.test(t.value)?'exam':'topic' });
+    _mEdit.milestones.sort((a,b)=>a.date.localeCompare(b.date));
+    t.value = ''; d.value = '';
+    _renderMilestoneList();
+    _toast('נוסף בהצלחה ✓');
+  };
   window.sfCloseMilestoneEditor = function () { const ov = document.getElementById('syl-editor'); if (ov) ov.remove(); if (window._setBodyLock) window._setBodyLock(false); };
 
   window.sfSaveAIMilestones = function () {
@@ -272,6 +293,82 @@
     reader.readAsDataURL(file);
   };
 
+  // ── Guided "build in a chat" wizard — questions answered with BUTTONS ───────
+  let _mWiz = null;
+  const _WIZ = [
+    { key: 'exam',  q: 'מתי המבחן / סיום הקורס?', opts: [{ l: 'בעוד שבועיים', v: '14' }, { l: 'בעוד חודש', v: '30' }, { l: 'בעוד חודשיים', v: '60' }, { l: 'תאריך מדויק', v: 'date' }] },
+    { key: 'count', q: 'כמה נושאים מרכזיים בקורס (בערך)?', opts: [{ l: '4', v: '4' }, { l: '6', v: '6' }, { l: '8', v: '8' }, { l: '10', v: '10' }] },
+    { key: 'topics', q: 'רוצה לפרט את שמות הנושאים? (לא חובה — אסדר לבד אם תדלג)', type: 'text' }
+  ];
+  window.sfStartWizard = function () {
+    const adv = document.querySelector('#syl-editor .syl-adv'); if (adv) adv.style.display = 'none';
+    const tog = document.querySelector('#syl-editor .syl-paste-toggle'); if (tog) tog.style.display = '';
+    _mWiz = { step: 0, answers: {}, labels: [], dateMode: false };
+    _wizRender();
+  };
+  function _wizBubble(role, text) { return `<div class="syl-wz-row ${role}"><div class="syl-wz-bub ${role}">${_esc(text)}</div></div>`; }
+  function _wizRender() {
+    const box = document.getElementById('syl-wiz'); if (!box || !_mWiz) return;
+    let html = '<div class="syl-wz-feed">';
+    for (let i = 0; i < _mWiz.step; i++) { html += _wizBubble('ai', _WIZ[i].q) + _wizBubble('me', _mWiz.labels[i]); }
+    if (_mWiz.step < _WIZ.length) {
+      const w = _WIZ[_mWiz.step];
+      html += _wizBubble('ai', w.q);
+      if (w.type === 'text') {
+        html += `<textarea id="syl-wz-text" class="syl-wz-text" rows="2" placeholder="נושא לכל שורה (אופציונלי)"></textarea>
+                 <div class="syl-wz-opts"><button class="syl-wz-btn" onclick="sfWizText(true)">דלג</button><button class="syl-wz-btn on" onclick="sfWizText(false)">סיום ובנייה</button></div>`;
+      } else if (_mWiz.dateMode) {
+        html += `<div class="syl-wz-date"><input type="date" id="syl-wz-d" class="syl-man-i"><button class="syl-wz-btn on" onclick="sfWizDate()">אישור</button></div>`;
+      } else {
+        html += '<div class="syl-wz-opts">' + w.opts.map(o => `<button class="syl-wz-btn" onclick="sfWizAnswer('${o.v}','${_esc(o.l)}')">${o.l}</button>`).join('') + '</div>';
+      }
+    }
+    html += '</div>';
+    box.innerHTML = html;
+    const t = document.getElementById('syl-wz-text'); if (t) t.focus();
+  }
+  window.sfWizAnswer = function (v, label) {
+    const w = _WIZ[_mWiz.step];
+    if (w.key === 'exam' && v === 'date') { _mWiz.dateMode = true; _wizRender(); return; }
+    _mWiz.answers[w.key] = v; _mWiz.labels[_mWiz.step] = label || v; _mWiz.dateMode = false;
+    _mWiz.step++; _wizAdvance();
+  };
+  window.sfWizDate = function () {
+    const d = document.getElementById('syl-wz-d'); if (!d || !d.value) { _toast('בחר תאריך'); return; }
+    _mWiz.answers.examDate = d.value; _mWiz.labels[_mWiz.step] = _fmt(d.value); _mWiz.dateMode = false;
+    _mWiz.step++; _wizAdvance();
+  };
+  window.sfWizText = function (skip) {
+    const t = document.getElementById('syl-wz-text');
+    const val = (!skip && t) ? t.value.trim() : '';
+    _mWiz.answers.topics = val;
+    _mWiz.labels[_mWiz.step] = val ? `${val.split(/[\n,;]+/).filter(Boolean).length} נושאים` : 'שה-AI יסדר';
+    _mWiz.step++; _wizAdvance();
+  };
+  function _wizAdvance() {
+    if (_mWiz.step >= _WIZ.length) {
+      const ms = _wizBuild();
+      const box = document.getElementById('syl-wiz'); if (box) box.innerHTML = '';
+      _mWiz = null;
+      _applyMilestones(ms, false);
+    } else _wizRender();
+  }
+  function _wizBuild() {
+    const a = _mWiz.answers;
+    const fdate = (dd) => (window.ld ? window.ld(dd) : dd.toISOString().slice(0, 10));
+    const today = new Date();
+    const examDate = a.examDate ? new Date(a.examDate + 'T12:00') : new Date(today.getTime() + (parseInt(a.exam) || 30) * 86400000);
+    let topics = a.topics ? a.topics.split(/[\n,;]+/).map(s => s.replace(/^\s*(?:[-–*]|\d+[.)])\s*/, '').trim()).filter(t => t.length > 1) : [];
+    const count = topics.length || (parseInt(a.count) || 6);
+    if (!topics.length) topics = Array.from({ length: count }, (_, i) => `נושא ${i + 1}`);
+    const prepEnd = new Date(examDate.getTime() - 3 * 86400000);
+    const span = Math.max(1, (prepEnd - today) / 86400000);
+    const stepD = span / topics.length;
+    const out = topics.map((t, i) => ({ date: fdate(new Date(today.getTime() + Math.round(stepD * i) * 86400000)), topic: t, type: 'topic' }));
+    out.push({ date: fdate(examDate), topic: 'מבחן', type: 'exam' });
+    return out;
+  }
+
   // ── MILESTONE PATH in the Progress page — planned vs actual + XP (the MAIN) ──
   const XP_PER = 30;
   function _awardXP(n) { const s = _S(); s.points = Math.max(0, (s.points || 0) + n); _save(); if (window.toast) toast((n > 0 ? '+' : '') + n + ' XP'); }
@@ -313,7 +410,7 @@
       const st = sfMilestoneStatus(c);
       const shouldIdx = st ? st.idx : 0;                 // 1-based: where you should be by date
       const doneCount = ms.filter(m => m.done).length;
-      const status = doneCount >= shouldIdx ? { t: doneCount > shouldIdx ? 'מקדים 🎉' : 'במסלול', cls: 'on' }
+      const status = doneCount >= shouldIdx ? { t: doneCount > shouldIdx ? 'מקדים' : 'במסלול', cls: 'on' }
                                             : { t: `מאחור ב-${shouldIdx - doneCount}`, cls: 'behind' };
       const nodes = ms.map((m, i) => {
         const isExam = m.type === 'exam';
@@ -327,6 +424,9 @@
       return `<div class="mst-course">
           <div class="mst-hd"><div class="mst-name">${_esc(c.name)}</div><div class="mst-status ${status.cls}">${status.t}</div></div>
           <div class="mst-track">${nodes}</div>
+          <div style="margin-top:14px; text-align:left;">
+            <button class="aiwp-cta" style="padding:10px 16px; font-size:0.9rem; border-radius:12px; width:auto; display:inline-flex;" onclick="if(window.sfOpenTutor) sfOpenTutor('${c.id}')">${_spark()}<span>דבר עם המורה הפרטי</span></button>
+          </div>
         </div>`;
     }).join('');
 
@@ -347,9 +447,13 @@
     else page.insertBefore(card, page.firstChild);
   }
 
+  // ── AI Tutor — full implementation lives in sf-12-tutor.js (dedicated page).
+  //    The "מורה פרטי" buttons here call window.sfOpenTutor, which sf-12 defines.
+
   // ── tiny inline icons ───────────────────────────────────────────────────────
   function _target() { return '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.4"/></svg>'; }
   function _clip() { return '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.4 11.05 12.2 20.2a5 5 0 0 1-7.1-7.05l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.6 1.6 0 0 1-2.3-2.3l7.8-7.8"/></svg>'; }
+  function _chat() { return '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.5 7.2L4 21l1.8-5.5A8 8 0 1 1 21 12z"/></svg>'; }
   function _spark() { return '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/></svg>'; }
   function _lock() { return '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>'; }
   function _check() { return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'; }

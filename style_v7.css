@@ -1005,6 +1005,7 @@ input.ob2-inp-lg { font-size: 1.15rem !important; font-weight: 700 !important; p
   backdrop-filter: blur(16px) saturate(160%) !important;
   -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
   box-shadow: 0 12px 36px rgba(10,12,29,0.40), inset 0 1px 0 rgba(255,255,255,0.10) !important;
+  z-index: 11000 !important;
 }
 [data-theme="dark"] #toast { background: rgba(36,41,73,0.92) !important; }
 .xp-toast {
@@ -1535,6 +1536,34 @@ input.ob2-inp-lg { font-size: 1.15rem !important; font-weight: 700 !important; p
 .syl-li-topic { font-size: 0.9rem; font-weight: 700; color: var(--a-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .syl-li-date { font-size: 0.74rem; color: var(--a-ink-3); margin-top: 1px; }
 .syl-li-del { flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; border: none; background: var(--a-sur-3); color: var(--a-ink-4); cursor: pointer; font-size: 0.8rem; }
+
+/* Editor entry choices (file / chat) */
+.syl-entry { display: flex; gap: 10px; margin-bottom: 12px; }
+.syl-entry-btn { flex: 1; display: inline-flex; flex-direction: column; align-items: center; gap: 7px; background: var(--a-sur); border: 1.5px solid var(--a-bor); border-radius: var(--a-r); padding: 16px 10px; font-size: 0.92rem; font-weight: 800; color: var(--a-ink); cursor: pointer; font-family: Heebo, sans-serif; box-shadow: var(--a-sh-1); transition: transform 0.16s var(--a-spring), border-color var(--a-tf); }
+.syl-entry-btn svg { width: 22px; height: 22px; color: var(--a-brand); }
+.syl-entry-btn:active { transform: scale(0.97); }
+.syl-entry-btn.primary { background: var(--a-grad-soft); border-color: rgba(91,102,242,0.3); }
+.syl-paste-toggle { display: block; width: 100%; background: none; border: none; color: var(--a-ink-3); font-size: 0.8rem; font-weight: 700; cursor: pointer; font-family: Heebo, sans-serif; padding: 6px; margin-bottom: 4px; }
+.syl-adv { margin-bottom: 6px; }
+.syl-manual-add { display: flex; gap: 8px; margin-top: 10px; }
+.syl-man-i { flex: 1; min-width: 0; background: var(--a-sur-2) !important; border: 1.5px solid var(--a-bor) !important; border-radius: 12px !important; padding: 10px 12px !important; color: var(--a-ink) !important; font-family: Heebo, sans-serif !important; }
+.syl-man-d { flex: 0 0 132px; }
+.syl-man-add { flex: 0 0 46px; background: var(--a-grad-soft); color: var(--a-brand); border: none; border-radius: 12px; font-size: 1.3rem; font-weight: 800; cursor: pointer; }
+
+/* Chat wizard (questions + button answers) */
+.syl-wz-feed { display: flex; flex-direction: column; gap: 9px; margin-bottom: 6px; }
+.syl-wz-row { display: flex; }
+.syl-wz-row.ai { justify-content: flex-start; }
+.syl-wz-row.me { justify-content: flex-end; }
+.syl-wz-bub { max-width: 85%; padding: 11px 15px; border-radius: 18px; font-size: 0.92rem; line-height: 1.5; animation: aRise 0.3s var(--a-swift) both; }
+.syl-wz-bub.ai { background: var(--a-sur-2); color: var(--a-ink); border-bottom-right-radius: 5px; }
+.syl-wz-bub.me { background: var(--a-grad); color: #fff; border-bottom-left-radius: 5px; }
+.syl-wz-opts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-start; margin: 2px 0 4px; }
+.syl-wz-btn { background: var(--a-sur); border: 1.5px solid var(--a-brand); color: var(--a-brand); border-radius: 999px; padding: 9px 16px; font-size: 0.88rem; font-weight: 800; cursor: pointer; font-family: Heebo, sans-serif; transition: transform var(--a-tf), background var(--a-tf); }
+.syl-wz-btn:active { transform: scale(0.94); }
+.syl-wz-btn.on { background: var(--a-grad); color: #fff; border-color: transparent; box-shadow: 0 5px 12px -4px var(--a-glow); }
+.syl-wz-text { width: 100%; box-sizing: border-box; background: var(--a-sur-2) !important; border: 1.5px solid var(--a-bor) !important; border-radius: 14px !important; padding: 11px !important; font-family: Heebo, sans-serif !important; font-size: 0.9rem !important; color: var(--a-ink) !important; resize: vertical; margin: 4px 0; }
+.syl-wz-date { display: flex; gap: 8px; align-items: center; margin: 4px 0; }
 
 /* ─── 21g. MILESTONE PATH (Progress page · the centrepiece) ───────── */
 .mst-wrap { background: var(--a-sur); border: 0.5px solid var(--a-bor); border-radius: var(--a-r-lg); box-shadow: var(--a-sh-2); padding: 16px 14px 18px; margin-bottom: 16px; animation: aRise 0.5s var(--a-swift) both; }

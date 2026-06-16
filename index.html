@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css?v=131">
 <link rel="stylesheet" href="style_v6.css?v=133">
-<link rel="stylesheet" href="style_v7.css?v=16">
+<link rel="stylesheet" href="style_v7.css?v=17">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -494,6 +494,7 @@
       <button class="nav-item" onclick="showPage('progress',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> <span>התקדמות</span></button>
       <button class="nav-item" onclick="showPage('timetable',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="9" x2="9" y2="22"/><line x1="15" y1="9" x2="15" y2="22"/></svg></span> <span>מערכת שעות</span></button>
       <button class="nav-item" onclick="showPage('hobby',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span> <span>תחביבים</span></button>
+      <button class="nav-item" onclick="sfNavTutorPage(this)"><span class="nav-icon" style="color:var(--a-brand);"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/></svg></span> <span style="font-weight:700; background:var(--a-grad); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">המורה הפרטי</span></button>
 
       <button class="nav-item nav-item-wr" id="wr-sidebar-card" onclick="showPage('weekly-review',null);updateBottomNav('weekly-review');closeSidebar()">
         <span class="nav-icon nav-icon-wr">
@@ -541,6 +542,7 @@
         </div>
 
         <div id="next-task-widget" class="next-task-widget hidden"></div>
+
 
         <!-- Weekly Review Banner -->
         <div id="wr-banner" class="hidden wr-banner" onclick="showPage('weekly-review',null);updateBottomNav('weekly-review')" style="cursor:pointer">
@@ -1185,9 +1187,16 @@
       </div>
       <!-- ══ END WEEKLY REVIEW ══ -->
 
+      <!-- AI Tutor Page -->
+      <div class="page" id="page-tutor" style="padding-top:0;">
+        <div id="tutor-page-content" style="min-height:100vh;"></div>
+      </div>
+
     </div>
   </div>
 </div>
+
+
 
 <!-- BOTTOM NAV BAR -->
 <nav class="bottom-nav" id="bottom-nav">
@@ -1996,7 +2005,8 @@
 <script src="sf-08-chat-ai.js?v=2"></script>
 <script src="sf-09-coach.js?v=2"></script>
 <script src="sf-10-focus.js?v=3"></script>
-<script src="sf-11-syllabus.js?v=4"></script>
+<script src="sf-11-syllabus.js?v=7"></script>
+<script src="sf-12-tutor.js?v=9"></script>
 <script src="premium-planner.js?v=6"></script>
 <script>
 /* ── Timeline: 62px/hour (balanced — fuller blocks, less empty space) ── */
@@ -2007,7 +2017,8 @@ try { TL_HOUR_PX = 62; TL_PX_MIN = 62/60; } catch(e) {}
   var PAGE_NAMES = {
     'today':'היום','schedule':'לוח זמנים','homework':'מטלות',
     'exams':'מבחנים','progress':'התקדמות','planner':'מתכנן',
-    'anchors':'עוגנים','weekly-review':'סיכום שבועי','settings':'הגדרות','hobby':'תחביבים','timetable':'מערכת שעות'
+    'anchors':'עוגנים','weekly-review':'סיכום שבועי','settings':'הגדרות','hobby':'תחביבים','timetable':'מערכת שעות',
+    'tutor':'המורה הפרטי'
   };
   var DAYS_HE = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
   var MONTHS_HE = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
