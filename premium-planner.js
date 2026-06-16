@@ -22,18 +22,18 @@
 
   // ---- line-art SVG icon set (consistent, no emoji) ------------------------
   const ICON = {
-    spark: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/></svg>',
-    gauge: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 13a3 3 0 1 0 3 3"/><path d="M12 13l4-4"/><path d="M4 19a9 9 0 1 1 16 0"/></svg>',
-    calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></svg>',
-    target: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.6" fill="currentColor"/></svg>',
-    chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.5 7.2L4 21l1.8-5.5A8 8 0 1 1 21 12z"/></svg>',
-    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
-    brain: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-1 5 3 3 0 0 0 2 4 3 3 0 0 0 5 1V4.5A2.5 2.5 0 0 0 9 4z"/><path d="M15 4a3 3 0 0 1 3 3 3 3 0 0 1 1 5 3 3 0 0 1-2 4 3 3 0 0 1-5 1"/></svg>',
-    clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
-    layers: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>',
-    avatar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v.01M9.5 11a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.7"/></svg>',
-    arrow: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>',
-    lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>'
+    spark: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/></svg>',
+    gauge: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 13a3 3 0 1 0 3 3"/><path d="M12 13l4-4"/><path d="M4 19a9 9 0 1 1 16 0"/></svg>',
+    calendar: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></svg>',
+    target: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.6" fill="currentColor"/></svg>',
+    chat: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.5 7.2L4 21l1.8-5.5A8 8 0 1 1 21 12z"/></svg>',
+    check: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+    brain: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-1 5 3 3 0 0 0 2 4 3 3 0 0 0 5 1V4.5A2.5 2.5 0 0 0 9 4z"/><path d="M15 4a3 3 0 0 1 3 3 3 3 0 0 1 1 5 3 3 0 0 1-2 4 3 3 0 0 1-5 1"/></svg>',
+    clock: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    layers: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>',
+    avatar: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v.01M9.5 11a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.7"/></svg>',
+    arrow: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>',
+    lock: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>'
   };
 
   // ---- hero illustrations per step (viewBox 160x120, accent line-art) ------
@@ -157,7 +157,7 @@
     const s = _data();
     if (!(s.courses || []).length) { _toast('כדי לבנות לוז צריך קודם להגדיר קורסים'); if (window.showPage) window.showPage('planner', null); return; }
     const range = window._wrGetTargetRange();
-    _flow = { week: (range.label === 'שבוע הבא' ? 'next' : 'this'), answers: { capacity: null, blockedDays: [], focusCourses: [] }, chat: [], freeText: '', context: null, plan: null, step: 0 };
+    _flow = { week: (range.label === 'שבוע הבא' ? 'next' : 'this'), answers: { capacity: null, blockedDays: [], focusCourses: [] }, chat: [], freeText: '', context: null, plan: null, step: 0, refine: null };
     _openOverlay();
     _renderStep();
   }
@@ -331,6 +331,79 @@
   }
 
   // ========================================================================
+  //  REFINE — "didn't like the plan?" — a real Q&A chat that re-plans to taste
+  // ========================================================================
+  // Every option maps to a concrete lever so the rebuild VISIBLY changes — both
+  // for the AI agents (via context.refine) and the deterministic fallback.
+  let _refineStep = 'root';
+  function _refine() { if (!_flow.refine) _flow.refine = { intensity: 0, course: {}, avoidEvening: false, notes: [], log: [] }; return _flow.refine; }
+  const _REFINE_ROOT = [
+    { l: 'יותר מדי עומס', act: 'less' },
+    { l: 'קל מדי — אפשר יותר', act: 'more' },
+    { l: 'פחות בערב', act: 'evening' },
+    { l: 'להדגיש קורס מסוים', act: 'course' },
+    { l: 'משהו אחר', act: 'note' }
+  ];
+  function openRefine() {
+    const r = _refine();
+    if (!r.log.length) r.log.push({ role: 'ai', text: 'מה הכי לא התאים לך בלוז? נדייק יחד ואבנה אותו מחדש בדיוק לפי מה שתרצה.' });
+    _refineStep = 'root';
+    _renderRefine();
+  }
+  function _renderRefine() {
+    const r = _refine();
+    const bubbles = r.log.map(m => `<div class="aiwp-bub ${m.role === 'ai' ? 'ai' : 'user'}">${_esc(m.text).replace(/\n/g, '<br>')}</div>`).join('');
+    let controls = '';
+    if (_refineStep === 'root') {
+      controls = '<div class="aiwp-refine-opts">' + _REFINE_ROOT.map(o => `<button class="aiwp-refine-chip" onclick="AIWP.refinePick('${o.act}')">${_esc(o.l)}</button>`).join('') + '</div>';
+    } else if (_refineStep === 'course') {
+      const courses = (_data().courses || []).map(c => c.name).filter(Boolean);
+      controls = '<div class="aiwp-refine-opts">' + courses.map(c => `<button class="aiwp-refine-chip" onclick="AIWP.refineCourse('${_esc(c).replace(/'/g, "\\'")}')">${_esc(c)}</button>`).join('') + '</div>';
+    } else if (_refineStep === 'note') {
+      controls = `<textarea id="aiwp-refine-note" class="aiwp-textarea" rows="2" placeholder="ספר לי במילים שלך מה לשנות..."></textarea>
+        <div class="aiwp-refine-opts"><button class="aiwp-refine-chip" onclick="AIWP.refineNote()">הוסף</button></div>`;
+    } else { // followup
+      controls = `<div class="aiwp-refine-opts aiwp-refine-go-row">
+        <button class="aiwp-refine-chip" onclick="AIWP.refineMore()">שינוי נוסף</button>
+        <button class="aiwp-cta aiwp-refine-go" onclick="AIWP.generate()">${ICON.check}<span>בנה מחדש לפי זה</span></button></div>`;
+    }
+    _body().innerHTML = `
+      <div class="aiwp-chat-head">${ICON.avatar}<div><div class="aiwp-chat-title">שיפור הלוז</div><div class="aiwp-chat-hint">נדייק יחד עד שהוא יושב לך מושלם</div></div></div>
+      <div class="aiwp-chat-feed aiwp-refine-feed">${bubbles}</div>
+      ${controls}
+      <button class="aiwp-nav-back aiwp-refine-back" onclick="AIWP.backFromRefine()">${ICON.arrow}<span>חזרה ללוז</span></button>`;
+    const f = document.querySelector('.aiwp-refine-feed'); if (f) f.scrollTop = f.scrollHeight;
+    const ta = document.getElementById('aiwp-refine-note'); if (ta) ta.focus();
+  }
+  function refinePick(act) {
+    const r = _refine();
+    const lbl = (_REFINE_ROOT.find(o => o.act === act) || {}).l;
+    if (lbl) r.log.push({ role: 'user', text: lbl });
+    if (act === 'less') { r.intensity = Math.max(-1, r.intensity - 1); r.log.push({ role: 'ai', text: 'הבנתי — אוריד את הקצב ואשאיר יותר אוויר בין הסשנים.' }); _refineStep = 'followup'; }
+    else if (act === 'more') { r.intensity = Math.min(1, r.intensity + 1); r.log.push({ role: 'ai', text: 'מעולה — אדחוס קצת יותר ואנצל את הזמן הפנוי טוב יותר.' }); _refineStep = 'followup'; }
+    else if (act === 'evening') { r.avoidEvening = true; r.log.push({ role: 'ai', text: 'אשמור על הערבים פנויים ואשבץ מוקדם יותר ביום.' }); _refineStep = 'followup'; }
+    else if (act === 'course') { r.log.push({ role: 'ai', text: 'איזה קורס להדגיש?' }); _refineStep = 'course'; }
+    else if (act === 'note') { r.log.push({ role: 'ai', text: 'כתוב לי במילים שלך — אתחשב בזה בבנייה.' }); _refineStep = 'note'; }
+    _renderRefine();
+  }
+  function refineCourse(c) {
+    const r = _refine();
+    r.course[c] = (r.course[c] || 0) + 1;
+    r.log.push({ role: 'user', text: c });
+    r.log.push({ role: 'ai', text: `אקצה יותר זמן ל"${c}". עוד שינוי, או שנבנה מחדש?` });
+    _refineStep = 'followup';
+    _renderRefine();
+  }
+  function refineNote() {
+    const ta = document.getElementById('aiwp-refine-note'); const v = ta ? ta.value.trim() : '';
+    if (v) { const r = _refine(); r.notes.push(v); r.log.push({ role: 'user', text: v }); r.log.push({ role: 'ai', text: 'נרשם — אתחשב בזה כשאבנה מחדש.' }); }
+    _refineStep = 'followup';
+    _renderRefine();
+  }
+  function refineMore() { _refine().log.push({ role: 'ai', text: 'מה עוד נשפר?' }); _refineStep = 'root'; _renderRefine(); }
+  function backFromRefine() { if (_flow.plan && _flow.plan.length) _renderPreview(_flow.plan); else _renderStep(); }
+
+  // ========================================================================
   //  CONTEXT BUILDER  (Profiler inputs + all S data)
   // ========================================================================
   function _buildContext() {
@@ -362,7 +435,13 @@
       answers: _flow.answers,
       blockedDays: _flow.answers.blockedDays,
       userNote: _flow.freeText || '',
-      chatTranscript: _flow.chat.filter(m => m.role === 'user').map(m => m.content).join(' | ')
+      chatTranscript: _flow.chat.filter(m => m.role === 'user').map(m => m.content).join(' | '),
+      refine: _flow.refine ? {
+        intensity: _flow.refine.intensity || 0,            // -1 lighter · +1 heavier
+        emphasizeCourses: Object.keys(_flow.refine.course || {}),
+        avoidEvening: !!_flow.refine.avoidEvening,
+        notes: _flow.refine.notes || []
+      } : null
     };
   }
 
@@ -451,21 +530,28 @@
       const capMap = { recovery: 'light', normal: 'balanced', push: 'heavy', exam: 'heavy' };
       const courses = (_data().courses || []).map(c => c.name).filter(Boolean);
       if (!courses.length) return [];
+      const r = _flow.refine || { intensity: 0, course: {}, avoidEvening: false };
+      // refine.intensity nudges the sustainable load level up/down a notch
+      const LOADS = ['light', 'balanced', 'heavy'];
+      let li = LOADS.indexOf(capMap[_flow.answers.capacity] || 'balanced');
+      li = Math.max(0, Math.min(LOADS.length - 1, li + (r.intensity || 0)));
       const diff = {};
       const focus = _flow.answers.focusCourses || [];
-      courses.forEach(c => { diff[c] = focus.includes(c) ? 5 : 3; });
+      courses.forEach(c => { diff[c] = (focus.includes(c) ? 5 : 3) + 2 * (r.course[c] || 0); });
       const answers = {
-        load: capMap[_flow.answers.capacity] || 'balanced',
+        load: LOADS[li],
         startDate: range.start, endDate: range.end,
         courseDifficulty: diff, selectedHobbies: [], homework: []
       };
       const res = generateWeeklySchedule(answers);
       const raw = (res && Array.isArray(res.tasks)) ? res.tasks : [];
-      const mapped = raw.map(t => ({
+      let mapped = raw.map(t => ({
         date: t.date, time: _roundT(t.time || ''),
         course: t.course || t.name || 'לימוד', name: t.name || t.course || 'לימוד',
         duration: t.duration || `${60} דק'`, priority: t.priority || 'בינוני'
       }));
+      // refine.avoidEvening — clear the late sessions the user asked to remove
+      if (r.avoidEvening) mapped = mapped.filter(t => { const h = parseInt((t.time || '').split(':')[0], 10); return isNaN(h) || h < 19; });
       return _validate(mapped);   // honour blockedDays + free windows in fallback too
     } catch (e) { return []; }
   }
@@ -506,6 +592,7 @@
 - כבד blockedDays (אל תשבץ בהם), focusCourses (הדגש אותם), ותחביבים (hobbies) לפי timesPerWeek.
 - learnedMemo ו-learnedPrefs מתארים את ההרגלים שלמדת על המשתמש — כבד אותם.
 ${strategy ? '- קיבלת אסטרטגיה מהאנליסט: שבץ לכל קורס בערך את strategy.perCourse[].sessions והעדיפות שנקבעו. אל תעבור את תקציב העומס — לכל היותר strategy.dailyCeilingHours ביום ו-strategy.weeklyBudgetHours בשבוע. עומס ריאלי ובר-קיימא חשוב מ"למלא" את כל הזמן הפנוי.' : '- שמור על לוד בר-קיימא: לכל היותר ~2–4 שעות לימוד ממוקד ביום; אל תמלא את כל הזמן הפנוי. שמור יום קליל למנוחה.'}
+- אם context.refine קיים: זו בקשת תיקון מפורשת של המשתמש על לוז קודם שלא אהב — תן לה עדיפות עליונה. intensity=-1 הפחת עומס (פחות סשנים/קצרים יותר), intensity=+1 הגבר עומס; emphasizeCourses — הקצה להם יותר זמן; avoidEvening=true — אל תשבץ אחרי 19:00; notes — הנחיות חופשיות לכבד.
 החזר אך ורק JSON תקין בפורמט: {"tasks":[{"date":"YYYY-MM-DD","time":"HH:MM","course":"שם הקורס","duration":"60 דק'","priority":"גבוה|בינוני|נמוך"}],"rationale":"משפט קצר על ההיגיון"}. אל תוסיף טקסט מחוץ ל-JSON. השתמש רק בקורסים מתוך הרשימה. תאריכים אך ורק בטווח targetWeek.`;
     const stratLine = strategy ? `\n\nאסטרטגיית האנליסט (JSON):\n${JSON.stringify(strategy)}` : '';
     const user = `נתוני המשתמש והשבוע (JSON):\n${JSON.stringify(ctx)}${stratLine}\n\nבנה את הלוז עכשיו.`;
@@ -596,7 +683,7 @@ ${strategy ? '- קיבלת אסטרטגיה מהאנליסט: שבץ לכל קו
       <div class="aiwp-pv-list">${daysHTML || '<div class="aiwp-q-sub">לא נוצרו סשנים בטווח הפנוי.</div>'}</div>
       <div class="aiwp-pv-actions">
         <button class="aiwp-cta" onclick="AIWP.confirm()">${ICON.check}<span>אשר והוסף ללו"ז</span></button>
-        <button class="aiwp-pv-rebuild" onclick="AIWP.generate()">בנה מחדש</button>
+        <button class="aiwp-pv-rebuild" onclick="AIWP.openRefine()">${ICON.chat}<span>לא מתאים? ספר לי מה לשנות</span></button>
       </div>`;
   }
 
@@ -796,6 +883,7 @@ ${strategy ? '- קיבלת אסטרטגיה מהאנליסט: שבץ לכל קו
     maybeRenderEntry, startFlow, closeFlow,
     next, prev, setWeek, setCapacity, toggleDay, clearDays, toggleFocus, clearFocus,
     openChat, sendChat, backFromChat, generate, confirm, toStep,
+    openRefine, refinePick, refineCourse, refineNote, refineMore, backFromRefine,
     openPaywall, closePaywall, upgrade, downgrade, openSettings, devToggle
   };
 })();

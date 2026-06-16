@@ -256,20 +256,38 @@
     }
   };
 
-  // Upload a syllabus FILE (PDF / image) → multimodal proxy → milestones.
+  // Upload a syllabus FILE. Plain-text builds locally (works offline); PDF / image
+  // use the multimodal proxy (live), and on failure fall back to the chat wizard.
   window.sfMilestoneFile = function (input) {
     const file = input && input.files && input.files[0]; if (!file) return;
     input.value = '';
     if (file.size > 8 * 1024 * 1024) { _toast('הקובץ גדול מדי (עד 8MB)'); return; }
+    const name = (file.name || '').toLowerCase();
+    const isText = /^text\//.test(file.type || '') || /\.(txt|md|csv|text)$/.test(name);
     _toast('קורא את הקובץ...'); _btnLoad(true);
     const reader = new FileReader();
     reader.onerror = () => { _toast('לא הצלחנו לקרוא את הקובץ'); _btnLoad(false); };
+
+    // Plain text — extract milestones locally, no backend needed.
+    if (isText) {
+      reader.onload = () => {
+        try {
+          const text = String(reader.result || '').trim();
+          if (text.length < 3) throw new Error('empty');
+          _applyMilestones(_fallbackMilestones(text), false);
+        } catch (e) { _toast('הקובץ ריק או לא קריא — נסה קובץ אחר או בנה בשיחה.'); }
+        finally { _btnLoad(false); }
+      };
+      reader.readAsText(file);
+      return;
+    }
+
+    // PDF / image — needs the multimodal proxy (available in the live version).
     reader.onload = async () => {
       try {
         const data = String(reader.result).split(',')[1];
         const today = _today();
-        const sheet = document.querySelector('#syl-editor .syl-sheet');
-        const c = _courses().find(x => String(x.id) === String(sheet && sheet.dataset.cid));
+        const c = _mEdit ? _courses().find(x => String(x.id) === String(_mEdit.courseId)) : null;
         const body = {
           messages: [
             { role: 'system', content: 'אתה מחלץ אבני-דרך ללימוד מתוך קובץ סילבוס (PDF/תמונה). החזר JSON בלבד: {"milestones":[{"date":"YYYY-MM-DD","topic":"","type":"topic|exam"}]}.' },
@@ -287,36 +305,52 @@
         if (!ms.length) throw new Error('empty');
         _applyMilestones(ms, true);
       } catch (e) {
-        _toast('חילוץ מקובץ זמין בגרסה החיה. בינתיים הדבק את הסילבוס כטקסט.');
+        _toast('חילוץ מ-PDF/תמונה זמין בגרסה החיה — בוא נבנה עכשיו בשיחה, אני שואל ואתה עונה.');
+        try { sfStartWizard(); } catch (_) {}
       } finally { _btnLoad(false); }
     };
     reader.readAsDataURL(file);
   };
 
-  // ── Guided "build in a chat" wizard — questions answered with BUTTONS ───────
+  // ── Guided "build in a chat" wizard — a real Q&A conversation, button answers ─
   let _mWiz = null;
   const _WIZ = [
-    { key: 'exam',  q: 'מתי המבחן / סיום הקורס?', opts: [{ l: 'בעוד שבועיים', v: '14' }, { l: 'בעוד חודש', v: '30' }, { l: 'בעוד חודשיים', v: '60' }, { l: 'תאריך מדויק', v: 'date' }] },
-    { key: 'count', q: 'כמה נושאים מרכזיים בקורס (בערך)?', opts: [{ l: '4', v: '4' }, { l: '6', v: '6' }, { l: '8', v: '8' }, { l: '10', v: '10' }] },
-    { key: 'topics', q: 'רוצה לפרט את שמות הנושאים? (לא חובה — אסדר לבד אם תדלג)', type: 'text' }
+    { key: 'exam',  q: 'מתי המבחן או סיום הקורס?', opts: [{ l: 'בעוד שבועיים', v: '14' }, { l: 'בעוד חודש', v: '30' }, { l: 'בעוד חודשיים', v: '60' }, { l: 'תאריך מדויק', v: 'date' }] },
+    { key: 'count', q: 'כמה נושאים מרכזיים יש בקורס, בערך?', opts: [{ l: '4', v: '4' }, { l: '6', v: '6' }, { l: '8', v: '8' }, { l: '10', v: '10' }] },
+    { key: 'topics', q: 'רוצה לפרט את שמות הנושאים? זה הופך את המסלול למדויק — או שתדלג ואסדר לבד.', type: 'text' }
   ];
+  const _WIZ_INTRO = 'היי! בוא נבנה יחד את מסלול אבני הדרך שלך. כמה שאלות קצרות וזה מוכן.';
   window.sfStartWizard = function () {
     const adv = document.querySelector('#syl-editor .syl-adv'); if (adv) adv.style.display = 'none';
     const tog = document.querySelector('#syl-editor .syl-paste-toggle'); if (tog) tog.style.display = '';
-    _mWiz = { step: 0, answers: {}, labels: [], dateMode: false };
+    _mWiz = { step: 0, answers: {}, labels: [], acks: [], dateMode: false };
     _wizRender();
   };
   function _wizBubble(role, text) { return `<div class="syl-wz-row ${role}"><div class="syl-wz-bub ${role}">${_esc(text)}</div></div>`; }
+  function _wizAck(key, v, label) {
+    if (key === 'exam') {
+      const days = parseInt(v, 10);
+      if (isNaN(days)) return 'מצוין, רשמתי את תאריך המבחן — נפרוס את כל החומר עד אז.';
+      if (days <= 14) return 'טווח קצר — נשמור על קצב ממוקד. קדימה.';
+      if (days <= 30) return 'חודש זה טווח טוב להתכונן בלי לחץ.';
+      return 'יש לנו מרחב נוח לפרוס את החומר. מעולה.';
+    }
+    if (key === 'count') return `סבבה — נחלק את הדרך לבערך ${_esc(label)} אבני דרך.`;
+    return '';
+  }
   function _wizRender() {
     const box = document.getElementById('syl-wiz'); if (!box || !_mWiz) return;
-    let html = '<div class="syl-wz-feed">';
-    for (let i = 0; i < _mWiz.step; i++) { html += _wizBubble('ai', _WIZ[i].q) + _wizBubble('me', _mWiz.labels[i]); }
+    let html = '<div class="syl-wz-feed">' + _wizBubble('ai', _WIZ_INTRO);
+    for (let i = 0; i < _mWiz.step; i++) {
+      html += _wizBubble('ai', _WIZ[i].q) + _wizBubble('me', _mWiz.labels[i]);
+      if (_mWiz.acks[i]) html += _wizBubble('ai', _mWiz.acks[i]);
+    }
     if (_mWiz.step < _WIZ.length) {
       const w = _WIZ[_mWiz.step];
       html += _wizBubble('ai', w.q);
       if (w.type === 'text') {
         html += `<textarea id="syl-wz-text" class="syl-wz-text" rows="2" placeholder="נושא לכל שורה (אופציונלי)"></textarea>
-                 <div class="syl-wz-opts"><button class="syl-wz-btn" onclick="sfWizText(true)">דלג</button><button class="syl-wz-btn on" onclick="sfWizText(false)">סיום ובנייה</button></div>`;
+                 <div class="syl-wz-opts"><button class="syl-wz-btn" onclick="sfWizText(true)">דלג, סדר לבד</button><button class="syl-wz-btn on" onclick="sfWizText(false)">סיום ובנייה</button></div>`;
       } else if (_mWiz.dateMode) {
         html += `<div class="syl-wz-date"><input type="date" id="syl-wz-d" class="syl-man-i"><button class="syl-wz-btn on" onclick="sfWizDate()">אישור</button></div>`;
       } else {
@@ -325,17 +359,18 @@
     }
     html += '</div>';
     box.innerHTML = html;
+    const fd = box.querySelector('.syl-wz-feed'); if (fd) fd.scrollTop = fd.scrollHeight;
     const t = document.getElementById('syl-wz-text'); if (t) t.focus();
   }
   window.sfWizAnswer = function (v, label) {
     const w = _WIZ[_mWiz.step];
     if (w.key === 'exam' && v === 'date') { _mWiz.dateMode = true; _wizRender(); return; }
-    _mWiz.answers[w.key] = v; _mWiz.labels[_mWiz.step] = label || v; _mWiz.dateMode = false;
+    _mWiz.answers[w.key] = v; _mWiz.labels[_mWiz.step] = label || v; _mWiz.acks[_mWiz.step] = _wizAck(w.key, v, label); _mWiz.dateMode = false;
     _mWiz.step++; _wizAdvance();
   };
   window.sfWizDate = function () {
     const d = document.getElementById('syl-wz-d'); if (!d || !d.value) { _toast('בחר תאריך'); return; }
-    _mWiz.answers.examDate = d.value; _mWiz.labels[_mWiz.step] = _fmt(d.value); _mWiz.dateMode = false;
+    _mWiz.answers.examDate = d.value; _mWiz.labels[_mWiz.step] = _fmt(d.value); _mWiz.acks[_mWiz.step] = _wizAck('exam', 'date', _fmt(d.value)); _mWiz.dateMode = false;
     _mWiz.step++; _wizAdvance();
   };
   window.sfWizText = function (skip) {
