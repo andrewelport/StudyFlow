@@ -79,9 +79,12 @@
             <div class="syl-course">${_esc(c.name)}</div>
             <div class="syl-where">${st.examMode ? '🎯 ' : ''}אמור להיות ב: <b>${_esc(st.expected || '—')}</b></div>
             ${st.sub ? `<div class="syl-where syl-muted">${_esc(st.sub)}</div>` : ''}
+            <div style="margin-top:8px"><button class="syl-edit" style="background:var(--a-grad); color:white; border:none; padding:5px 12px; font-weight:800; border-radius:8px; display:inline-flex; align-items:center; gap:4px" onclick="if(window.sfOpenTutor) sfOpenTutor('${c.id}')">${_spark()} מורה פרטי</button></div>
           </div>
-          <div class="syl-prog">${st.idx}/${st.total}</div>
-          <button class="syl-edit" onclick="sfOpenMilestoneEditor('${c.id}')">ערוך</button>
+          <div class="syl-prog-col" style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+            <div class="syl-prog">${st.idx}/${st.total}</div>
+            <button class="syl-edit" onclick="sfOpenMilestoneEditor('${c.id}')">ערוך</button>
+          </div>
         </div>`;
     }).join('');
 
@@ -130,6 +133,11 @@
          </div>
          <div id="syl-q" class="syl-q" style="display:none"></div>
          <div id="syl-list"></div>
+         <div class="syl-manual-add" style="display:flex; gap:8px; margin: 12px 0;">
+           <input type="text" id="syl-man-topic" placeholder="נושא / פרק..." style="flex:1; border-radius:12px; border:1.5px solid var(--border); background:var(--surface2); color:var(--text); padding:10px;" />
+           <input type="date" id="syl-man-date" style="border-radius:12px; border:1.5px solid var(--border); background:var(--surface2); color:var(--text); padding:10px; width:130px;" />
+           <button onclick="sfAddManualMilestone()" style="background:var(--accent-light); color:var(--accent); border:none; border-radius:12px; padding:0 16px; font-weight:800; cursor:pointer;">+</button>
+         </div>
          <button class="aiwp-cta syl-save" id="syl-save" style="display:none" onclick="sfSaveAIMilestones()">${_check()}<span>שמור מסלול</span></button>
        </div>`;
     document.body.appendChild(ov);
@@ -154,6 +162,16 @@
     if (saveBtn) saveBtn.style.display = '';
   }
   window.sfRemoveMilestone = function (i) { if (_mEdit && _mEdit.milestones) { _mEdit.milestones.splice(i, 1); _renderMilestoneList(); } };
+  window.sfAddManualMilestone = function() {
+    const t = document.getElementById('syl-man-topic'); const d = document.getElementById('syl-man-date');
+    if (!t || !d || !t.value.trim() || !d.value) { _toast('הכנס נושא ותאריך'); return; }
+    if (!_mEdit) return;
+    _mEdit.milestones.push({ id: _uid(), date: d.value, topic: t.value.trim(), type: /מבחן|בחינה/i.test(t.value)?'exam':'topic' });
+    _mEdit.milestones.sort((a,b)=>a.date.localeCompare(b.date));
+    t.value = ''; d.value = '';
+    _renderMilestoneList();
+    _toast('נוסף בהצלחה ✓');
+  };
   window.sfCloseMilestoneEditor = function () { const ov = document.getElementById('syl-editor'); if (ov) ov.remove(); if (window._setBodyLock) window._setBodyLock(false); };
 
   window.sfSaveAIMilestones = function () {
@@ -327,6 +345,9 @@
       return `<div class="mst-course">
           <div class="mst-hd"><div class="mst-name">${_esc(c.name)}</div><div class="mst-status ${status.cls}">${status.t}</div></div>
           <div class="mst-track">${nodes}</div>
+          <div style="margin-top:14px; text-align:left;">
+            <button class="aiwp-cta" style="padding:10px 16px; font-size:0.9rem; border-radius:12px; width:auto; display:inline-flex;" onclick="if(window.sfOpenTutor) sfOpenTutor('${c.id}')">${_spark()}<span>דבר עם המורה הפרטי</span></button>
+          </div>
         </div>`;
     }).join('');
 
@@ -345,6 +366,171 @@
     const header = page.querySelector('.page-header');
     if (header && header.parentNode) header.parentNode.insertBefore(card, header.nextSibling);
     else page.insertBefore(card, page.firstChild);
+  }
+
+  // ── AI Tutor (Private Teacher) ───────────────────────────────────────────────
+  function _formatChat(txt) {
+    return _esc(txt).replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+  }
+
+  window.sfOpenTutor = function(courseId) {
+    if (!isP()) { if (window.AIWP && AIWP.openPaywall) AIWP.openPaywall(); return; }
+    const course = _courses().find(c => String(c.id) === String(courseId));
+    if (!course) return;
+    
+    const st = sfMilestoneStatus(course);
+    if (!Array.isArray(course.tutorHistory)) {
+      const today = _today();
+      let context = `התלמיד לומד את הקורס "${course.name}". היום: ${today}. `;
+      if (st) {
+         const expected = st.expected || 'נושא לא ידוע';
+         const actuallyDone = course.milestones ? course.milestones.filter(m=>m.done).length : 0;
+         context += `לפי הסילבוס הוא אמור להיות ב: "${expected}". במציאות הוא השלים ${actuallyDone} נושאים מתוך ${st.total}. `;
+         if (st.examMode) context += `המבחן קרוב/הגיע (הוא עכשיו בחזרה למבחן). `;
+      }
+      
+      const sysPrompt = `אתה מורה פרטי אישי ומצטיין (AI Tutor) לקורס "${course.name}". המטרה שלך היא לעזור לסטודנט ללמוד בצורה עמוקה ואפקטיבית.
+ההנחיות שלך:
+1. בהודעה הראשונה (ורק בה), שאל בסבר פנים יפות על מה נעבוד היום (תרגול, חזרה על הרצאה, או עזרה בשיעורי בית), והזכר בקלילות איפה הוא אמור להיות בסילבוס.
+2. אם מדובר בשיעורי בית/תרגול: בשום אופן אל תגלה את התשובה הסופית. שאל שאלות מנחות, רמוז, והובל את התלמיד להבין בעצמו.
+3. אם מדובר בחזרה על הרצאה/הסבר: בקש שיסביר במילים שלו מה הוא הבין, תן דוגמאות מוחשיות, ופשט מושגים מורכבים.
+4. אם המבחן קרוב: הצע גישת "מרתון" - שאלות קצרות ומהירות כדי לבחון שליטה בחומר.
+5. ענה תמיד בעברית טבעית, נעימה, מקצועית (אפשר מעט אימוג'ים).
+6. שמור על תשובות קצרות וממוקדות, כדי לייצר שיחה זורמת.
+
+הקשר נוכחי: ${context}`;
+
+      course.tutorHistory = [{ role: 'system', content: sysPrompt }];
+      _save();
+    }
+    
+    let ov = document.getElementById('tutor-overlay');
+    if (ov) ov.remove();
+    ov = document.createElement('div');
+    ov.id = 'tutor-overlay';
+    ov.className = 'modal-overlay';
+    ov.style.zIndex = '10005';
+    ov.onclick = (e) => { if (e.target === ov) sfCloseTutor(); };
+    ov.innerHTML = `
+      <div class="syl-sheet" style="height: 85vh; max-height: 800px; display:flex; flex-direction:column; padding:0; background:var(--a-sur);">
+         <div class="syl-sheet-handle" style="margin-top:12px;"></div>
+         <div class="syl-sheet-hd" style="padding: 16px 22px 10px; border-bottom:1px solid var(--a-bor); display:flex; align-items:center; justify-content:space-between;">
+           <div class="syl-sheet-title" style="display:flex; align-items:center; gap:10px; font-size:1.15rem;">
+             <span style="background:var(--a-grad); color:white; border-radius:12px; width:36px; height:36px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px var(--a-glow);">${_spark()}</span>
+             <div>
+               <div style="font-weight:900;">מורה פרטי</div>
+               <div style="font-size:0.75rem; font-weight:700; color:var(--a-ink-3);">${_esc(course.name)}</div>
+             </div>
+           </div>
+           <button class="anc-sheet-close" onclick="sfCloseTutor()" aria-label="סגור">✕</button>
+         </div>
+         
+         <div id="tutor-chat" style="flex:1; overflow-y:auto; padding: 20px 22px; display:flex; flex-direction:column; gap:14px; background:var(--a-bg);">
+         </div>
+         
+         <div style="padding: 16px 22px; background:var(--a-sur); border-top:1px solid var(--a-bor);">
+           <div style="display:flex; gap:10px; align-items:flex-end;">
+             <textarea id="tutor-input" style="flex:1; border-radius:20px; border:1.5px solid var(--a-bor); background:var(--a-sur-2); color:var(--a-ink); padding:13px 18px; font-family:inherit; font-size:0.95rem; resize:none; outline:none; max-height:120px;" rows="1" placeholder="הקלד הודעה למורה..."></textarea>
+             <button onclick="sfTutorSend('${course.id}')" style="background:var(--a-grad); color:white; border:none; width:46px; height:46px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; box-shadow:0 6px 14px -4px var(--a-glow); transition:transform 0.1s;">
+               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+             </button>
+           </div>
+         </div>
+      </div>
+    `;
+    document.body.appendChild(ov);
+    if (window._setBodyLock) window._setBodyLock(true);
+    
+    _renderTutorChat(course);
+    
+    const inp = document.getElementById('tutor-input');
+    inp.addEventListener('input', function() {
+       this.style.height = 'auto';
+       this.style.height = (this.scrollHeight < 120 ? this.scrollHeight : 120) + 'px';
+    });
+    inp.addEventListener('keydown', function(e) {
+       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sfTutorSend(course.id); }
+    });
+    
+    if (course.tutorHistory.length === 1) sfTutorAIRespond(course);
+  };
+
+  window.sfCloseTutor = function() {
+    const ov = document.getElementById('tutor-overlay'); if (ov) ov.remove();
+    if (window._setBodyLock) window._setBodyLock(false);
+  };
+
+  function _renderTutorChat(course) {
+    const box = document.getElementById('tutor-chat');
+    if (!box) return;
+    
+    let html = '';
+    course.tutorHistory.forEach(m => {
+       if (m.role === 'system') return;
+       const isUser = m.role === 'user';
+       html += \`
+         <div style="display:flex; justify-content:\${isUser ? 'flex-end' : 'flex-start'};">
+           <div style="max-width:85%; padding:12px 18px; border-radius:20px; font-size:0.95rem; line-height:1.5; 
+                       background:\${isUser ? 'var(--a-grad)' : 'var(--a-sur)'}; 
+                       color:\${isUser ? '#fff' : 'var(--a-ink)'}; 
+                       border:\${isUser ? 'none' : '1.5px solid var(--a-bor)'};
+                       box-shadow:\${isUser ? '0 6px 16px -4px var(--a-glow)' : 'var(--a-sh-1)'};
+                       border-bottom-\${isUser?'right':'left'}-radius:4px;">
+             \${_formatChat(m.content)}
+           </div>
+         </div>
+       \`;
+    });
+    
+    if (course._tutorLoading) {
+       html += \`
+         <div style="display:flex; justify-content:flex-start;">
+           <div style="max-width:85%; padding:14px 20px; border-radius:20px; font-size:0.95rem; background:var(--a-sur); border:1.5px solid var(--a-bor); border-bottom-left-radius:4px; display:flex; align-items:center;">
+              <span class="aiwp-shimmer" style="font-weight:700;">המורה מקליד...</span>
+           </div>
+         </div>
+       \`;
+    }
+    
+    box.innerHTML = html;
+    setTimeout(() => { box.scrollTop = box.scrollHeight; }, 10);
+  }
+
+  window.sfTutorSend = async function(courseId) {
+    const course = _courses().find(c => String(c.id) === String(courseId));
+    if (!course) return;
+    const inp = document.getElementById('tutor-input');
+    if (!inp) return;
+    const text = inp.value.trim();
+    if (!text) return;
+    
+    inp.value = '';
+    inp.style.height = 'auto';
+    
+    course.tutorHistory.push({ role: 'user', content: text });
+    _save();
+    _renderTutorChat(course);
+    
+    await sfTutorAIRespond(course);
+  };
+  
+  async function sfTutorAIRespond(course) {
+    if (!window.callAI) { _toast('מערכת ה-AI לא מחוברת (נסה שוב בגרסה החיה)'); return; }
+    course._tutorLoading = true;
+    _renderTutorChat(course);
+    
+    try {
+      const reply = await window.callAI({ messages: course.tutorHistory, temperature: 0.6, maxTokens: 1500 });
+      if (reply) {
+         course.tutorHistory.push({ role: 'assistant', content: reply });
+         _save();
+      }
+    } catch (e) {
+      _toast('שגיאה בחיבור למורה, נסה שוב מאוחר יותר.');
+    } finally {
+      course._tutorLoading = false;
+      _renderTutorChat(course);
+    }
   }
 
   // ── tiny inline icons ───────────────────────────────────────────────────────

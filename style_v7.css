@@ -1005,6 +1005,7 @@ input.ob2-inp-lg { font-size: 1.15rem !important; font-weight: 700 !important; p
   backdrop-filter: blur(16px) saturate(160%) !important;
   -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
   box-shadow: 0 12px 36px rgba(10,12,29,0.40), inset 0 1px 0 rgba(255,255,255,0.10) !important;
+  z-index: 11000 !important;
 }
 [data-theme="dark"] #toast { background: rgba(36,41,73,0.92) !important; }
 .xp-toast {
