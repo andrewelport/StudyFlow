@@ -282,33 +282,42 @@
       return;
     }
 
-    // PDF / image — needs the multimodal proxy (available in the live version).
-    reader.onload = async () => {
-      try {
-        const data = String(reader.result).split(',')[1];
-        const today = _today();
-        const c = _mEdit ? _courses().find(x => String(x.id) === String(_mEdit.courseId)) : null;
-        if (!window.callAI) throw new Error('no-ai');
-        const content = await window.callAI({
-          messages: [
-            { role: 'system', content: 'אתה מחלץ אבני-דרך ללימוד מתוך קובץ סילבוס (PDF/תמונה). החזר JSON בלבד: {"milestones":[{"date":"YYYY-MM-DD","topic":"","type":"topic|exam"}]}.' },
-            { role: 'user', content: `קורס: ${c ? c.name : ''}. היום: ${today}. חלץ את אבני הדרך (נושא + תאריך). אם אין תאריך מפורש — פזר שבועי החל מהיום. האחרונה היא המבחן (type:"exam").` }
-          ],
-          json: true, maxTokens: 1800, temperature: 0.2,
-          files: [{ mime_type: file.type || 'application/pdf', data }]
-        });
-        const obj = window.extractJSON ? window.extractJSON(content) : JSON.parse(content);
-        const ms = (obj && Array.isArray(obj.milestones)) ? obj.milestones : (Array.isArray(obj) ? obj : []);
-        if (!ms.length) throw new Error('empty');
-        _applyMilestones(ms, true);
-      } catch (e) {
-        const m = (e && e.message) || '';
-        _toast(/Gemini|מפתח|זמין|מקומית/.test(m) ? m : 'לא הצלחתי לחלץ מהקובץ — בוא נבנה בשיחה, אני שואל ואתה עונה.');
-        try { sfStartWizard(); } catch (_) {}
-      } finally { _btnLoad(false); }
-    };
+    // PDF / image — needs the multimodal AI. Read to base64, then extract (retryable).
+    reader.onload = () => _extractMilestonesFromFile(String(reader.result).split(',')[1], file.type || 'application/pdf');
     reader.readAsDataURL(file);
   };
+
+  async function _extractMilestonesFromFile(data, mime) {
+    // No AI key → open the one-click connect prompt and retry this exact file after.
+    if (window.hasAIKey && !window.hasAIKey()) {
+      _btnLoad(false);
+      if (window.showAIKeySetup) window.showAIKeySetup(() => _extractMilestonesFromFile(data, mime));
+      else { _toast('הוסף מפתח Gemini בהגדרות כדי לחלץ מקובץ'); try { sfStartWizard(); } catch (_) {} }
+      return;
+    }
+    _btnLoad(true);
+    try {
+      if (!window.callAI) throw new Error('no-ai');
+      const today = _today();
+      const c = _mEdit ? _courses().find(x => String(x.id) === String(_mEdit.courseId)) : null;
+      const content = await window.callAI({
+        messages: [
+          { role: 'system', content: 'אתה מחלץ אבני-דרך ללימוד מתוך קובץ סילבוס (PDF/תמונה). החזר JSON בלבד: {"milestones":[{"date":"YYYY-MM-DD","topic":"","type":"topic|exam"}]}.' },
+          { role: 'user', content: `קורס: ${c ? c.name : ''}. היום: ${today}. חלץ את אבני הדרך (נושא + תאריך). אם אין תאריך מפורש — פזר שבועי החל מהיום. האחרונה היא המבחן (type:"exam").` }
+        ],
+        json: true, maxTokens: 1800, temperature: 0.2,
+        files: [{ mime_type: mime, data }]
+      });
+      const obj = window.extractJSON ? window.extractJSON(content) : JSON.parse(content);
+      const ms = (obj && Array.isArray(obj.milestones)) ? obj.milestones : (Array.isArray(obj) ? obj : []);
+      if (!ms.length) throw new Error('empty');
+      _applyMilestones(ms, true);
+    } catch (e) {
+      const m = (e && e.message) || '';
+      _toast(/Gemini|מפתח|זמין|מקומית/.test(m) ? m : 'לא הצלחתי לחלץ מהקובץ — בוא נבנה בשיחה, אני שואל ואתה עונה.');
+      try { sfStartWizard(); } catch (_) {}
+    } finally { _btnLoad(false); }
+  }
 
   // ── Guided "build in a chat" wizard — a real Q&A conversation, button answers ─
   let _mWiz = null;

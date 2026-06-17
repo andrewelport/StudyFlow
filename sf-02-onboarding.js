@@ -750,14 +750,14 @@ async function _retryOn429(fn, maxRetries = 2) {
 
 async function callAI({ messages, temperature = 0.7, json = false, maxTokens = 4096, files = null, model = null }) {
   const key = (S.apiKey || '').trim();
-  // Personal Gemini key (AIza…) → direct Gemini. Supports text + files + model
-  // selection and works locally (static dev server has no proxy).
-  if (/^AIza[\w-]{20,}/.test(key)) {
-    return await _retryOn429(() => _callGeminiDirect({ messages, temperature, json, maxTokens, files, model }));
-  }
   // Personal Groq key (gsk_…) → direct Groq (text only, no multimodal).
-  if (key && key.startsWith('gsk_') && !key.startsWith('gsk_placeholder')) {
+  if (key.startsWith('gsk_') && !key.startsWith('gsk_placeholder')) {
     return await _retryOn429(() => _callGroqDirect({ messages, temperature, json, maxTokens }));
+  }
+  // Any other non-empty key → treat as a Gemini key → direct Gemini. Supports
+  // text + files + model selection, and works locally (static dev server has no proxy).
+  if (key) {
+    return await _retryOn429(() => _callGeminiDirect({ messages, temperature, json, maxTokens, files, model }));
   }
   // No personal key → server proxy (Gemini, server-side key). Works on the live deploy.
   return await _retryOn429(async () => {
@@ -785,4 +785,47 @@ async function callAI({ messages, temperature = 0.7, json = false, maxTokens = 4
 async function gemini(prompt) {
   return callAI({ messages: [{ role: 'user', content: prompt }] });
 }
+
+// True when a usable AI key is configured (any non-empty key — Gemini or Groq).
+function hasAIKey() { return !!(S && S.apiKey && String(S.apiKey).trim()); }
+window.hasAIKey = hasAIKey;
+
+// Self-service "Connect AI" prompt. Pops when an AI feature is used without a
+// key, so the user can grab a free Gemini key and paste it in one place.
+// onSaved(true) runs after a key is saved, so callers can retry their action.
+function showAIKeySetup(onSaved) {
+  const existing = document.getElementById('ai-key-setup'); if (existing) existing.remove();
+  const ov = document.createElement('div');
+  ov.id = 'ai-key-setup';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:100050;display:flex;align-items:center;justify-content:center;background:rgba(10,12,30,0.55);padding:20px;backdrop-filter:blur(4px);';
+  ov.innerHTML = `
+    <div dir="rtl" style="background:var(--a-sur,#fff);border-radius:22px;max-width:390px;width:100%;padding:26px;box-shadow:0 24px 60px rgba(0,0,0,0.35);font-family:Heebo,sans-serif;">
+      <div style="font-size:1.35rem;font-weight:900;margin-bottom:8px;color:var(--a-ink,#0f1222);">הפעלת ה-AI</div>
+      <div style="font-size:0.93rem;line-height:1.65;color:var(--a-ink-2,#444);margin-bottom:18px;">כדי שהמורה הפרטי, הצ׳אט וחילוץ הסילבוס מקבצים יעבדו, צריך מפתח Gemini חינמי. זה חד-פעמי ולוקח פחות מדקה.</div>
+      <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="display:block;text-align:center;background:var(--a-grad,#5b66f2);color:#fff;padding:12px;border-radius:13px;font-weight:800;text-decoration:none;margin-bottom:14px;">קבל מפתח חינם מ-Google AI Studio ←</a>
+      <input id="ai-key-setup-input" type="text" autocomplete="off" spellcheck="false" placeholder="הדבק כאן את המפתח (מתחיל ב-AIza)" style="width:100%;box-sizing:border-box;border:1.6px solid var(--a-bor,#dcdce5);border-radius:13px;padding:13px;font-family:inherit;font-size:0.95rem;margin-bottom:14px;background:var(--a-sur-2,#f6f6fb);color:var(--a-ink,#0f1222);" />
+      <div style="display:flex;gap:9px;">
+        <button id="ai-key-setup-cancel" style="flex:0 0 auto;background:var(--a-sur-3,#ededf3);border:none;border-radius:13px;padding:13px 18px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--a-ink-2,#444);">אחר כך</button>
+        <button id="ai-key-setup-save" style="flex:1;background:var(--a-grad,#5b66f2);color:#fff;border:none;border-radius:13px;padding:13px;font-weight:800;cursor:pointer;font-family:inherit;">שמור והפעל</button>
+      </div>
+      <div style="font-size:0.73rem;color:var(--a-ink-3,#8a8a9a);margin-top:12px;text-align:center;">המפתח נשמר רק במכשיר שלך (localStorage). באתר החי ה-AI עובד אוטומטית.</div>
+    </div>`;
+  document.body.appendChild(ov);
+  const inp = document.getElementById('ai-key-setup-input');
+  const close = () => ov.remove();
+  ov.addEventListener('click', (e) => { if (e.target === ov) close(); });
+  document.getElementById('ai-key-setup-cancel').onclick = close;
+  const saveKey = () => {
+    const k = (inp.value || '').replace(/\s+/g, '');
+    if (!k) { inp.focus(); return; }
+    S.apiKey = k; save();
+    close();
+    if (typeof toast === 'function') toast('ה-AI הופעל ✓');
+    if (typeof onSaved === 'function') { try { onSaved(true); } catch (e) {} }
+  };
+  document.getElementById('ai-key-setup-save').onclick = saveKey;
+  inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') saveKey(); });
+  setTimeout(() => inp.focus(), 50);
+}
+window.showAIKeySetup = showAIKeySetup;
 

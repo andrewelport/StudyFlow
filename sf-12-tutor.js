@@ -326,6 +326,13 @@
   }
 
   async function _handleSendAI(text, historyRef, ctx) {
+    // No AI key yet → open the one-click connect prompt, then retry this exact send
+    // (the attached file, if any, is preserved because we haven't consumed it yet).
+    if (window.hasAIKey && !window.hasAIKey()) {
+      if (window.showAIKeySetup) window.showAIKeySetup(() => _handleSendAI(text, historyRef, ctx));
+      else _toast('הוסף מפתח Gemini בהגדרות כדי להפעיל את המורה');
+      return;
+    }
     const files = _pendingFile ? [{ mime_type: _pendingFile.mime_type, data: _pendingFile.data }] : null;
     _pendingFile = null;
     historyRef.push({ role: 'user', content: text });
