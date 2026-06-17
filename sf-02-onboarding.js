@@ -714,11 +714,12 @@ function _buildGeminiBody({ messages, temperature, json, maxTokens, files }) {
   return { contents, generationConfig };
 }
 
-async function _callGeminiDirect({ messages, temperature, json, maxTokens, files }) {
+async function _callGeminiDirect({ messages, temperature, json, maxTokens, files, model }) {
   const key = (S.apiKey || '').trim();
   if (!key) throw new Error('נדרש מפתח Gemini — הכנס אותו בהגדרות');
   const body = _buildGeminiBody({ messages, temperature, json, maxTokens, files });
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
+  const mdl = model || GEMINI_MODEL;
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${mdl}:generateContent`, {
     method: 'POST',
     headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
@@ -747,12 +748,12 @@ async function _retryOn429(fn, maxRetries = 2) {
   }
 }
 
-async function callAI({ messages, temperature = 0.7, json = false, maxTokens = 4096, files = null }) {
+async function callAI({ messages, temperature = 0.7, json = false, maxTokens = 4096, files = null, model = null }) {
   const key = (S.apiKey || '').trim();
-  // Personal Gemini key (AIza…) → direct Gemini. Supports text + files and works
-  // locally (static dev server has no proxy). This is the recommended local path.
+  // Personal Gemini key (AIza…) → direct Gemini. Supports text + files + model
+  // selection and works locally (static dev server has no proxy).
   if (/^AIza[\w-]{20,}/.test(key)) {
-    return await _retryOn429(() => _callGeminiDirect({ messages, temperature, json, maxTokens, files }));
+    return await _retryOn429(() => _callGeminiDirect({ messages, temperature, json, maxTokens, files, model }));
   }
   // Personal Groq key (gsk_…) → direct Groq (text only, no multimodal).
   if (key && key.startsWith('gsk_') && !key.startsWith('gsk_placeholder')) {
@@ -765,7 +766,7 @@ async function callAI({ messages, temperature = 0.7, json = false, maxTokens = 4
       res = await fetch('/api/groq-proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages, temperature, json, maxTokens, ...(files ? { files } : {}) })
+        body: JSON.stringify({ messages, temperature, json, maxTokens, ...(files ? { files } : {}), ...(model ? { model } : {}) })
       });
     } catch (e) {
       throw new Error('AI לא זמין מקומית — הוסף מפתח Gemini בהגדרות כדי להפעיל צ׳אט וניתוח קבצים, או פרוס לאתר החי');

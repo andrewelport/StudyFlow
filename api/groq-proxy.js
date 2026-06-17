@@ -3,7 +3,8 @@
 // continue to work without touching client code.
 
 const GEMINI_MODEL = 'gemini-2.5-flash';
-const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+const ALLOWED_MODELS = ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash'];
+const geminiEndpoint = (model) => `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -19,14 +20,15 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { messages, temperature, json, maxTokens, responseSchema, files, thinkingConfig } = req.body || {};
+    const { messages, temperature, json, maxTokens, responseSchema, files, thinkingConfig, model } = req.body || {};
     if (!Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({ error: 'messages array required' });
     }
 
+    const chosenModel = ALLOWED_MODELS.includes(model) ? model : GEMINI_MODEL;
     const geminiBody = buildGeminiBody({ messages, temperature, json, maxTokens, responseSchema, files, thinkingConfig });
 
-    const geminiRes = await fetch(GEMINI_ENDPOINT, {
+    const geminiRes = await fetch(geminiEndpoint(chosenModel), {
       method: 'POST',
       headers: {
         'x-goog-api-key': GEMINI_API_KEY,

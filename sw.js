@@ -1,4 +1,4 @@
-const CACHE = 'studyflow-v195';
+const CACHE = 'studyflow-v196';
 const PRECACHE = [
   '/',
   '/index.html',
@@ -7,7 +7,7 @@ const PRECACHE = [
   '/style_v7.css?v=18',
   '/scheduler.js?v=36',
   '/sf-01-core.js?v=8',
-  '/sf-02-onboarding.js?v=12',
+  '/sf-02-onboarding.js?v=13',
   '/sf-03-import.js?v=13',
   '/sf-04-progress.js?v=1',
   '/sf-05-planner.js?v=2',
@@ -17,7 +17,7 @@ const PRECACHE = [
   '/sf-09-coach.js?v=2',
   '/sf-10-focus.js?v=3',
   '/sf-11-syllabus.js?v=9',
-  '/premium-planner.js?v=9',
+  '/premium-planner.js?v=10',
   '/logo_192.png',
   '/logo_512.png',
   '/manifest.json',

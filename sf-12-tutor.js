@@ -151,6 +151,7 @@
   // 3. FULL-SCREEN CHAT UI OVERLAY
   let _currentChatCtx = null;
   let _pendingFile = null;  // { mime_type, data, name } — a PDF/image attached to the next message
+  let _tutorModel = 'gemini-2.5-pro';  // stronger model for teaching; falls back to default if unavailable
 
   function _openChatUI(title, subtitle, historyRef, onSendFn, onBackFn) {
     let overlay = document.getElementById('tutor-chat-overlay');
@@ -333,8 +334,16 @@
 
     if (!window.callAI) { _toast('מערכת ה-AI לא מחוברת'); _renderChatMessages(historyRef, false); return; }
 
+    const ask = (model) => window.callAI({ messages: historyRef, temperature: 0.6, maxTokens: 2048, files, model });
     try {
-      const reply = await window.callAI({ messages: historyRef, temperature: 0.65, maxTokens: 1500, files });
+      let reply;
+      try {
+        reply = await ask(_tutorModel);
+      } catch (e1) {
+        // Strong model unavailable on this key → drop to the default for the session
+        if (_tutorModel) { _tutorModel = null; reply = await ask(null); }
+        else throw e1;
+      }
       if (reply) {
          historyRef.push({ role: 'assistant', content: reply });
          _save();
@@ -358,16 +367,19 @@
 
     if (!Array.isArray(ms.tutorHistory)) {
       const isExam = ms.type === 'exam';
-      const sysPrompt = `אתה מורה פרטי אישי (AI Tutor) מבריק וסבלני לסטודנט בקורס "${course.name}".
-השיחה הזו מוקדשת אך ורק לנושא: "${isExam ? 'הכנה למבחן מסכם' : ms.topic}".
-ההנחיות שלך למורה אפקטיבי:
-1. היה חם, מעודד וסבלני. פנה אל התלמיד בגובה העיניים והענק תחושת ביטחון.
-2. במקום לתת תשובות סופיות, השתמש בשיטה הסוקראטית - שאל שאלות מנחות שיעזרו לתלמיד להגיע לתשובה בעצמו.
-3. הבא דוגמאות יומיומיות שמפשטות את החומר.
-4. ${isExam ? 'מכיוון שזהו המבחן, הצע שאלות תרגול מהירות ומאתגרות, ממש כמו סימולציה. תן פידבק מפורט על כל טעות.' : 'הישאר ממוקד בנושא זה בלבד.'}
-5. אם התלמיד מצרף קובץ למשימה (המופיע בתוך סוגריים מרובעים [תוכן הקובץ: ...]), התייחס לטקסט שהוא מכיל, סרוק אותו וסייע לתלמיד להבין אותו, למצוא שגיאות בקוד או בחיבור, או לענות על שאלות מתוכו.
-6. ענה בעברית טבעית ונעימה (עם אימוג'ים בטעם טוב).`;
-      
+      const sysPrompt = `אתה מורה פרטי אישי ומצוין לסטודנט בקורס "${course.name}", ומלמד עכשיו את הנושא "${isExam ? 'הכנה למבחן המסכם' : ms.topic}".
+
+המשימה שלך: ללמד ולהסביר באמת — לא רק לשאול שאלות.
+- כשהתלמיד מבקש הסבר: הסבר בבהירות, שלב-אחר-שלב, עם דוגמה קונקרטית אחת לפחות. אל תתחמק ואל תחזיר שאלה במקום הסבר.
+- התחל מהבסיס ובנֵה בהדרגה; פרק רעיון מורכב לחלקים קטנים, והשתמש באנלוגיות מהיומיום.
+- התאם את עצמך לרמת התלמיד ולקצב שלו — אם לא הבין, הסבר שוב אחרת ופשוט יותר; אם שולט, העמק והרחב.
+- רק *אחרי* שהסברת, בדוק הבנה בשאלה ממוקדת אחת או תרגיל קצר. השיטה הסוקרטית היא כלי בנוסף להוראה, לא במקומה.
+- אם התלמיד מצרף קובץ (PDF/תמונה/קוד/טקסט): נתח אותו לעומק, הצבע על שגיאות ספציפיות, והסבר בדיוק איך לתקן.
+- שיעורי בית לציון בלבד: אל תיתן את התשובה הסופית מוכנה — הוֹבל ברמזים ושאלות, אבל כן לַמֵּד את העיקרון המלא שמאחורי הפתרון.
+${isExam ? '- לקראת המבחן: הצע סימולציה — שאלות תרגול מאתגרות עם פידבק מפורט על כל טעות, וחיזוק נקודות התורפה.' : '- הישאר ממוקד בנושא, אך הסבר מושגי רקע נדרשים אם חסרים לתלמיד.'}
+
+סגנון: עברית טבעית, חמה וברורה. בלי אימוג'ים. תשובות מלאות אך ממוקדות, בלי מילוי סרק.`;
+
       ms.tutorHistory = [{ role: 'system', content: sysPrompt }];
       _save();
     }
@@ -375,13 +387,13 @@
     _currentChatCtx = { courseId: course.id, milestoneId: ms.id, history: ms.tutorHistory };
 
     _openChatUI(
-      course.name, 
-      ms.type === 'exam' ? 'הכנה למבחן' : ms.topic, 
-      ms.tutorHistory, 
+      course.name,
+      ms.type === 'exam' ? 'הכנה למבחן' : ms.topic,
+      ms.tutorHistory,
       (txt) => _handleSendAI(txt, ms.tutorHistory, _currentChatCtx)
     );
 
-    if (ms.tutorHistory.length === 1) _handleSendAI('שלום! אני המורה הפרטי שלך לנושא הזה. מאיפה נרצה להתחיל?', ms.tutorHistory, _currentChatCtx);
+    if (ms.tutorHistory.length === 1) _handleSendAI(`שלום! אני רוצה ללמוד את הנושא "${ms.type === 'exam' ? 'הכנה למבחן' : ms.topic}". הצג לי אותו בקצרה — מה הרעיון המרכזי, ומאיפה כדאי שנתחיל?`, ms.tutorHistory, _currentChatCtx);
   };
 
   // 5. Free Practice / General Chat
@@ -391,14 +403,17 @@
 
     if (!Array.isArray(course.tutorHistory)) {
       const completed = (course.milestones || []).filter(m => m.done).map(m => m.topic).join(', ');
-      const sysPrompt = `אתה מורה פרטי מומחה ומוביל לקורס "${course.name}".
-זוהי שיחת תרגול פתוחה וחופשית. הסטודנט יכול לשאול הכל.
-לידיעתך, הסטודנט כבר סיים ללמוד את הנושאים הבאים: ${completed || 'עדיין לא סומנו נושאים שנלמדו'}.
-מטרתך:
-1. לספק תחושת הצלחה והתקדמות לתלמיד.
-2. לעזור לו לבצע אינטגרציה בין כל הנושאים שלמד.
-3. אם התלמיד מצרף קבצים (קוד, תרגילים, טקסט) - נתח אותם בסבלנות, הראה לו איפה הטעויות ואל תפתור במקומו אלא אם הוא מתקשה מאוד.
-4. השתמש בשפה חיובית, מעצימה ומקצועית.`;
+      const sysPrompt = `אתה מורה פרטי מומחה לקורס "${course.name}". זוהי שיחת תרגול פתוחה — התלמיד יכול לשאול הכל.
+נושאים שכבר נלמדו: ${completed || 'עדיין לא סומנו נושאים'}.
+
+המשימה שלך: ללמד ולהסביר באמת.
+- כשמבקשים הסבר: תן הסבר ברור, שלב-אחר-שלב, עם דוגמה קונקרטית. אל תתחמק ואל תחזיר שאלה במקום תשובה.
+- עזור לתלמיד לקשר ולשלב בין הנושאים שכבר למד; חזק נקודות תורפה.
+- אם מצורף קובץ (PDF/תמונה/קוד/תרגיל/טקסט): נתח לעומק, הצבע על שגיאות ספציפיות, והסבר בדיוק איך לתקן.
+- במטלה לציון: הובל ברמזים ושאלות במקום לתת תשובה מוכנה — אבל לַמֵּד את העיקרון המלא.
+- התאם לרמת התלמיד; אם לא הבין, הסבר שוב פשוט יותר. רק אחרי הסבר — בדוק הבנה בשאלה ממוקדת.
+
+סגנון: עברית חמה וברורה, בלי אימוג'ים, ממוקד ומלא.`;
 
       course.tutorHistory = [{ role: 'system', content: sysPrompt }];
       _save();
@@ -413,7 +428,7 @@
       (txt) => _handleSendAI(txt, course.tutorHistory, _currentChatCtx)
     );
 
-    if (course.tutorHistory.length === 1) _handleSendAI('היי! אני מוכן למרתון ותרגול הכללי שלנו. מה נתרגל היום?', course.tutorHistory, _currentChatCtx);
+    if (course.tutorHistory.length === 1) _handleSendAI('היי! בוא נתחיל לתרגל. אפשר בסקירה קצרה של מה שלמדתי עד עכשיו, ואז שאלת תרגול ראשונה?', course.tutorHistory, _currentChatCtx);
   };
 
   // Entry from the syllabus / milestone "מורה פרטי" buttons → open the full tutor page.
