@@ -311,8 +311,9 @@
   }
   async function sendChat() {
     const inp = document.getElementById('aiwp-chat-input'); if (!inp) return;
-    const msg = inp.value.trim(); if (!msg) return; inp.value = '';
-    _flow.chat.push({ role: 'user', content: msg });
+    const text = inp.value.trim(); if (!text) return; inp.value = '';
+    _flow.chat.push({ role: 'user', content: text });
+    const understood = _applyTextToPlan(text);   // act on it now — works even with no AI
     _renderChatFeed();
     const feed = document.getElementById('aiwp-chat-feed');
     feed.insertAdjacentHTML('beforeend', `<div class="aiwp-bub ai" id="aiwp-chat-load"><span class="aiwp-shimmer">חושב...</span></div>`);
@@ -321,11 +322,14 @@
       const sys = { role: 'system', content: 'אתה סוכן תכנון לימודים אמפתי ומקצועי. נהל שיחה קצרה בעברית כדי להבין את מצב המשתמש לשבוע הקרוב: לחץ, אילוצים חד-פעמיים, מטרות, מצב רגשי. שאל שאלת המשך אחת רלוונטית אם צריך, אחרת אשר בקצרה. ענה במשפט או שניים בלבד. אל תבנה לוז עכשיו.' };
       const reply = await window.callAI({ messages: [sys, ..._flow.chat], temperature: 0.6, maxTokens: 300 });
       document.getElementById('aiwp-chat-load')?.remove();
-      _flow.chat.push({ role: 'assistant', content: (reply || '').trim() || 'הבנתי, תודה. תוכל להוסיף עוד או לחזור ולבנות את הלוז.' });
+      _flow.chat.push({ role: 'assistant', content: (reply || '').trim() || understood || 'הבנתי, תודה. תוכל להוסיף עוד או לבנות את הלוז.' });
       _renderChatFeed();
     } catch (e) {
       document.getElementById('aiwp-chat-load')?.remove();
-      _flow.chat.push({ role: 'assistant', content: 'מצטער, יש בעיה בחיבור כרגע. אפשר להמשיך ולבנות את הלוז.' });
+      // No live AI (localhost) → still respond smartly with what we actually parsed.
+      const reply = understood
+        || ((e && e.message && /Gemini|מפתח|מקומית|זמין/.test(e.message)) ? e.message : 'הבנתי, רשמתי לי. אפשר להוסיף עוד או לחזור ולבנות את הלוז — אקח בחשבון מה שכתבת.');
+      _flow.chat.push({ role: 'assistant', content: reply });
       _renderChatFeed();
     }
   }
@@ -394,9 +398,43 @@
     _refineStep = 'followup';
     _renderRefine();
   }
+  // Parse free text into concrete planning levers so the rebuild honours it even
+  // with no AI (localhost). Returns a short Hebrew summary of what was understood.
+  const _DOW_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+  function _daysFromText(text) {
+    const out = new Set();
+    if (/סופ.?["׳']?ש|סוף\s*שבוע|ויקאנד|weekend/i.test(text)) { out.add(5); out.add(6); }
+    _DOW_NAMES.forEach((nm, dow) => {
+      const re = new RegExp('(?:^|[\\s,.;:!?])(?:ב|ה|ביום\\s|יום\\s)?' + nm + '(?:[\\s,.;:!?]|$)');
+      if (re.test(text)) out.add(dow);
+    });
+    return out;
+  }
+  function _applyTextToPlan(text) {
+    text = String(text || '');
+    const bits = [];
+    const dows = _daysFromText(text);
+    if (dows.size) {
+      const range = window._wrGetTargetRange();
+      _daysInRange(range.start, range.end).forEach(d => {
+        if (dows.has(d.dow) && !_flow.answers.blockedDays.includes(d.date)) _flow.answers.blockedDays.push(d.date);
+      });
+      bits.push('בלי שיבוץ ב' + [...dows].sort((a, b) => a - b).map(x => _DOW_NAMES[x]).join(' ו'));
+    }
+    if (/(ערב|מאוחר|בלילה|בלילות|אחרי\s*\d)/.test(text) && /(לא|בלי|פנוי|פחות|נמנע|להימנע|שמור|תשמור)/.test(text)) {
+      _refine().avoidEvening = true; bits.push('בלי סשנים מאוחרים');
+    }
+    if (/(יותר מדי|כבד מדי|מתיש|מעמיס|תוריד|פחות עומס|קל יותר|להוריד עומס)/.test(text)) { const r = _refine(); r.intensity = Math.max(-1, r.intensity - 1); bits.push('קצב מתון יותר'); }
+    else if (/(תוסיף עוד|יותר אינטנס|תכביד|יותר סשנ|יותר שעות|להוסיף עוד)/.test(text)) { const r = _refine(); r.intensity = Math.min(1, r.intensity + 1); bits.push('קצב אינטנסיבי יותר'); }
+    return bits.length ? ('הבנתי — ' + bits.join(', ') + '. אכבד את זה בבנייה מחדש.') : '';
+  }
   function refineNote() {
     const ta = document.getElementById('aiwp-refine-note'); const v = ta ? ta.value.trim() : '';
-    if (v) { const r = _refine(); r.notes.push(v); r.log.push({ role: 'user', text: v }); r.log.push({ role: 'ai', text: 'נרשם — אתחשב בזה כשאבנה מחדש.' }); }
+    if (v) {
+      const r = _refine(); r.notes.push(v); r.log.push({ role: 'user', text: v });
+      const understood = _applyTextToPlan(v);
+      r.log.push({ role: 'ai', text: understood || 'נרשם — אתחשב בזה כשאבנה מחדש (בגרסה החיה ה-AI יתפוס גם ניואנסים).' });
+    }
     _refineStep = 'followup';
     _renderRefine();
   }
@@ -507,9 +545,9 @@
       _flow.strategy = strategy;
       _renderPreview(tasks);
     } catch (e) {
-      console.error('AIWP generate error:', e);
-      // Any failure in the AI pipeline (offline, API error, bad JSON) → graceful
-      // fallback to the deterministic engine. The user gets a real plan regardless.
+      // AI unavailable (offline / no key / bad JSON) is an EXPECTED path — we fall
+      // back to the deterministic engine, so log quietly rather than as an error.
+      console.warn('AIWP: AI pipeline unavailable, using deterministic fallback —', (e && e.message) || e);
       const tasks = _fallbackPlan();
       if (tasks.length) {
         _flow.plan = tasks;

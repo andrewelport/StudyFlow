@@ -150,7 +150,8 @@
 
   // 3. FULL-SCREEN CHAT UI OVERLAY
   let _currentChatCtx = null;
-  
+  let _pendingFile = null;  // { mime_type, data, name } — a PDF/image attached to the next message
+
   function _openChatUI(title, subtitle, historyRef, onSendFn, onBackFn) {
     let overlay = document.getElementById('tutor-chat-overlay');
     if (!overlay) {
@@ -225,26 +226,32 @@
     fileInp.onchange = (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      const type = file.type || file.name;
-      
-      const isText = type.includes('text') || type.includes('json') || type.endsWith('.md') || type.endsWith('.csv') || type.endsWith('.js') || type.endsWith('.py');
-      
-      if (!isText && (type.includes('pdf') || type.includes('image'))) {
-        _toast('מסמכי PDF ותמונות ייתמכו בעתיד. בינתיים, העתק והדבק את הטקסט ישירות.');
-        fileInp.value = '';
-        return;
-      }
-      
+      const type = (file.type || file.name || '').toLowerCase();
+      const isText = type.includes('text') || type.includes('json') || /\.(md|csv|js|py|txt|html?)$/.test(type);
       const reader = new FileReader();
-      reader.onload = (ev) => {
-        const text = ev.target.result;
-        inp.value += `\n\n[תוכן הקובץ: ${file.name}]\n` + text + `\n[סוף הקובץ]\n`;
-        inp.style.height = 'auto';
-        inp.style.height = (inp.scrollHeight < 160 ? inp.scrollHeight : 160) + 'px';
-        _toast('הקובץ צורף בהצלחה!');
-      };
       reader.onerror = () => _toast('שגיאה בקריאת הקובץ.');
-      reader.readAsText(file);
+      if (isText) {
+        reader.onload = (ev) => {
+          inp.value += `\n\n[תוכן הקובץ: ${file.name}]\n` + ev.target.result + `\n[סוף הקובץ]\n`;
+          inp.style.height = 'auto';
+          inp.style.height = (inp.scrollHeight < 160 ? inp.scrollHeight : 160) + 'px';
+          _toast('הקובץ צורף.');
+        };
+        reader.readAsText(file);
+      } else {
+        // PDF / image → attach as a multimodal file for the AI to analyse
+        if (file.size > 8 * 1024 * 1024) { _toast('הקובץ גדול מדי (עד 8MB)'); fileInp.value = ''; return; }
+        reader.onload = (ev) => {
+          _pendingFile = { mime_type: file.type || 'application/pdf', data: String(ev.target.result).split(',')[1], name: file.name };
+          const tag = `[מצורף: ${file.name}]`;
+          if (!inp.value.includes(tag)) {
+            inp.value += (inp.value ? '\n' : '') + tag;
+            inp.style.height = 'auto'; inp.style.height = (inp.scrollHeight < 160 ? inp.scrollHeight : 160) + 'px';
+          }
+          _toast('הקובץ צורף — כתוב שאלה עליו ושלח.');
+        };
+        reader.readAsDataURL(file);
+      }
       fileInp.value = '';
     };
 
@@ -255,9 +262,9 @@
     
     const doSend = () => {
        const text = inp.value.trim();
-       if (!text) return;
+       if (!text && !_pendingFile) return;
        inp.value = ''; inp.style.height = 'auto';
-       onSendFn(text);
+       onSendFn(text || 'אנא נתח את הקובץ המצורף ועזור לי להבין אותו.');
     };
     
     send.onclick = doSend;
@@ -318,20 +325,23 @@
   }
 
   async function _handleSendAI(text, historyRef, ctx) {
+    const files = _pendingFile ? [{ mime_type: _pendingFile.mime_type, data: _pendingFile.data }] : null;
+    _pendingFile = null;
     historyRef.push({ role: 'user', content: text });
     _save();
     _renderChatMessages(historyRef, true);
-    
+
     if (!window.callAI) { _toast('מערכת ה-AI לא מחוברת'); _renderChatMessages(historyRef, false); return; }
-    
+
     try {
-      const reply = await window.callAI({ messages: historyRef, temperature: 0.65, maxTokens: 1500 });
+      const reply = await window.callAI({ messages: historyRef, temperature: 0.65, maxTokens: 1500, files });
       if (reply) {
          historyRef.push({ role: 'assistant', content: reply });
          _save();
       }
     } catch (e) {
-      _toast('שגיאה בחיבור למורה, נסה שוב.');
+      // Surface the real, actionable reason (e.g. "add a Gemini key in settings")
+      _toast((e && e.message) ? e.message : 'שגיאה בחיבור למורה, נסה שוב.');
     } finally {
       if (_currentChatCtx && _currentChatCtx.courseId === ctx.courseId) {
         _renderChatMessages(historyRef, false);

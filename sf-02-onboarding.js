@@ -273,7 +273,8 @@ function openSettings() {
   if (keyEl) keyEl.value = S.apiKey || '';
   const keyStatus = document.getElementById('api-key-status');
   if (keyStatus) {
-    keyStatus.textContent = S.apiKey ? ` מפתח שמור: ${S.apiKey.slice(0,7)}...` : '️ לא הוגדר — AI לא יעבודק';
+    const _isGem = /^AIza/.test(S.apiKey || '');
+    keyStatus.textContent = S.apiKey ? `${_isGem ? 'מפתח Gemini' : 'מפתח'} שמור: ${S.apiKey.slice(0,7)}…` : 'לא הוגדר — הדבק מפתח Gemini כדי להפעיל AI מקומית';
     keyStatus.style.color = S.apiKey ? 'var(--green)' : '#f59e0b';
   }
   const banner = document.getElementById('api-managed-banner');
@@ -285,7 +286,7 @@ function openSettings() {
       banner.style.background = 'var(--orange-light, #fff7ed)';
       banner.style.border = '1px solid #f59e0b';
       banner.style.color = '#b45309';
-      banner.textContent = '️ נדרש מפתח API כדי שהמערכת תפעל — הכנס למטה';
+      banner.textContent = 'להפעלת ה-AI מקומית: הדבק מפתח Gemini (מתחיל ב-AIza) למטה. באתר החי ה-AI עובד אוטומטית.';
     }
   }
   const lbl = document.getElementById('theme-btn-label');
@@ -680,6 +681,57 @@ async function _callGroqDirect({ messages, temperature, json, maxTokens }) {
   return d.choices[0].message.content;
 }
 
+// Direct Gemini call from the client — used when the user pastes a personal
+// Gemini key (AIza…) in Settings. Supports multimodal `files` (PDF / images),
+// so chat + file analysis work locally without the serverless proxy. Mirrors
+// the body shape of api/groq-proxy.js so behaviour matches the live deploy.
+const GEMINI_MODEL = 'gemini-2.5-flash';
+function _buildGeminiBody({ messages, temperature, json, maxTokens, files }) {
+  const systems = [], rest = [];
+  for (const m of messages) { if (m.role === 'system') systems.push(m.content || ''); else rest.push(m); }
+  const systemPrefix = systems.length ? systems.join('\n\n') + '\n\n' : '';
+  const contents = []; let firstUserPrefixed = false, filesAttached = false;
+  for (const m of rest) {
+    const role = m.role === 'assistant' ? 'model' : 'user';
+    let text = m.content || '';
+    if (role === 'user' && !firstUserPrefixed) { text = systemPrefix + text; firstUserPrefixed = true; }
+    if (contents.length && contents[contents.length - 1].role === role) {
+      contents[contents.length - 1].parts.push({ text });
+    } else {
+      const parts = [];
+      if (role === 'user' && !filesAttached && Array.isArray(files) && files.length) {
+        for (const f of files) { if (f && f.mime_type && f.data) parts.push({ inline_data: { mime_type: f.mime_type, data: f.data } }); }
+        filesAttached = true;
+      }
+      parts.push({ text });
+      contents.push({ role, parts });
+    }
+  }
+  if (!contents.length && systemPrefix) contents.push({ role: 'user', parts: [{ text: systemPrefix.trim() }] });
+  if (contents.length && contents[0].role !== 'user') contents.unshift({ role: 'user', parts: [{ text: '' }] });
+  const generationConfig = { temperature: temperature ?? 0.7, maxOutputTokens: maxTokens || 4096 };
+  if (json) generationConfig.responseMimeType = 'application/json';
+  return { contents, generationConfig };
+}
+
+async function _callGeminiDirect({ messages, temperature, json, maxTokens, files }) {
+  const key = (S.apiKey || '').trim();
+  if (!key) throw new Error('נדרש מפתח Gemini — הכנס אותו בהגדרות');
+  const body = _buildGeminiBody({ messages, temperature, json, maxTokens, files });
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
+    method: 'POST',
+    headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  let data; try { data = await res.json(); } catch (e) { throw new Error(`שגיאת Gemini (${res.status})`); }
+  if (res.status === 429) throw new Error('חריגת מגבלת API — נסה שוב בעוד דקה');
+  if (res.status === 400 && /API_KEY|api key/i.test(data?.error?.message || '')) throw new Error('מפתח Gemini לא תקין — בדוק בהגדרות ️');
+  if (!res.ok) throw new Error(data?.error?.message || `שגיאת Gemini (${res.status})`);
+  const text = (data?.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('');
+  if (!text) throw new Error('תשובת AI ריקה — נסה שוב');
+  return text;
+}
+
 async function _retryOn429(fn, maxRetries = 2) {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
@@ -695,39 +747,37 @@ async function _retryOn429(fn, maxRetries = 2) {
   }
 }
 
-async function callAI({ messages, temperature = 0.7, json = false, maxTokens = 4096 }) {
-  // Personal key set → skip proxy entirely (avoids 3-5s 404 wait on GitHub Pages)
-  if (S.apiKey && !S.apiKey.startsWith('gsk_placeholder')) {
+async function callAI({ messages, temperature = 0.7, json = false, maxTokens = 4096, files = null }) {
+  const key = (S.apiKey || '').trim();
+  // Personal Gemini key (AIza…) → direct Gemini. Supports text + files and works
+  // locally (static dev server has no proxy). This is the recommended local path.
+  if (/^AIza[\w-]{20,}/.test(key)) {
+    return await _retryOn429(() => _callGeminiDirect({ messages, temperature, json, maxTokens, files }));
+  }
+  // Personal Groq key (gsk_…) → direct Groq (text only, no multimodal).
+  if (key && key.startsWith('gsk_') && !key.startsWith('gsk_placeholder')) {
     return await _retryOn429(() => _callGroqDirect({ messages, temperature, json, maxTokens }));
   }
+  // No personal key → server proxy (Gemini, server-side key). Works on the live deploy.
   return await _retryOn429(async () => {
+    let res;
     try {
-      const res = await fetch('/api/groq-proxy', {
+      res = await fetch('/api/groq-proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages, temperature, json, maxTokens })
+        body: JSON.stringify({ messages, temperature, json, maxTokens, ...(files ? { files } : {}) })
       });
-      if (res.status === 503) throw new Error('תכונות AI אינן זמינות בגרסה החינמית');
-      if (res.status === 429) throw new Error('חריגת מגבלת AI — נסה שוב בעוד דקה');
-      if (res.status === 401) throw new Error('מפתח API לא תקין — עדכן בהגדרות ️');
-      if (res.status === 500) {
-        const d = await res.json().catch(() => ({}));
-        if (d.error && d.error.includes('GROQ_API_KEY')) throw new Error('GROQ_API_KEY לא מוגדר בשרת — הגדר אותו ב-Vercel Environment Variables');
-      }
-      if (res.ok) {
-        const d = await res.json();
-        if (d.error) throw new Error(typeof d.error === 'string' ? d.error : (d.error.message || 'שגיאה ב-AI'));
-        return d.choices[0].message.content;
-      }
-      // 404 = proxy not deployed, fall through to direct
     } catch (e) {
-      // Surface real proxy/availability errors instead of falling through to the
-      // dead direct path (which misreports "enter a Groq key"). 503 = proxy down /
-      // GEMINI_API_KEY unset; "אינן זמינות" is that 503 message.
-      if (e.message && (e.message.includes('חריגת') || e.message.includes('GROQ_API_KEY') || e.message.includes('GEMINI_API_KEY') || e.message.includes('לא תקין') || e.message.includes('אינן זמינות'))) throw e;
-      if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new Error('תכונות AI אינן זמינות — אין חיבור לאינטרנט');
+      throw new Error('AI לא זמין מקומית — הוסף מפתח Gemini בהגדרות כדי להפעיל צ׳אט וניתוח קבצים, או פרוס לאתר החי');
     }
-    return await _callGroqDirect({ messages, temperature, json, maxTokens });
+    if (res.status === 503) throw new Error('תכונות AI אינן זמינות — הוסף מפתח Gemini בהגדרות, או הגדר GEMINI_API_KEY בשרת');
+    if (res.status === 429) throw new Error('חריגת מגבלת AI — נסה שוב בעוד דקה');
+    if (res.status === 401) throw new Error('מפתח API לא תקין — עדכן בהגדרות ️');
+    if (!res.ok) throw new Error('AI לא זמין מקומית — הוסף מפתח Gemini בהגדרות כדי להפעיל צ׳אט וניתוח קבצים, או פרוס לאתר החי');
+    let d; try { d = await res.json(); } catch (e) { throw new Error('AI לא זמין מקומית — הוסף מפתח Gemini בהגדרות'); }
+    if (d.error) throw new Error(typeof d.error === 'string' ? d.error : (d.error.message || 'שגיאה ב-AI'));
+    if (!d.choices || !d.choices[0]) throw new Error('תשובת AI ריקה — נסה שוב');
+    return d.choices[0].message.content;
   });
 }
 

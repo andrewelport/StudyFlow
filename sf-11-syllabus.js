@@ -288,24 +288,22 @@
         const data = String(reader.result).split(',')[1];
         const today = _today();
         const c = _mEdit ? _courses().find(x => String(x.id) === String(_mEdit.courseId)) : null;
-        const body = {
+        if (!window.callAI) throw new Error('no-ai');
+        const content = await window.callAI({
           messages: [
             { role: 'system', content: 'אתה מחלץ אבני-דרך ללימוד מתוך קובץ סילבוס (PDF/תמונה). החזר JSON בלבד: {"milestones":[{"date":"YYYY-MM-DD","topic":"","type":"topic|exam"}]}.' },
             { role: 'user', content: `קורס: ${c ? c.name : ''}. היום: ${today}. חלץ את אבני הדרך (נושא + תאריך). אם אין תאריך מפורש — פזר שבועי החל מהיום. האחרונה היא המבחן (type:"exam").` }
           ],
           json: true, maxTokens: 1800, temperature: 0.2,
           files: [{ mime_type: file.type || 'application/pdf', data }]
-        };
-        const res = await fetch('/api/groq-proxy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-        if (!res.ok) throw new Error('proxy ' + res.status);
-        const d = await res.json();
-        const content = d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
+        });
         const obj = window.extractJSON ? window.extractJSON(content) : JSON.parse(content);
         const ms = (obj && Array.isArray(obj.milestones)) ? obj.milestones : (Array.isArray(obj) ? obj : []);
         if (!ms.length) throw new Error('empty');
         _applyMilestones(ms, true);
       } catch (e) {
-        _toast('חילוץ מ-PDF/תמונה זמין בגרסה החיה — בוא נבנה עכשיו בשיחה, אני שואל ואתה עונה.');
+        const m = (e && e.message) || '';
+        _toast(/Gemini|מפתח|זמין|מקומית/.test(m) ? m : 'לא הצלחתי לחלץ מהקובץ — בוא נבנה בשיחה, אני שואל ואתה עונה.');
         try { sfStartWizard(); } catch (_) {}
       } finally { _btnLoad(false); }
     };
