@@ -1,7 +1,9 @@
 // Small forms that open over the screen. Bigger areas (a course, a goal) are full pages instead.
-import {esc, icon, duration, DAY_SHORT, DAY_NAMES, fullDayLabel, localDate, timeSelect, addDays, dayLabel, dateLabel, PALETTE} from './util.mjs';
+import {esc, icon, duration, DAY_SHORT, DAY_NAMES, fullDayLabel, localDate, timeSelect, addDays, dayLabel, dateLabel, PALETTE, soft, validDate} from './util.mjs';
+import {payLines, money2, money, monthSummary} from './work.mjs';
 import {sheetTop} from './screens.mjs';
 import {UNITS} from './progress.mjs';
+import {GOOGLE_SIGN_IN} from './config.mjs';
 
 const error = '<p class="form-error" role="alert" data-error></p>';
 const submit = label => `${error}<button class="primary submit-button" type="submit">${label}</button>`;
@@ -136,10 +138,27 @@ export function weekShiftsForm(state, jobId, sunday, times = {start: '16:00', en
   </form>`;
 }
 
+// "How much did it come to?": one shift's pay line by line, and what the month comes to with it.
+export function payCard(state, shift) {
+  const job = state.jobs.find(j => j.id === shift.jobId);
+  if (!job || !validDate(shift.date) || !shift.start || shift.start === shift.end) return '';
+  const {lines, total} = payLines(shift, job), month = shift.date.slice(0, 7);
+  const withIt = {...state, shifts: [...state.shifts.filter(x => x.id !== shift.id), {...shift, id: shift.id || 'preview'}]};
+  const mine = monthSummary(withIt, month).jobs.find(j => j.job.id === job.id);
+  const when = month === localDate().slice(0, 7) ? 'החודש' : `ב${new Date(`${shift.date}T12:00:00`).toLocaleDateString('he-IL', {month: 'long'})}`;
+  return `<section class="pay-card" style="--c:${job.color};--soft:${soft(job.color)}" aria-label="כמה יצא">
+    <h3 class="pay-title">כמה יצא?</h3>
+    <div class="pay-shift"><b>יום ${DAY_NAMES[new Date(`${shift.date}T12:00:00`).getDay()]} · ${esc(job.name)}</b><bdi dir="ltr">${shift.start}–${shift.end}</bdi></div>
+    <div class="pay-lines">${lines.map(l => `<div class="pay-line${l.amount === null ? ' is-note' : ''}"><span>${esc(l.label)}</span><b>${l.amount === null ? '' : money2(l.amount)}</b></div>`).join('')}</div>
+    <div class="pay-total"><span>סה״כ למשמרת</span><b>${money2(total)}</b></div>
+    <div class="pay-month"><small>צפוי ${when} · ${mine.shifts.length === 1 ? 'משמרת אחת' : `${mine.shifts.length} משמרות`}</small><b>${money(mine.pay)}</b></div>
+  </section>`;
+}
 export function shiftForm(state, s = {}, jobId = '') {
   const job = s.jobId || jobId || state.jobs[0]?.id;
   return `${sheetTop(s.id ? 'עריכת משמרת' : 'משמרת חדשה', 'עבודה')}
   <form data-form="shift" data-id="${esc(s.id || '')}">
+    <div data-pay>${payCard(state, {id: s.id, jobId: job, date: s.date || localDate(), start: s.start || '16:00', end: s.end || '22:00', breakMinutes: s.breakMinutes || 0, tips: s.tips || 0})}</div>
     <label for="shift-job">מקום העבודה</label>
     <select id="shift-job" name="jobId">${state.jobs.map(j => `<option value="${esc(j.id)}" ${j.id === job ? 'selected' : ''}>${esc(j.name)} · ₪${j.wage} לשעה</option>`).join('')}</select>
     <label for="shift-date">יום</label><input id="shift-date" name="date" type="date" required value="${s.date || localDate()}">
@@ -165,21 +184,75 @@ export function settingsForm(prefs) {
     ${submit('לשמור')}
   </form>
   <details class="data-tools"><summary>גיבוי והעברה למכשיר אחר</summary>
-    <p>הנתונים נשמרים רק בדפדפן הזה, במכשיר הזה. כדי להעביר למכשיר אחר: מורידים גיבוי וטוענים אותו שם.</p>
+    <p>בלי חשבון, הנתונים נשמרים רק במכשיר הזה. עם חשבון (בכפתור "החשבון שלי") הם נשמרים גם בענן. אפשר גם להוריד גיבוי ולטעון אותו במכשיר אחר.</p>
     <button class="text-button" data-action="export">הורדת גיבוי</button>
     <label class="text-button import-label">טעינת גיבוי<input type="file" data-import accept="application/json,.json"></label>
   </details>`;
 }
 
+// The account: optional. Signed out it explains what it adds and signs in with a code by email;
+// signed in it shows where the copy stands and the way out (sign out, download, delete for good).
+export function accountSheet(user, {codeFor = '', sync = {}} = {}) {
+  if (user) {
+    const when = sync.at ? new Date(sync.at).toLocaleString('he-IL', {day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit'}) : '';
+    const status = {syncing: 'מסנכרן…', offline: 'אין חיבור. השינויים יעלו כשיחזור האינטרנט.', error: 'הסנכרון נכשל. ננסה שוב בקרוב.',
+      setup: 'השרת עוד לא מוכן לשמירה (צריך להריץ את קובץ ההגדרה ב-Supabase).'}[sync.status] || (when ? `נשמר בענן · ${when}` : 'עוד לא נשמר בענן.');
+    return `${sheetTop('החשבון שלי')}
+    <section class="account-card"><span class="account-avatar">${icon('user')}</span><div><b>${esc(user.email || 'מחובר')}</b><small class="sync-line${sync.status === 'error' || sync.status === 'setup' ? ' is-bad' : ''}">${icon('cloud')} ${esc(status)}</small></div></section>
+    <button class="primary submit-button" data-action="sync-now">${icon('cloud')} לסנכרן עכשיו</button>
+    <div class="account-actions">
+      <button class="text-button" data-action="export">${icon('file')} הורדת המידע שלי</button>
+      <button class="text-button" data-action="sign-out">להתנתק</button>
+      <button class="text-button muted" data-action="delete-account">${icon('trash')} מחיקת החשבון</button>
+    </div>
+    <p class="field-help">בהתנתקות המידע נשאר בחשבון ונמחק מהמכשיר הזה. מתחברים שוב, והכול חוזר. <a href="privacy.html" target="_blank" rel="noopener">מדיניות הפרטיות</a></p>`;
+  }
+  if (codeFor) {
+    return `${sheetTop('בדוק את המייל')}
+    <p class="account-lead">שלחנו מייל ל־<b dir="ltr">${esc(codeFor)}</b>. לוחצים בו על הקישור, באותו מכשיר, ונכנסים מחוברים. הוא מגיע תוך דקה, וכדאי לבדוק גם בספאם.</p>
+    <form data-form="verify-code">
+      <label for="login-code">יש במייל קוד? אפשר להקליד אותו כאן</label>
+      <input id="login-code" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6,8}" maxlength="8" required autofocus dir="ltr">
+      ${submit('כניסה')}
+    </form>
+    <div class="account-actions"><button class="text-button" data-action="resend-code">לשלוח שוב</button><button class="text-button" data-action="account-other">מייל אחר</button></div>`;
+  }
+  return `${sheetTop('החשבון שלי')}
+  <p class="account-lead">חשבון שומר את הכול בענן: בטלפון חדש או במחשב, מתחברים והכול חוזר. בלי חשבון, הכול נשאר רק במכשיר הזה.</p>
+  ${GOOGLE_SIGN_IN ? `<button class="google-button" data-action="google"><b>G</b> המשך עם Google</button><div class="or-line"><span>או</span></div>` : ''}
+  <form data-form="send-code">
+    <label for="login-email">מייל</label>
+    <input id="login-email" name="email" type="email" autocomplete="email" inputmode="email" required dir="ltr" placeholder="name@example.com">
+    ${submit('שלחו לי מייל כניסה')}
+  </form>
+  <p class="field-help">בלי סיסמה: בכל כניסה מקבלים מייל עם קישור כניסה.</p>`;
+}
+
+export function deleteAccountSheet() {
+  return `${sheetTop('למחוק את החשבון?')}
+  <p>החשבון וכל המידע שלך יימחקו לצמיתות, גם מהמכשיר הזה, ואי אפשר לשחזר אותם. אם רוצים לשמור עותק, מורידים אותו קודם.</p>
+  <button class="text-button" data-action="export">${icon('file')} הורדת המידע שלי</button>
+  <button class="primary submit-button danger" data-action="confirm-delete-account">למחוק לצמיתות</button>
+  <button class="text-button" data-action="account">ביטול</button>`;
+}
+
+export function chooseCopySheet(remoteWhen) {
+  return `${sheetTop('יש מידע גם במכשיר וגם בחשבון')}
+  <p>באיזה מהם להשתמש? השני יישמר כגיבוי במכשיר, כך ששום דבר לא נמחק.</p>
+  <button class="primary submit-button" data-action="use-cloud">${icon('cloud')} מה שבחשבון${remoteWhen ? ` · ${esc(remoteWhen)}` : ''}</button>
+  <button class="text-button" data-action="use-device">מה שבמכשיר הזה (יחליף את מה שבחשבון)</button>`;
+}
+
 export function helpContent() {
   return `${sheetTop('איך זה עובד?')}
+  <button class="primary submit-button tour-again" data-action="tour-start">${icon('help')} להפעיל את ההדרכה המודרכת</button>
   <div class="help">
-    <p><b>1. לימודים.</b> מכניסים את מערכת השעות פעם אחת, מקובץ יומן או ידנית. לכל קורס יש עמוד עם סילבוס, נושאים, מבחנים והתקדמות.</p>
-    <p><b>עבודה.</b> מקום עבודה ושכר לשעה, ואז משמרות (גם משמרות לילה וגם משמרת קבועה שחוזרת כל שבוע). המשמרות נכנסות ללו״ז, ואני מחשב שעות ושכר משוער לכל חודש.</p>
-    <p><b>2. מטרות אישיות.</b> ספורט ותחביבים עם יעד פשוט, כמו 3 אימונים בשבוע.</p>
-    <p><b>3. ספר לי.</b> במסך "היום" כותבים או אומרים מה צריך לעשות. אני מציג מה הבנתי, מוצא זמן פנוי בלי חפיפות, ואף פעם לא מכניס כלום בלי אישור. אם יש התנגשות, אגיד ואציע שעות אחרות.</p>
-    <p><b>4. מצא לי זמן.</b> בעמוד של קורס או של מטרה, הכפתור מציע זמנים פנויים בשבוע הקרוב.</p>
-    <p class="muted">אין כאן בינה מלאכותית ואין שרת. הכול נשמר במכשיר שלך. הזיהוי הקולי, אם משתמשים בו, נעשה על ידי הדפדפן.</p>
+    <p><b>ספר לי.</b> במסך "היום" כותבים או אומרים מה צריך לעשות. אני מראה מה הבנתי, מוצא זמן פנוי בלי חפיפות, ושום דבר לא נכנס בלי אישור.</p>
+    <p><b>לימודים.</b> מערכת השעות נכנסת פעם אחת, מקובץ יומן או ידנית. לכל קורס דף עם סילבוס, מבחנים והתקדמות, ו"מצא לי זמן" ללמוד.</p>
+    <p><b>עבודה.</b> עסק ושכר לשעה, משמרות לשבוע שלם בבת אחת, וחישוב של כמה יצא בכל משמרת ובכל חודש.</p>
+    <p><b>מטרות אישיות.</b> יעד פשוט, כמו 3 אימונים בשבוע. "לשבץ את מה שנשאר" מוצא זמן פנוי לשאר השבוע.</p>
+    <p><b>החשבון.</b> הכול נשמר בחשבון שלך ומתעדכן בכל המכשירים שמתחברים אליהם. גם בלי אינטרנט הכול עובד, ומתעדכן כשהחיבור חוזר.</p>
+    <p class="muted">בלי בינה מלאכותית. הזיהוי הקולי נעשה על ידי Google או Apple. <a href="privacy.html" target="_blank" rel="noopener">מדיניות הפרטיות</a> · <a href="terms.html" target="_blank" rel="noopener">תנאי השימוש</a></p>
   </div>
   <button class="primary submit-button" data-action="close">הבנתי</button>`;
 }

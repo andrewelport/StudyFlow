@@ -1,38 +1,79 @@
 import {semesterFields, updateSemester} from './timetable.mjs';
 // The app: one state object saved in this browser, screens chosen by the address (#today, #course/ID…),
 // and every change made through mutate() so it is validated, saved and can be undone.
-import {esc, uid, localDate, addDays, toMin, toClock, weekStart, validDate, dayLabel, dateLabel, PALETTE} from './util.mjs';
-import {loadState, saveState, validateState, migrateV1, demoState} from './store.mjs';
-import {shell, sheetTop, today, studies, coursePage, goals, goalPage, calendar, work, jobPage} from './screens.mjs';
-import {classForm, icsPreview, courseForm, topicsForm, goalForm, logForm, moveForm, settingsForm, helpContent, jobForm, shiftForm, weekShiftsForm} from './dialogs.mjs';
+import {esc, uid, localDate, addDays, toMin, toClock, weekStart, validDate, dayLabel, dateLabel, PALETTE, icon} from './util.mjs';
+import {loadState, saveState, validateState, migrateV1, demoState, createState} from './store.mjs';
+import {signInScreen, waitScreen, onboardingScreen, TERMS_VERSION} from './onboarding.mjs';
+import {tourSteps, tourBubble} from './tour.mjs';
+import {shell, sheetTop, today, studies, coursePage, goals, goalPage, calendar, work, jobPage, openQuestions} from './screens.mjs';
+import {classForm, icsPreview, courseForm, topicsForm, goalForm, logForm, moveForm, settingsForm, helpContent, jobForm, shiftForm, weekShiftsForm, payCard, accountSheet, deleteAccountSheet, chooseCopySheet} from './dialogs.mjs';
+import {createCloud, decide, isEmpty} from './cloud.mjs';
 import {parseTell} from './tell.mjs';
 import {propose, toItems, toShifts} from './propose.mjs';
-import {findTime, planRest, conflictsFor, classesOn, placeFlexible, alternatives, busyOn} from './schedule.mjs';
-import {shiftSegments, repeatDates} from './work.mjs';
+import {findTime, planRest, shiftClashes, conflictsFor, classesOn, placeFlexible, alternatives} from './schedule.mjs';
+import {repeatDates} from './work.mjs';
 import {parseICS, courseNameOf} from './ics.mjs';
 import {fileText, readSyllabus} from './syllabus.mjs';
 import {amountForSession} from './progress.mjs';
 
 const Recognition = globalThis.SpeechRecognition || globalThis.webkitSpeechRecognition;
 let {state, notice} = loadState();
+const cloud = createCloud();
 let saved = null, undoState = null, toastTimer = null, recognition = null, returnFocus = null;
 const ui = {tellText: '', drafts: null, proposals: null, find: null, week: '', demo: false, micAvailable: !!Recognition, listening: false, pending: null};
 
 document.querySelector('#app').innerHTML = shell();
+// The way in (sign-in, then the first-time questions) covers the app until it is done.
+document.body.insertAdjacentHTML('beforeend', '<div id="gate" hidden></div>');
+const gate = document.querySelector('#gate'), appRoot = document.querySelector('#app');
 const main = document.querySelector('#main'), sheet = document.querySelector('#sheet');
+// Forms open above everything, the way in included (adding a class during the first-time questions).
+document.body.append(sheet, document.querySelector('#toast'));
 const clone = value => JSON.parse(JSON.stringify(value));
 navigator.storage?.persist?.().catch(() => {});
 
 // ── Rendering ──
 const route = () => { const [name, id] = location.hash.slice(1).split('/'); return {name: name || 'today', id: decodeURIComponent(id || '')}; };
 
+// What covers the app right now: signing in, loading the account on a new device, or the first-time questions.
+function gateScreen() {
+  if (ui.signingIn) return waitScreen('מתחבר…');
+  if (!cloud.user) return signInScreen({...ui.gate, agreed: agreedHere()});
+  if (!ui.firstSync && isEmpty(state) && !cloud.syncInfo().syncedAt) {
+    return ui.loadError ? waitScreen('אין חיבור לאינטרנט. בפעם הראשונה צריך חיבור כדי לטעון את המידע שלך.', {retry: true}) : waitScreen('טוען את המידע שלך…');
+  }
+  if (!ui.demo && !state.profile.onboarded) return onboardingScreen(ui.obStep || 'name', state);
+  return '';
+}
+
+// Agreeing to the terms on the way in is kept on the device until there is an account to keep it in.
+const agreedHere = () => { try { return localStorage.getItem('studyflow.terms') === TERMS_VERSION; } catch { return false; } };
+function mustAgree() {
+  const box = gate.querySelector('#gate-agree');
+  if (box?.checked) { try { localStorage.setItem('studyflow.terms', TERMS_VERSION); } catch { /* asked again next time */ } return false; }
+  ui.gate = {...ui.gate, error: 'כדי להמשיך צריך לאשר את תנאי השימוש ואת מדיניות הפרטיות.'}; render();
+  gate.querySelector('.gate-consent')?.classList.add('is-missing');
+  return true;
+}
+
 function render() {
+  if (cloud.user && !ui.demo && state.profile.terms !== TERMS_VERSION && agreedHere()) { state.profile.terms = TERMS_VERSION; saveState(state); changedHere(); }
+  const cover = gateScreen();
+  if (cover) {
+    const focused = document.activeElement?.closest?.('#gate') ? document.activeElement.id : '';
+    gate.innerHTML = cover; gate.hidden = false; appRoot.inert = true; document.body.classList.add('gated');
+    (focused && gate.querySelector(`#${CSS.escape(focused)}`) || gate.querySelector('[autofocus]'))?.focus?.({preventScroll: true});
+    return;
+  }
+  if (!gate.hidden) { gate.hidden = true; gate.innerHTML = ''; appRoot.inert = false; document.body.classList.remove('gated'); }
   const {name, id} = route();
   const active = document.activeElement, focusKey = active?.dataset?.p !== undefined ? `[data-p="${active.dataset.p}"][data-field="${active.dataset.field}"]` : '';
   const screens = {today: () => today(state, ui), studies: () => studies(state), course: () => coursePage(state, id, ui),
     goals: () => goals(state), goal: () => goalPage(state, id, ui), calendar: () => calendar(state, ui),
     work: () => work(state, ui), job: () => jobPage(state, id, ui)};
   main.innerHTML = noticeBanner() + (screens[name] || screens.today)();
+  placeTour();
+
   const tab = {course: 'studies', goal: 'goals', job: 'work'}[name] || name;
   document.querySelectorAll('[data-route]').forEach(b => { const on = b.dataset.route === tab; b.classList.toggle('active', on); on ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current'); });
   if (focusKey) main.querySelector(focusKey)?.focus({preventScroll: true});
@@ -94,26 +135,159 @@ function mutate(change, message) {
   undoState = clone(state);
   change();
   state = validateState(state);
-  if (!ui.demo) { const ok = saveState(state); notice = ok ? (notice === 'unsaved' ? '' : notice) : 'unsaved'; }
+  if (!ui.demo) { const ok = saveState(state); notice = ok ? (notice === 'unsaved' ? '' : notice) : 'unsaved'; changedHere(); }
   render();
   if (message) toast(message, true);
 }
 
+// ── Account and cloud copy ──
+// The device copy is the one the app works on. With an account it is also kept in the cloud: sent a moment
+// after each change, and checked whenever the app comes back to the front or the connection returns.
+ui.sync = {status: '', at: cloud.syncInfo().syncedAt || 0};
+let syncTimer = null, syncing = false;
+const CLOUD_ERRORS = {offline: 'אין חיבור לאינטרנט.', 'too-many': 'יותר מדי ניסיונות. אפשר לנסות שוב בעוד כמה דקות.',
+  'bad-code': 'הקוד לא נכון או שפג תוקפו. אפשר לבקש קוד חדש.', 'provider-off': 'הכניסה עם Google עוד לא מופעלת.', failed: 'משהו השתבש. אפשר לנסות שוב.'};
+const cloudError = e => CLOUD_ERRORS[e?.code] || CLOUD_ERRORS.failed;
+function changedHere() { cloud.setSyncInfo({editedAt: Date.now()}); if (cloud.user) { clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, 2000); } }
+function setSync(status, at = ui.sync.at) {
+  ui.sync = {status, at};
+  if (sheet.open && sheet.querySelector('.sync-line')) sheet.querySelector('.sheet-page').innerHTML = accountSheet(cloud.user, {sync: ui.sync});
+}
+// ── The guided tour ──
+// Right after the first-time questions it runs on the sample planner, so each screen has something to show;
+// one real part of the screen at a time is lit, the rest dimmed. Ending it returns to the person's own planner.
+const tourLayer = Object.assign(document.createElement('div'), {id: 'tour', hidden: true});
+document.body.append(tourLayer);
+function finishOnboarding() {
+  ui.obStep = '';
+  mutate(() => { state.profile.onboarded = true; });
+  startTour();
+}
+function startTour() {
+  const areas = (ui.demo ? saved : state)?.profile?.areas || [];
+  if (!ui.demo) { saved = clone(state); state = demoState(); ui.demo = true; ui.tourDemo = true; }
+  ui.tour = {i: 0, steps: tourSteps(areas)};
+  showTourStep();
+}
+function showTourStep() {
+  const step = ui.tour.steps[ui.tour.i];
+  if (route().name !== step.route) location.hash = step.route; else render();
+}
+function endTour() {
+  ui.tour = null; tourLayer.hidden = true; tourLayer.innerHTML = '';
+  if (ui.tourDemo) { state = saved || state; saved = null; ui.demo = false; ui.tourDemo = false; undoState = null; }
+  if (route().name !== 'today') location.hash = 'today'; else render();
+  window.scrollTo(0, 0);
+  toast('זהו! עכשיו תורך. מתחילים מ"ספר לי" או מהגדרת מערכת השעות.');
+  // While the sample was on show nothing was sent; what changed before it (the first-time answers) goes up now.
+  syncNow();
+}
+// Light the step's part of the screen and put the explanation beside it: the explanation sits at the bottom
+// (or the top, for something fixed low on the screen), and the lit part is scrolled into the space left above it.
+function placeTour() {
+  if (!ui.tour) { if (!tourLayer.hidden) { tourLayer.hidden = true; tourLayer.innerHTML = ''; } return; }
+  const step = ui.tour.steps[ui.tour.i], n = ui.tour.i, gap = 14, pad = 8;
+  requestAnimationFrame(() => {
+    if (!ui.tour || ui.tour.i !== n) return;
+    tourLayer.innerHTML = `<div class="tour-hole" style="top:50%;left:50%;width:0;height:0"></div>${tourBubble(step, n, ui.tour.steps.length)}`;
+    tourLayer.hidden = false;
+    const bubble = tourLayer.querySelector('.tour-bubble'), hole = tourLayer.querySelector('.tour-hole'), h = bubble.offsetHeight;
+    const room = innerHeight - h - gap * 3;
+    const target = [...document.querySelectorAll(step.target)].find(el => el.getClientRects().length);
+    if (target) {
+      const r0 = target.getBoundingClientRect(), tall = r0.height + 2 * pad > room;
+      window.scrollBy(0, r0.top - (tall ? gap + pad : gap + pad + (room - r0.height - 2 * pad) / 2));
+    }
+    const r = target?.getBoundingClientRect();
+    const below = !r || r.top + r.height / 2 < innerHeight / 2;
+    const top = below ? innerHeight - h - gap : gap;
+    bubble.style.top = `${Math.max(8, top)}px`;
+    if (r) {
+      const t = below ? Math.max(4, r.top - pad) : Math.max(top + h + gap, r.top - pad);
+      const b = below ? Math.min(r.bottom + pad, top - gap) : Math.min(innerHeight - 4, r.bottom + pad);
+      Object.assign(hole.style, {top: `${t}px`, left: `${r.left - pad}px`, width: `${r.width + 2 * pad}px`, height: `${Math.max(0, b - t)}px`});
+    }
+    bubble.querySelector('[autofocus]')?.focus({preventScroll: true});
+  });
+}window.addEventListener('resize', () => placeTour());
+document.addEventListener('keydown', e => {
+  if (!ui.tour) return;
+  if (e.key === 'Escape') endTour();
+  if (e.key === 'ArrowLeft') tourLayer.querySelector('[data-action="tour-next"]')?.click();
+  if (e.key === 'ArrowRight') tourLayer.querySelector('[data-action="tour-prev"]')?.click();
+});
+
+function wipeDevice() {
+  state = createState(); saveState(state); undoState = null; ui.firstSync = false; ui.obStep = '';
+  try { localStorage.removeItem('studyflow.cloud.backup'); } catch { /* nothing kept */ }
+}
+async function signOutNow() {
+  await cloud.signOut(); wipeDevice(); ui.sync = {status: '', at: 0}; ui.gate = {};
+  close(); location.hash = 'today'; render();
+}
+const keepBackup = copy => { try { localStorage.setItem('studyflow.cloud.backup', JSON.stringify({at: Date.now(), state: copy})); } catch { /* best effort */ } };
+function useRemote(remote) {
+  const at = Date.parse(remote.edited_at);
+  try { state = validateState(remote.state); } catch { return false; }
+  saveState(state); undoState = null; cloud.setSyncInfo({editedAt: at, syncedAt: at}); render();
+  return true;
+}
+async function syncNow() {
+  if (!cloud.user || ui.demo || syncing) return;
+  syncing = true; setSync('syncing');
+  try {
+    if (cloud.syncInfo().userId && cloud.syncInfo().userId !== cloud.user.id) wipeDevice();
+    cloud.setSyncInfo({userId: cloud.user.id});
+    const info = cloud.syncInfo(), remote = await cloud.pull(), editedAt = info.editedAt || 0;
+    const step = decide({editedAt, syncedAt: info.syncedAt || 0, empty: isEmpty(state)}, remote);
+    if (step === 'ask') { setSync(''); ui.firstSync = true; render(); ui.pending = {remote}; open(chooseCopySheet(new Date(remote.edited_at).toLocaleDateString('he-IL'))); return; }
+    if (step.startsWith('pull')) { if (step === 'pull-keep-other') keepBackup(state); useRemote(remote); }
+    if (step.startsWith('push')) {
+      if (step === 'push-keep-other') keepBackup(remote.state);
+      const at = editedAt || Date.now();
+      await cloud.push(state, at);
+      cloud.setSyncInfo({editedAt: at, syncedAt: at});
+    }
+    if (step === 'same') cloud.setSyncInfo({syncedAt: Date.parse(remote.edited_at)});
+    setSync('', cloud.syncInfo().syncedAt || Date.now());
+    if (!ui.firstSync) { ui.firstSync = true; ui.loadError = false; render(); }
+    if (step.endsWith('keep-other')) toast('היו שינויים גם כאן וגם במכשיר אחר. נשמר החדש, והשני נשמר כגיבוי במכשיר.');
+  } catch (e) {
+    setSync({offline: 'offline', 'no-table': 'setup', 'signed-out': ''}[e.code] ?? 'error');
+    if (!ui.firstSync) { ui.loadError = true; render(); }
+    if (e.code === 'signed-out') render();
+  } finally { syncing = false; }
+}
+// Coming back from the sign-in email's link (or Google), the address carries the sign-in; it is taken and the address cleaned.
+const redirect = cloud.takeRedirect(location.hash);
+if (redirect) {
+  history.replaceState(null, '', `${location.pathname}#today`);
+  if (redirect === 'expired') setTimeout(() => toast('קישור הכניסה כבר לא בתוקף. אפשר לבקש חדש ב"החשבון שלי".'), 300);
+  else { ui.signingIn = true; cloud.loadUser().then(() => syncNow(), () => {}).finally(() => { ui.signingIn = false; render(); }); }
+}
+window.addEventListener('online', () => syncNow());
+
 // ── Dialogs ──
 // Every form opens as a full page of its own, never a box over part of the screen.
 function open(html) {
-  if (!sheet.open) returnFocus = document.activeElement;
+  // On a phone the back button should close the form, not leave the screen: the form gets its own history step.
+  if (!sheet.open) { returnFocus = document.activeElement; if (!history.state?.sheet) history.pushState({sheet: true}, ''); }
   sheet.innerHTML = `<div class="sheet-page">${html}</div>`;
   sheet.scrollTop = 0;
   if (!sheet.open) sheet.showModal();
   document.body.classList.add('dialog-open');
   (sheet.querySelector('[autofocus]') || sheet.querySelector('#dialog-title'))?.focus?.();
 }
-function close() { if (sheet.open) sheet.close(); }
+function close() { if (sheet.open) { sheet.close(); dropSheetStep(); } }
+// Closed by a button or Escape: drop the form's history step, once, unless the action already moved to another screen.
+let stepping = false;
+function dropSheetStep() { setTimeout(() => { if (!sheet.open && !stepping && history.state?.sheet) { stepping = true; history.back(); } }, 0); }
 sheet.addEventListener('close', () => {
   document.body.classList.remove('dialog-open'); ui.pending = null;
   if (returnFocus?.isConnected) returnFocus.focus({preventScroll: true});
+  dropSheetStep();
 });
+window.addEventListener('popstate', () => { stepping = false; if (sheet.open) sheet.close(); });
 const formError = (form, message) => { const el = form.querySelector('[data-error]'); if (el) el.textContent = message; };
 
 // ── "Tell me" ──
@@ -124,6 +298,15 @@ function runTell() {
   const drafts = parseTell(text, state);
   if (!drafts.length) { ui.tellError = 'לא הצלחתי להבין. אפשר לנסות לכתוב כל דבר בנפרד, עם פסיקים.'; return render(); }
   ui.drafts = drafts; refreshProposals();
+}
+// Answers to the review card's questions (which day, when, is the guessed hour right).
+function answer(i, need, value) {
+  const d = ui.drafts[i]; if (!d) return;
+  if (need === 'day') return editDraft(i, 'date', value);
+  if (need === 'when' && value === 'fixed') return editDraft(i, 'mode', 'fixed');
+  if (need === 'when' && value !== 'flex') return editDraft(i, 'part', value);
+  d.needs = (d.needs || []).filter(n => n !== need);
+  refreshProposals();
 }
 function refreshProposals() { ui.proposals = propose(state, ui.drafts); render(); }
 function editDraft(i, field, value) {
@@ -146,13 +329,15 @@ function editDraft(i, field, value) {
   }
   // Only a shift may end after midnight; anything else needs an end after its start.
   if (field === 'end' && toMin(value) !== null && (d.kind === 'shift' ? value !== d.start : toMin(value) > toMin(d.start))) d.end = value;
+  if (field === 'part') { d.part = value; d.fixed = false; d.allDay = false; delete d.start; delete d.end; d.minutes ||= 60; }
   if (field === 'jobId') { d.jobId = value; d.title = `משמרת ב${state.jobs.find(j => j.id === value)?.name || ''}`; }
-  d.needs = (d.needs || []).filter(n => !(n === 'time' && (field === 'start' || field === 'mode')) && !(n === 'minutes' && field === 'minutes'));
+  d.needs = (d.needs || []).filter(n => !(n === 'time' && (field === 'start' || field === 'mode')) && !(n === 'minutes' && field === 'minutes')
+    && !(n === 'day' && field === 'date') && !(n === 'when' && ['mode', 'start', 'part'].includes(field)));
   refreshProposals();
 }
 function commitTell() {
   const items = toItems(ui.proposals, uid), shifts = toShifts(ui.proposals, uid);
-  if ((!items.length && !shifts.length) || ui.proposals.some(p => p.status !== 'ok')) return;
+  if ((!items.length && !shifts.length) || ui.proposals.some(p => p.status !== 'ok' || openQuestions(p).length)) return;
   const all = [...items, ...shifts];
   mutate(() => {
     state.items.push(...items);
@@ -166,22 +351,55 @@ function commitTell() {
 }
 
 // ── Microphone (the browser's speech recognition; the app itself sends nothing) ──
+// Phones differ from computers: Android stops at every short pause and may resend a growing sentence,
+// and on an iPhone it works only inside Safari, not from the home screen. So each pause starts a new
+// listening run until the person taps stop (or a minute passes), and repeated text is kept once.
+const isAndroid = /Android/i.test(navigator.userAgent), isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+const MIC_ERRORS = {
+  'not-allowed': 'צריך לאשר גישה למיקרופון. אפשר גם ללחוץ על המיקרופון שבמקלדת ולהכתיב.',
+  'service-not-allowed': isIOS ? 'באייפון הזיהוי הקולי עובד רק ב-Safari. אפשר ללחוץ על המיקרופון שבמקלדת ולהכתיב.' : 'צריך לאשר גישה למיקרופון. אפשר גם ללחוץ על המיקרופון שבמקלדת ולהכתיב.',
+  'audio-capture': 'לא מצאתי מיקרופון במכשיר.',
+  'no-speech': 'לא שמעתי כלום. אפשר לנסות שוב, קרוב יותר לטלפון.',
+  network: 'הזיהוי הקולי צריך חיבור לאינטרנט.',
+};
+let micWanted = false;
 function toggleMic() {
-  if (recognition) { recognition.stop(); return; }
-  const field = main.querySelector('#tell-text');
-  const before = field?.value.trim() || '';
-  recognition = new Recognition();
-  recognition.lang = 'he-IL'; recognition.continuous = true; recognition.interimResults = true;
-  recognition.onresult = event => {
-    let heard = ''; for (const r of event.results) heard += r[0].transcript;
-    ui.tellText = [before, heard.trim()].filter(Boolean).join(' ');
-    const f = main.querySelector('#tell-text'); if (f) f.value = ui.tellText;
+  if (recognition) { micWanted = false; recognition.stop(); return; }
+  let kept = main.querySelector('#tell-text')?.value.trim() || '', finals = [], heard = false;
+  const startedAt = Date.now(), join = (...parts) => parts.map(p => p.trim()).filter(Boolean).join(' ');
+  const show = interim => { ui.tellText = join(kept, ...finals, interim); const f = main.querySelector('#tell-text'); if (f) f.value = ui.tellText; };
+  const run = () => {
+    const r = new Recognition();
+    r.lang = 'he-IL'; r.continuous = !isAndroid; r.interimResults = true; r.maxAlternatives = 1;
+    r.onresult = event => {
+      let interim = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const text = event.results[i][0].transcript.trim(), last = finals.at(-1);
+        if (!event.results[i].isFinal) interim = text;
+        else if (last && text.startsWith(last)) finals[finals.length - 1] = text;
+        else if (text && text !== last) finals.push(text);
+      }
+      if (interim || finals.length) heard = true;
+      show(interim);
+    };
+    r.onerror = event => {
+      if (event.error === 'aborted') return;
+      // Silence after speaking just ends the listening; silence from the start, or any real error, says why.
+      if (event.error !== 'no-speech' || !heard) ui.tellError = MIC_ERRORS[event.error] || '';
+      micWanted = false;
+
+    };
+    r.onend = () => {
+      kept = join(kept, ...finals); finals = []; show('');
+      if (micWanted && Date.now() - startedAt < 60_000) { try { recognition = run(); return; } catch { /* stop below */ } }
+      recognition = null; micWanted = false; ui.listening = false; render();
+    };
+    r.start();
+    return r;
   };
-  recognition.onerror = event => {
-    ui.tellError = {'not-allowed': 'צריך לאשר גישה למיקרופון בדפדפן.', 'service-not-allowed': 'צריך לאשר גישה למיקרופון בדפדפן.', 'no-speech': 'לא שמעתי כלום. אפשר לנסות שוב.', network: 'הזיהוי הקולי צריך חיבור לאינטרנט.'}[event.error] || '';
-  };
-  recognition.onend = () => { recognition = null; ui.listening = false; render(); };
-  recognition.start(); ui.listening = true; render();
+  ui.tellError = ''; micWanted = true;
+  try { recognition = run(); } catch { recognition = null; micWanted = false; ui.tellError = 'לא הצלחתי להפעיל את המיקרופון. אפשר ללחוץ על המיקרופון שבמקלדת ולהכתיב.'; return render(); }
+  ui.listening = true; render();
 }
 
 // ── Items in the schedule ──
@@ -226,7 +444,7 @@ document.addEventListener('click', event => {
   const routeButton = event.target.closest('[data-route]');
   if (routeButton) { location.hash = routeButton.dataset.route; return; }
   if (event.target.closest('.toast-undo')) {
-    if (undoState) { state = undoState; undoState = null; if (!ui.demo) saveState(state); render(); toast('השינוי בוטל.'); }
+    if (undoState) { state = undoState; undoState = null; if (!ui.demo) { saveState(state); changedHere(); } render(); toast('השינוי בוטל.'); }
     return;
   }
   const t = event.target.closest('[data-action]'); if (!t) return;
@@ -236,6 +454,7 @@ document.addEventListener('click', event => {
     'dismiss-notice': () => { notice = ''; render(); },
     'focus-tell': () => { if (route().name !== 'today') location.hash = 'today'; ui.proposals = null; render(); setTimeout(() => main.querySelector('#tell-text')?.focus(), 30); },
     'tell': runTell,
+    'answer': () => answer(Number(t.dataset.p), t.dataset.need, t.dataset.value),
     'mic': toggleMic,
     'edit-tell': () => { ui.proposals = null; render(); main.querySelector('#tell-text')?.focus(); },
     'cancel-tell': () => { ui.tellText = ''; ui.drafts = null; ui.proposals = null; render(); },
@@ -248,7 +467,34 @@ document.addEventListener('click', event => {
     'move-item': () => { const item = state.items.find(i => i.id === id); if (!item) return; ui.pending = {move: item.id, options: moveOptions(item)}; open(moveForm(item, ui.pending.options)); },
     'move-to': () => { const o = ui.pending.options[Number(t.dataset.n)], itemId = ui.pending.move; close(); mutate(() => Object.assign(state.items.find(i => i.id === itemId), {date: o.date, start: o.start, end: o.end, done: false}), `הוזז ל־${o.start}.`); },
     'demo': () => { saved = clone(state); state = demoState(); ui.demo = true; render(); },
-    'exit-demo': () => { state = saved || state; saved = null; ui.demo = false; undoState = null; render(); },
+    'exit-demo': () => { state = saved || state; saved = null; ui.demo = false; undoState = null; render(); syncNow(); },
+    // Account
+    'account': () => open(accountSheet(cloud.user, {codeFor: cloud.user ? '' : ui.loginEmail || '', sync: ui.sync})),
+    'account-other': () => { ui.loginEmail = ''; open(accountSheet(null)); },
+    'resend-code': () => cloud.sendCode(ui.loginEmail).then(() => toast('שלחנו מייל חדש.'), e => toast(cloudError(e))),
+    'google': () => { if (mustAgree()) return; location.href = cloud.googleUrl(`${location.origin}${location.pathname}`); },
+    'sync-now': () => syncNow(),
+    'sign-out': async () => {
+      await syncNow();
+      const info = cloud.syncInfo();
+      if ((info.editedAt || 0) > (info.syncedAt || 0)) return open(`${sheetTop('יש שינויים שעוד לא נשמרו בענן')}<p>אין כרגע חיבור, ולכן השינויים האחרונים עוד לא עלו לחשבון. אם תתנתק עכשיו, הם יימחקו מהמכשיר.</p><button class="primary submit-button" data-action="close">להישאר מחובר</button><button class="text-button muted" data-action="sign-out-anyway">להתנתק בכל זאת</button>`);
+      signOutNow();
+    },
+    'sign-out-anyway': () => signOutNow(),
+    'delete-account': () => open(deleteAccountSheet()),
+    'confirm-delete-account': () => { t.disabled = true; cloud.deleteAccount().then(() => { wipeDevice(); ui.sync = {status: '', at: 0}; ui.gate = {}; close(); location.hash = 'today'; render(); },  e => { t.disabled = false; toast(cloudError(e)); }); },
+    'use-cloud': () => { const remote = ui.pending?.remote; close(); if (remote) { keepBackup(state); useRemote(remote); setSync('', Date.parse(remote.edited_at)); toast('עברת למה שבחשבון. מה שהיה במכשיר נשמר כגיבוי.'); } },
+    'use-device': () => { const remote = ui.pending?.remote; close(); if (remote) { keepBackup(remote.state); cloud.setSyncInfo({editedAt: Date.now(), syncedAt: Date.parse(remote.edited_at)}); syncNow(); } },
+    // The way in
+    'gate-other': () => { ui.gate = {}; render(); },
+    'gate-resend': () => cloud.sendCode(ui.gate.email).then(() => toast('שלחנו מייל חדש.'), e => { ui.gate = {...ui.gate, error: cloudError(e)}; render(); }),
+    'gate-retry': () => { ui.loadError = false; render(); syncNow(); },
+    'ob-next': () => { if (t.dataset.step === 'day') return finishOnboarding(); ui.obStep = {name: 'areas', areas: 'day'}[t.dataset.step]; render(); },
+    // The guided tour
+    'tour-start': () => { close(); startTour(); },
+    'tour-next': () => { if (ui.tour.i >= ui.tour.steps.length - 1) return endTour(); ui.tour.i++; showTourStep(); },
+    'tour-prev': () => { ui.tour.i = Math.max(0, ui.tour.i - 1); showTourStep(); },
+    'tour-end': () => endTour(),
     'help': () => open(helpContent()),
     'settings': () => open(settingsForm(state.prefs)),
     'export': () => {
@@ -320,6 +566,7 @@ document.addEventListener('input', event => {
   if (el.id === 'tell-text') ui.tellText = el.value;
   if (el.dataset.p !== undefined && el.dataset.field === 'title') editDraft(Number(el.dataset.p), 'title', el.value);
   if (el.form?.dataset.form === 'topics' && el.name === 'text') previewSyllabus(el.form);
+  if (el.form?.dataset.form === 'shift') refreshPay(el.form);
 });
 document.addEventListener('change', async event => {
   const el = event.target;
@@ -362,8 +609,15 @@ document.addEventListener('change', async event => {
       const box = row.querySelector('[name=day]'); if (!box.checked) { box.checked = true; row.classList.add('is-on'); }
     }
   }
+  if (el.form?.dataset.form === 'shift') refreshPay(el.form);
   if (el.form?.dataset.form === 'goal' && el.name === 'unit') el.form.querySelector('[data-unit-help]').textContent = el.value === 'minutes' ? 'בשעות' : '';
 });
+// The pay card at the top of the shift form follows every change to hours, break and tips.
+function refreshPay(form) {
+  const f = form.elements;
+  form.querySelector('[data-pay]').innerHTML = payCard(state, {id: form.dataset.id || '', jobId: f.jobId.value, date: f.date.value,
+    start: f.start.value, end: f.end.value, breakMinutes: Number(f.breakMinutes.value) || 0, tips: Number(f.tips.value) || 0});
+}
 function previewSyllabus(form) {
   const {topics, deadlines} = readSyllabus(form.elements.text.value, {today: localDate()});
   form.querySelector('[data-syllabus-preview]').textContent = topics.length || deadlines.length ? `זיהיתי ${topics.length} נושאים${deadlines.length ? ` ו־${deadlines.length} מבחנים או הגשות` : ''}.` : '';
@@ -479,7 +733,7 @@ document.addEventListener('submit', event => {
       if (!days.length) throw Error('מסמנים לפחות יום אחד.');
       const planned = days.map(date => ({jobId, date, start: get(`start-${date}`), end: get(`end-${date}`), breakMinutes: 0, tips: 0}));
       if (planned.some(s => s.start === s.end)) throw Error('בכל משמרת, שעת הסיום צריכה להיות שונה מההתחלה.');
-      const clash = s => shiftSegments(s).some(seg => busyOn(state, seg.date).some(b => seg.start < b.end && seg.end > b.start));
+      const clash = s => shiftClashes(state, s).length > 0;
       const free = planned.filter(s => !clash(s)), busy = planned.filter(clash);
       if (!free.length) throw Error('כל המשמרות שסימנת מתנגשות עם משהו אחר ביומן. אפשר לשנות שעות.');
       close();
@@ -494,8 +748,8 @@ document.addEventListener('submit', event => {
       if (start === end) throw Error('שעת הסיום צריכה להיות שונה משעת ההתחלה.');
       const base = {jobId, start, end, breakMinutes: Number(get('breakMinutes')) || 0, tips: Number(get('tips')) || 0};
       // Never on top of a class or anything else; for a weekly repeat, busy dates are skipped and reported.
-      const collide = date => [...new Set(shiftSegments({...base, date}).flatMap(seg =>
-        busyOn(state, seg.date, {ignoreId: editing}).filter(b => seg.start < b.end && seg.end > b.start).map(b => b.title)))];
+      const collide = date => [...new Set(shiftClashes(state, {...base, date}, {ignoreId: editing}).map(b => b.title))];
+
       const dates = editing ? [date] : repeatDates(date, Number(get('weeks')) || 1);
       const free = dates.filter(d => !collide(d).length), busy = dates.filter(d => collide(d).length);
       if (!free.length) throw Error(`בזמן הזה יש כבר: ${collide(dates[0]).join(', ')}. אפשר לבחור שעות אחרות.`);
@@ -504,6 +758,39 @@ document.addEventListener('submit', event => {
         if (editing) Object.assign(state.shifts.find(s => s.id === editing), base, {date});
         else state.shifts.push(...free.map(d => ({id: uid(), ...base, date: d})));
       }, editing ? 'המשמרת עודכנה.' : `${free.length === 1 ? 'המשמרת נוספה' : `נוספו ${free.length} משמרות`} ללו״ז${busy.length ? `. ${busy.length} לא נוספו כי מתנגשות עם משהו אחר (${busy.map(d => dateLabel(d)).slice(0, 3).join(', ')})` : ''}.`);
+    }
+    if (kind === 'gate-email' || kind === 'gate-code') {
+      if (kind === 'gate-email') { ui.gate = {...ui.gate, email: get('email')}; if (mustAgree()) return; }
+      const button = form.querySelector('[type=submit]'); button.disabled = true; formError(form, '');
+      const failed = e => { button.disabled = false; formError(form, cloudError(e)); };
+      if (kind === 'gate-email') {
+        const email = get('email').toLowerCase();
+        cloud.sendCode(email).then(() => { ui.gate = {email, sent: true}; render(); }, failed);
+      } else {
+        cloud.verifyCode(ui.gate.email, get('code').replace(/\s/g, '')).then(() => { ui.gate = {}; render(); syncNow(); }, failed);
+      }
+      return;
+    }
+    if (kind === 'ob-name') { ui.obStep = 'areas'; mutate(() => { state.profile.name = get('name'); }); return; }
+    if (kind === 'ob-areas') { ui.obStep = 'day'; mutate(() => { state.profile.areas = fd.getAll('area').map(String); }); return; }
+    if (kind === 'ob-day') {
+      const dayStart = get('dayStart'), dayEnd = get('dayEnd');
+      if (toMin(dayEnd) <= toMin(dayStart)) throw Error('סוף היום צריך להיות אחרי ההתחלה.');
+      state.prefs = {...state.prefs, dayStart, dayEnd};
+      finishOnboarding(); return;
+    }
+    if (kind === 'send-code' || kind === 'verify-code') {
+      const button = form.querySelector('[type=submit]'); button.disabled = true; formError(form, '');
+      const done = () => { button.disabled = false; };
+      if (kind === 'send-code') {
+        const email = get('email').toLowerCase();
+        cloud.sendCode(email).then(() => { ui.loginEmail = email; open(accountSheet(null, {codeFor: email})); }, e => { done(); formError(form, cloudError(e)); });
+      } else {
+        cloud.verifyCode(ui.loginEmail, get('code').replace(/\s/g, '')).then(user => {
+          ui.loginEmail = ''; open(accountSheet(user, {sync: ui.sync})); toast('התחברת. כל השינויים יישמרו גם בענן.'); syncNow();
+        }, e => { done(); formError(form, cloudError(e)); });
+      }
+      return;
     }
     if (kind === 'settings') {
       const dayStart = get('dayStart'), dayEnd = get('dayEnd');
@@ -518,5 +805,6 @@ document.addEventListener('submit', event => {
 document.addEventListener('keydown', e => { if (e.target.id === 'tell-text' && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); runTell(); } });
 window.addEventListener('hashchange', () => { ui.find = null; render(); window.scrollTo(0, 0); main.focus({preventScroll: true}); });
 // Coming back to the app later in the day refreshes "now" (free time, greetings).
-document.addEventListener('visibilitychange', () => { if (!document.hidden && !sheet.open) render(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) return; if (!sheet.open) render(); syncNow(); });
 render();
+syncNow();

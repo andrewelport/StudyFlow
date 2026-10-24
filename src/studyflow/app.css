@@ -395,3 +395,177 @@ dialog#sheet::backdrop{background:var(--bg)}
 .board-free{text-align:center;font-size:11.5px;color:var(--faint);padding:2px 0;border-top:1.5px dashed var(--line);border-bottom:1.5px dashed var(--line);margin:2px 8px}
 .board-empty{text-align:center;font-size:13px;color:var(--faint);padding:8px 0}
 @media(max-width:1100px){.board{gap:6px}.board-day{padding:8px 5px}.board-card{padding:7px 7px}}
+/* Phones get the day-by-day list; the board is for wide screens only (this must come after .board) */
+@media(max-width:760px){.cal-grid.board{display:none}}
+
+/* "How much did it come to?": a shift's pay, line by line, then the month in the workplace's color */
+.pay-card{--c:#5b4ea8;display:grid;gap:14px;margin:4px 0 18px;padding:20px 20px 18px;border-radius:22px;background:var(--card);box-shadow:0 0 0 1px var(--line),0 14px 28px -22px #00000066}
+.pay-title{font-family:'Amatic SC',Heebo,sans-serif;font-size:38px;line-height:1}
+.pay-shift{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 12px;padding:12px 16px;border-radius:14px;background:var(--soft);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 30%,transparent);font-size:15px}
+.pay-shift bdi{font-weight:700;color:var(--c)}
+.pay-lines{display:grid;gap:8px;padding:2px 4px}
+.pay-line{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:15px}
+.pay-line b,.pay-total b,.pay-month b{direction:ltr;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pay-line.is-note{font-size:13px;color:var(--muted)}
+.pay-total{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:12px 4px 0;border-top:2px dashed var(--line);font-size:16px;font-weight:700}
+.pay-total b{font-size:24px;color:var(--c)}
+.pay-month{display:grid;gap:2px;padding:14px 18px;border-radius:16px;background:var(--c);color:#fff}
+.pay-month small{font-size:13px;opacity:.88}
+.pay-month b{font-size:32px;line-height:1.1;text-align:right}
+/* Review card questions: a missing day or time is asked, never guessed silently */
+.proposal.has-questions{border-color:#e8c6b8}
+.proposal-ask{display:grid;gap:12px;margin-top:10px;background:#fdf3ee;border:1px solid #f0d6ca;border-radius:16px;padding:12px 14px}
+.ask-row b{display:block;font-size:15px;color:var(--ink)}
+.ask-row>span{display:block;font-size:13px;color:var(--muted);margin-top:2px}
+.ask-chips{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px}
+.ask-chip{border:1.5px solid #e3b3a3;background:#fff;color:#a8452f;border-radius:999px;padding:8px 16px;min-height:44px;font-size:15px;font-weight:600}
+.ask-chip:active{transform:scale(.97)}
+@media(hover:hover){.ask-chip:hover{background:#f9e3da}}
+.ask-chips small{font-size:12px;color:var(--muted)}
+.review-blocked{color:#a8452f}
+@media(max-width:650px){.ask-chips{gap:6px}.ask-chip{padding:8px 13px;font-size:14px}}
+
+/* On a phone: feels like an installed app */
+html{-webkit-text-size-adjust:100%;overscroll-behavior-y:none}
+.bottom-nav,.brand,.btn,button{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.field-help a{display:inline-block;padding:10px 0}
+@media(max-width:760px){.bottom-nav{background:color-mix(in srgb,var(--bg) 88%,transparent)}}
+@media(display-mode:standalone){body{-webkit-user-select:none;user-select:none}input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text}}
+.install-card{display:flex;align-items:center;gap:14px;margin:0 0 18px;padding:14px 16px;border-radius:18px;background:var(--card);box-shadow:0 0 0 1px var(--line),0 12px 24px -20px #00000066}
+.install-card img{border-radius:12px;flex:none}
+.install-card>div{display:flex;flex-direction:column;align-items:flex-start;gap:6px;flex:1;min-width:0;font-size:14px;line-height:1.5;color:var(--muted)}
+.install-card>div>b{font-size:15px;color:var(--ink)}
+/* ── Phones: one column, less chrome, everything within thumb reach ── */
+@media(max-width:650px){
+  .page-heading{margin:18px 0 14px}
+  .page-heading h1{font-size:42px}
+  .section-heading{flex-wrap:wrap;align-items:flex-end;margin:22px 0 10px}
+  .section-heading>div:first-child{flex:1 1 auto}
+  .section-heading .section-actions{flex-wrap:wrap;justify-content:flex-start;gap:4px 14px}
+  .section-heading h2{font-size:30px;white-space:nowrap}
+  .tell-foot .field-help{font-size:11.5px;line-height:1.4}
+  /* Timetable: the class days in one column; free days fold away */
+  .timetable{grid-template-columns:1fr;gap:8px}
+  .tt-day:has(.tt-free){display:none}
+  .tt-day{display:grid;grid-template-columns:70px 1fr;align-items:start;gap:6px 10px;border-radius:14px}
+  .tt-day h3{font-size:26px;line-height:1.1;margin:0}
+  .tt-day .tt-class{grid-column:2}
+  /* Money jar beside its numbers instead of above them */
+  .jar-card{grid-template-columns:118px 1fr;gap:10px 16px;padding:14px;border-radius:18px}
+  .jar-card .jar svg{max-width:118px}
+  .jar-card .jar-stat{display:flex;flex-direction:column;align-items:flex-start;gap:0;padding:6px 0}
+  .jar-card .jar-stat b{font-size:20px;white-space:nowrap}
+  .jar-card .jar-stat span{font-size:12px}
+  .jar-card .jar-amount b{font-size:18px}
+  .jar-card .jar-amount span{font-size:9.5px}
+  .jar-side .primary,.jar-side .text-button{grid-column:1/-1}
+  .jar-card>.jar-side{display:contents}
+  .jar-card .jar-stat{grid-column:2}
+  .jar-card .jar{grid-row:span 3}
+  /* Goal page: a smaller ring, the actions in full width */
+  .goal-hero{padding:16px;gap:12px;border-radius:4px 4px 18px 4px}
+  .ring-big{width:118px;height:118px}.ring-big b{font-size:36px}
+  .goal-headline{font-size:28px}
+  .week-dots span{width:32px;height:32px;font-size:12px}
+  .goal-actions .primary{flex:1 1 100%}
+  .goal-stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  .goal-stats b{font-size:17px}.goal-stats span{font-size:11.5px}
+  /* Calendar: the explanation line stays short */
+  .cal-nav+.cal-legend+.field-help,.cal-legend+.field-help{font-size:12.5px;line-height:1.5;margin:4px 0 10px}
+  .cal-day{border-radius:14px}
+  /* Notes don't tilt on a small screen */
+  .big-card.note,.card-grid>.note:nth-child(n){transform:none}
+}
+/* Account: optional, a code by email, and where the cloud copy stands */
+.account-lead{font-size:16px;line-height:1.7;margin:4px 0 18px}
+.account-card{display:flex;align-items:center;gap:14px;padding:16px;margin:6px 0 4px;border-radius:18px;background:var(--card);box-shadow:0 0 0 1px var(--line)}
+.account-card>div{display:flex;flex-direction:column;gap:4px;min-width:0}
+.account-card b{font-size:16px;direction:ltr;text-align:right;overflow-wrap:anywhere}
+.account-avatar{display:grid;place-items:center;width:48px;height:48px;border-radius:50%;flex:none;background:color-mix(in srgb,var(--teal) 14%,var(--card));color:var(--teal)}
+.account-avatar .icon{width:26px;height:26px}
+.sync-line{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+.sync-line .icon{width:16px;height:16px;flex:none}
+.sync-line.is-bad{color:var(--teal)}
+.account-actions{display:flex;flex-wrap:wrap;gap:6px 18px;margin:14px 0 6px}
+.code-input{font-size:28px!important;letter-spacing:.35em;text-align:center;font-variant-numeric:tabular-nums}
+.google-button{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:50px;border-radius:14px;background:var(--card);box-shadow:0 0 0 1.5px var(--line);font-size:16px;font-weight:600}
+.google-button b{font-size:18px;color:#4285f4}
+.or-line{display:flex;align-items:center;gap:12px;margin:16px 0 4px;color:var(--muted);font-size:13px}
+.or-line::before,.or-line::after{content:'';flex:1;border-top:1px solid var(--line)}
+.submit-button.danger{background:var(--teal)}
+.sidebar-account .icon,.account-button .icon{width:22px;height:22px}
+/* ── The way in: sign-in, then the first-time questions, one full screen at a time ── */
+#gate{position:fixed;inset:0;z-index:20;overflow-y:auto;overscroll-behavior:contain;background:var(--bg) radial-gradient(#0000000a 1px,transparent 1px) 0 0/22px 22px;
+  padding:calc(28px + env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) calc(28px + env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left))}
+body.gated{overflow:hidden}
+.gate-page{max-width:440px;min-height:100%;margin:0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;animation:gate-in .35s var(--ease)}
+.gate-page.gate-wide{max-width:560px;justify-content:flex-start}
+.gate-page h1{font-family:'Amatic SC',Heebo,sans-serif;font-size:46px;line-height:1.05;text-wrap:balance}
+.gate-mark{border-radius:22px;box-shadow:0 14px 30px -18px #00000080}
+.gate-lead{font-size:16px;line-height:1.7;color:var(--muted);text-wrap:pretty;max-width:36ch}
+.gate-lead b{color:var(--ink)}
+.gate-form{width:100%;display:flex;flex-direction:column;align-items:stretch;gap:10px;text-align:start}
+.gate-form input{font-size:18px!important}
+.gate-button{width:100%;min-height:54px;font-size:17px;justify-content:center;border-radius:16px}
+.secondary.gate-button{background:var(--card);color:var(--ink);box-shadow:0 0 0 1.5px var(--line)}
+.google-button.gate-button{display:flex}
+.google-g{width:22px;height:22px}
+.gate-fine{font-size:13px;color:var(--muted);max-width:34ch}
+.gate-links{display:flex;gap:18px;justify-content:center}
+.gate-skip{color:var(--muted)}
+.gate-steps{display:flex;gap:6px}
+.gate-steps i{width:26px;height:5px;border-radius:4px;background:var(--line)}
+.gate-steps i.on{background:var(--teal)}
+.gate-spinner{width:34px;height:34px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--teal);animation:spin 0.9s linear infinite}
+.gate-page .or-line{width:100%}
+.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.area-picks{display:grid;gap:10px}
+.area-pick{position:relative;cursor:pointer}
+.area-pick input{position:absolute;opacity:0;inset:0;margin:0}
+.area-pick span{display:grid;grid-template-columns:40px 1fr;grid-template-rows:auto auto;column-gap:12px;align-items:center;padding:14px 16px;border-radius:16px;background:var(--card);box-shadow:0 0 0 1.5px var(--line);text-align:start;transition:box-shadow .15s,background .15s}
+.area-pick .icon{grid-row:span 2;width:30px;height:30px;color:var(--muted)}
+.area-pick b{font-size:17px}.area-pick small{font-size:13px;color:var(--muted)}
+.area-pick input:checked+span{box-shadow:0 0 0 2.5px var(--teal);background:color-mix(in srgb,var(--teal) 8%,var(--card))}
+.area-pick input:checked+span .icon{color:var(--teal)}
+.area-pick input:focus-visible+span{outline:3px solid #dc9a57;outline-offset:2px}
+.ob-card{width:100%;display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:18px;background:var(--card);box-shadow:0 0 0 1px var(--line);text-align:start}
+.ob-card h2{display:flex;align-items:center;gap:8px;font-size:18px}
+.ob-card h2 .icon{width:22px;height:22px;color:var(--teal)}
+.ob-card p{font-size:14px;color:var(--muted);line-height:1.6}
+.ob-actions{display:flex;flex-wrap:wrap;gap:6px 18px}
+.ob-inline{display:grid;grid-template-columns:1fr 110px auto;gap:8px;align-items:end}
+.ob-presets{display:flex;flex-wrap:wrap;gap:8px}
+.ob-preset{display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:22px;box-shadow:inset 0 0 0 1.5px var(--line);background:var(--card);font-size:14px}
+.ob-preset.is-on{box-shadow:none;background:#2f6b43;color:#fff}
+.ob-preset .icon{width:16px;height:16px}
+.ob-done{display:flex;align-items:center;gap:6px;color:#2f6b43!important;font-weight:600}
+.ob-done .icon{width:18px;height:18px}
+@media(max-width:420px){.ob-inline{grid-template-columns:1fr 92px}.ob-inline .text-button{grid-column:1/-1;justify-self:start}}
+/* The first try of "tell me", and one tip the first time each area opens */
+.coach-card,.tip-card{position:relative;display:flex;flex-wrap:wrap;align-items:flex-start;gap:6px 10px;margin:0 0 14px;padding:14px 16px;border-radius:16px;background:color-mix(in srgb,#f2c14e 22%,var(--card));box-shadow:0 0 0 1.5px color-mix(in srgb,#f2c14e 55%,transparent)}
+.coach-card b{display:flex;align-items:center;gap:6px;width:100%;font-size:15px}
+.coach-card p,.tip-card p{flex:1 1 220px;font-size:14.5px;line-height:1.6}
+.tip-card>.icon,.coach-card b .icon{width:20px;height:20px;flex:none;color:#a77c12}
+.coach-card::after{content:'';position:absolute;bottom:-9px;inset-inline-start:34px;width:16px;height:16px;background:inherit;transform:rotate(45deg);box-shadow:1.5px 1.5px 0 0 color-mix(in srgb,#f2c14e 55%,transparent)}
+@keyframes gate-in{from{opacity:0;transform:translateY(10px)}}
+@keyframes spin{to{transform:rotate(1turn)}}
+@media(prefers-reduced-motion:reduce){.gate-page{animation:none}.gate-spinner{animation-duration:3s}}
+/* The guided tour: the rest dimmed, one real part of the screen lit, the explanation beside it */
+#tour{position:fixed;inset:0;z-index:40}
+.tour-hole{position:fixed;border-radius:16px;box-shadow:0 0 0 3px #f2c14e,0 0 0 9999px rgba(30,24,18,.62);pointer-events:none;transition:top .25s var(--ease),left .25s var(--ease),width .25s var(--ease),height .25s var(--ease)}
+.tour-bubble{position:fixed;left:50%;transform:translateX(-50%);width:min(440px,calc(100% - 32px));display:grid;gap:8px;padding:18px 20px 14px;border-radius:20px;background:var(--card);box-shadow:0 24px 50px -20px #000000aa;animation:gate-in .25s var(--ease)}
+.tour-count{font-size:12px;font-weight:700;color:var(--teal);letter-spacing:.02em}
+.tour-bubble h2{font-family:'Amatic SC',Heebo,sans-serif;font-size:34px;line-height:1}
+.tour-bubble p{font-size:15.5px;line-height:1.65}
+.tour-buttons{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:6px}
+.tour-buttons .primary{margin-inline-start:auto;min-width:120px;justify-content:center}
+.tour-skip{justify-self:center;font-size:13px;color:var(--muted)}
+.tour-again{margin:0 0 16px}
+@media(prefers-reduced-motion:reduce){.tour-hole{transition:none}.tour-bubble{animation:none}}
+/* Agreeing to the terms on the way in */
+.gate-consent{display:flex;align-items:flex-start;gap:10px;width:100%;padding:12px 14px;border-radius:14px;background:var(--card);box-shadow:0 0 0 1px var(--line);text-align:start;font-size:14px;line-height:1.55;cursor:pointer}
+.gate-consent input{width:22px;height:22px;flex:none;margin:1px 0 0;accent-color:var(--teal)}
+.gate-consent a{color:var(--teal);font-weight:600}
+.gate-consent.is-missing{box-shadow:0 0 0 2px var(--teal);animation:nudge .3s}
+@keyframes nudge{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+@media(prefers-reduced-motion:reduce){.gate-consent.is-missing{animation:none}}
