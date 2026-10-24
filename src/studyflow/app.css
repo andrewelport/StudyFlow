@@ -569,3 +569,50 @@ body.gated{overflow:hidden}
 .gate-consent.is-missing{box-shadow:0 0 0 2px var(--teal);animation:nudge .3s}
 @keyframes nudge{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
 @media(prefers-reduced-motion:reduce){.gate-consent.is-missing{animation:none}}
+/* What brings people back: the streak, the money goal, the exams, the week. A row that scrolls sideways on a phone */
+.boost{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(168px,1fr);gap:10px;margin-top:16px;overflow-x:auto;padding-bottom:4px;scroll-snap-type:x mandatory}
+.boost-card{scroll-snap-align:start;display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-height:132px;padding:14px 16px;border-radius:16px;background:var(--card);box-shadow:0 0 0 1px var(--line),0 8px 14px -12px #00000040;text-align:start;font:inherit;color:inherit}
+.boost-card>.icon{width:22px;height:22px;color:var(--teal)}
+.boost-card>b{font-size:30px;font-weight:800;line-height:1.1;letter-spacing:-.01em}
+.boost-card>span{font-size:14px;font-weight:600}
+.boost-card small{font-size:12.5px;color:var(--muted);line-height:1.45}
+.boost-card .bar{width:100%;margin:4px 0 2px}
+button.boost-card:hover,a.boost-card:hover{box-shadow:0 0 0 1.5px var(--teal),0 10px 18px -12px #00000055}
+.boost-card.is-streak>.icon{color:var(--faint)}
+.boost-card.is-streak.is-lit{background:color-mix(in srgb,#f2a03d 16%,var(--card))}
+.boost-card.is-streak.is-lit>.icon{color:#e07a1f;animation:flicker 2.4s ease-in-out infinite}
+.boost-card.is-money>.icon{color:#b88a14}
+.boost-card.is-money .bar i{background:#d9a12a}
+.boost-card.is-exam.is-near{background:color-mix(in srgb,var(--teal) 9%,var(--card))}
+.boost-card.is-week{background:var(--ink);color:#fffdf6;box-shadow:none}
+.boost-card.is-week>.icon{color:#f2c14e}
+.boost-card.is-week>b{font-size:22px}
+.boost-card.is-week small{color:#d8cfc0}
+@keyframes flicker{0%,100%{transform:scale(1) rotate(0)}40%{transform:scale(1.08) rotate(-3deg)}70%{transform:scale(.97) rotate(2deg)}}
+@media(prefers-reduced-motion:reduce){.boost-card.is-streak.is-lit>.icon{animation:none}}
+/* The money goal next to the jar */
+.jar-goal{display:grid;gap:4px;width:100%;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,#d9a12a 12%,var(--card));text-align:start;font-size:13.5px}
+.jar-goal .bar i{background:#d9a12a}
+.jar-goal small{color:var(--muted);font-size:12.5px}
+/* Overlaps the person said yes to, and their notes */
+.entry-overlap{display:flex;align-items:center;gap:6px;margin-top:4px;font-size:12.5px;font-weight:600;color:var(--warm-ink)}
+.entry-overlap .icon{width:14px;height:14px}
+.entry-note{margin-top:4px;padding:6px 10px;border-radius:8px;background:var(--bg);font-size:13px;line-height:1.5;color:var(--ink)}
+.cal-kind em{display:inline-flex;align-items:center;gap:3px;margin-inline-start:8px;font-style:normal;font-weight:600;color:var(--warm-ink)}
+.cal-kind em .icon{width:12px;height:12px}
+.cal-note{display:block;font-size:12px;color:var(--muted);line-height:1.4}
+.overlap-ask{display:grid;gap:8px;margin:10px 0 0;padding:12px 14px;border-radius:12px;background:var(--warm);color:var(--warm-ink);font-size:14px;line-height:1.55}
+.overlap-ask p{display:flex;gap:8px;align-items:flex-start}
+.overlap-ask p .icon{width:18px;height:18px;flex:none;margin-top:2px}
+.overlap-ask input{background:var(--card)}
+.overlap-ask .primary{justify-self:start}
+.slot.overlap-ok{background:var(--warm);color:var(--warm-ink);font-weight:600}
+.proposal-status.ok .proposal-note{width:100%;margin-top:8px;padding:8px 12px;border:1.5px solid var(--line);border-radius:10px;font:inherit;font-size:14px;background:#fffef9}
+/* The week in short, and the picture to share */
+.week-card{display:grid;gap:12px;padding:18px;border-radius:18px;background:var(--bg);margin-bottom:14px}
+.week-card-range{font-size:14px;color:var(--muted)}
+.week-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.week-stats div{display:grid;gap:2px;padding:12px 14px;border-radius:14px;background:var(--card);box-shadow:0 0 0 1px var(--line)}
+.week-stats b{font-size:24px;font-weight:800;color:var(--teal)}
+.week-stats span{font-size:13px;color:var(--muted)}
+.week-card-brand{display:flex;align-items:center;justify-content:center;gap:6px;font-weight:700;font-size:15px}

@@ -24,6 +24,9 @@ const icons = {
   file: '<path d="M6 3h8l4 4v14H6V3Z"/><path d="M14 3v4h4M9 13h6m-6 4h6"/>',
   user: '<circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.2-3.6 4-5.4 7.5-5.4s6.3 1.8 7.5 5.4"/>',
   cloud: '<path d="M7 18h10.5a4 4 0 0 0 .4-8 5.5 5.5 0 0 0-10.6-1.3A4.7 4.7 0 0 0 7 18Z"/>',
+  flame: '<path d="M12 21c-3.9 0-6.5-2.6-6.5-6.1 0-3.2 2.2-5.3 3.6-7.3.4 1.6 1.2 2.6 2.2 3.1C11 7.4 12.6 4.6 15 3c-.3 2.9 3.5 5.7 3.5 11.2 0 4-2.7 6.8-6.5 6.8Z"/><path d="M12 21c-1.7 0-2.8-1.2-2.8-2.8 0-1.8 1.6-2.8 2.4-4.4.9 1.4 3.2 2.5 3.2 4.6 0 1.6-1.1 2.6-2.8 2.6Z"/>',
+  share: '<path d="M12 3v12M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>',
+  coin: '<circle cx="12" cy="12" r="8.5"/><path d="M14.5 9.2c-.5-.8-1.4-1.2-2.5-1.2-1.5 0-2.6.8-2.6 2s1.1 1.6 2.6 2 2.6.8 2.6 2-1.1 2-2.6 2c-1.1 0-2-.4-2.5-1.2M12 6.5V8m0 8v1.5"/>',
 };
 export const icon = (name, cls = '') => `<svg class="icon ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name] || icons.sun}</svg>`;
 
