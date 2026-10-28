@@ -1,3 +1,4 @@
+import {refreshLiveTime} from './live-time.mjs';
 import {semesterFields, updateSemester} from './timetable.mjs';
 // The app: one state object saved in this browser, screens chosen by the address (#today, #course/ID…),
 // and every change made through mutate() so it is validated, saved and can be undone.
@@ -81,6 +82,7 @@ function render() {
     goals: () => goals(state), goal: () => goalPage(state, id, ui), calendar: () => calendar(state, ui),
     work: () => work(state, ui), job: () => jobPage(state, id, ui)};
   main.innerHTML = noticeBanner() + (screens[name] || screens.today)();
+  refreshLiveTime(main);
   placeTour();
 
   const tab = {course: 'studies', goal: 'goals', job: 'work'}[name] || name;
@@ -109,6 +111,7 @@ function fillJar(key) {
   setTimeout(() => requestAnimationFrame(step), 600);
 }
 // While on the work screens, refresh every minute: a running shift's money grows, and an ended one drops in.
+setInterval(() => { if (!document.hidden) refreshLiveTime(main); }, 15000);
 setInterval(() => { if (['work', 'job'].includes(route().name) && !sheet.open && !document.hidden) render(); }, 60000);
 
 // A new workplace gets a color no other workplace uses yet.

@@ -753,6 +753,10 @@ button.free-row{display:flex;align-items:center;gap:8px;width:calc(100% - 68px);
 @media(hover:hover){button.free-row:hover{background:var(--hover-fill,#f1e9dc)}}
 
 /* Course card: a big, clear way into topics and progress */
+.now-marker{display:flex;align-items:center;gap:12px;color:var(--accent,#c84232);font-size:14px;font-weight:700;margin:16px 0;overflow-wrap:anywhere}
+.now-marker:before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor;flex:none}
+.now-marker:after{content:"";height:2px;background:currentColor;opacity:.45;flex:1;min-width:24px;border-radius:100%}
+.entry.is-current .entry-card{outline:2px solid var(--accent,#c84232);outline-offset:3px}
 .course-open{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;margin:12px 0 4px;padding:12px 16px;min-height:50px;border-radius:14px;background:var(--ink,#2d2a26);color:#fff;font-weight:700;font-size:16px;text-decoration:none}
 .course-open .icon{width:20px;height:20px}
 .course-open .icon:last-child{margin-inline-start:auto}

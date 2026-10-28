@@ -316,7 +316,7 @@ function dayTimeline(state, date, now, ui = {}) {
     ...count(entries.filter(e => e.type === 'shift').length, 'משמרת', 'משמרות'),
     ...count(items.length, 'פריט אחד', 'פריטים'), ...(items.some(i => i.done) ? [`${items.filter(i => i.done).length} בוצעו`] : [])].join(' · ');
   return `<section class="day">${section(title, entries.length ? summary : 'עוד אין כלום ביום הזה.')}
-    ${rows.length ? `<div class="entries">${rows.map(e => entryRow(e, state, now, {freed: freedFor.get(e)?.html})).join('')}</div>` : '<div class="day-empty"><h3>יום פנוי</h3><p>מספרים לי למעלה מה צריך לעשות, ואני מוצא לזה זמן.</p></div>'}</section>`;
+    ${rows.length ? `<div class="entries" data-live-date="${esc(date)}">${rows.map(e => entryRow(e, state, now, {freed: freedFor.get(e)?.html}).replace(/^<(article|div|button)/, `<$1 data-live-row="${esc(JSON.stringify({start:e.start,end:e.end,title:e.title || "",type:e.type,allDay:!!e.allDay,cancelled:!!e.cancelled,done:!!e.done}))}"`)).join('')}</div>` : '<div class="day-empty"><h3>יום פנוי</h3><p>מספרים לי למעלה מה צריך לעשות, ואני מוצא לזה זמן.</p></div>'}</section>`;
 }
 
 function progressStrip(state, date) {
