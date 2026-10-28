@@ -1,4 +1,4 @@
-const CACHE = 'studyflow-v35';
+const CACHE = 'studyflow-v36';
 // Fonts change rarely and are kept separately, so the handwritten headings also show offline.
 const FONTS = 'studyflow-fonts-v1';
 // Paths are relative to where the app is hosted (/ locally, /StudyFlow/ on GitHub Pages).
@@ -8,7 +8,7 @@ const SHELL = ['', 'index.html', 'manifest.json', 'src/studyflow/brand/mark.svg'
   'src/studyflow/tell.mjs', 'src/studyflow/ics.mjs', 'src/studyflow/syllabus.mjs', 'src/studyflow/progress.mjs', 'src/studyflow/work.mjs','src/studyflow/screens.mjs', 'src/studyflow/dialogs.mjs', 'src/studyflow/timetable.mjs', 'src/studyflow/config.mjs', 'src/studyflow/cloud.mjs', 'src/studyflow/onboarding.mjs', 'src/studyflow/tour.mjs', 'src/studyflow/insights.mjs', 'src/studyflow/freed.mjs',
   'src/studyflow/styles.css', 'src/studyflow/depth.css', 'src/studyflow/app.css'].map(path => BASE + path);
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
+  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL.map(url => new Request(url, {cache: 'reload'})))).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', event => {
   event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('studyflow-') && key !== CACHE && key !== FONTS).map(key => caches.delete(key)))).then(() => self.clients.claim()));
@@ -25,7 +25,7 @@ self.addEventListener('fetch', event => {
   }
   const appAsset = SHELL.includes(url.pathname) || (url.pathname.startsWith(BASE + 'src/studyflow/') && /\.(mjs|css|svg|png|webp)$/.test(url.pathname));
   if (event.request.method !== 'GET' || url.origin !== self.location.origin || !appAsset) return;
-  event.respondWith(fetch(event.request).then(response => {
+  event.respondWith(fetch(event.request, {cache: 'no-cache'}).then(response => {
     if (response.ok) {
       const copy = response.clone();
       event.waitUntil(caches.open(CACHE).then(cache => cache.put(event.request, copy)));
